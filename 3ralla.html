@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>3 en raya Marc's games</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin-top: 50px;
+      background-color: #e74c3c; /* Rojo inicial (Jugador 1) */
+      display: flex;
+      justify-content: center;
+      transition: background-color 1s ease; /* Transición suave para el cambio de color */
+    }
+
+    .container {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+    }
+
+    .game-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1 {
+      font-size: 2.5em;
+      color: #fff;
+    }
+
+    .game-board {
+      display: grid;
+      grid-template-columns: repeat(3, 120px); /* Tablero 3x3 */
+      grid-template-rows: repeat(3, 120px); 
+      grid-gap: 8px;
+      justify-content: center;
+      margin-top: 20px;
+    }
+
+    .cell {
+      width: 120px;
+      height: 120px;
+      background-color: #ecf0f1;
+      border-radius: 20px; /* Bordes más redondeados */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      font-size: 3em;
+      color: transparent;
+      transition: transform 0.2s ease, background-color 0.3s ease-in-out;
+      box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.2); /* Sombra para un toque artesanal */
+      transform: rotate(0deg); /* Esto ayuda a que las celdas se vean más juguetonas */
+    }
+
+    .cell.x {
+      color: #e74c3c; /* Rojo para X */
+      font-family: 'Courier New', Courier, monospace;
+      transform: rotate(-10deg); /* Añadimos rotación aleatoria */
+    }
+
+    .cell.o {
+      color: #3498db; /* Azul para O */
+      font-family: 'Arial', sans-serif;
+      transform: rotate(10deg); /* Añadimos rotación aleatoria */
+    }
+
+    #message {
+      font-size: 1.5em;
+      margin-top: 20px;
+      color: #fff;
+    }
+
+    .player-turn {
+      font-size: 1.8em;
+      color: #fff;
+    }
+
+    .scoreboard {
+      width: 200px;
+      padding: 20px;
+      background-color: rgba(255, 255, 255, 0.2);
+      border-radius: 10px;
+      color: #fff;
+      font-size: 1.2em;
+      text-align: left;
+    }
+
+    .scoreboard h2 {
+      text-align: center;
+      font-size: 1.5em;
+    }
+
+    .btn-restart {
+      margin-top: 30px;
+      padding: 10px 20px;
+      background-color: #2ecc71;
+      color: white;
+      font-size: 1.2em;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .btn-restart:hover {
+      background-color: #27ae60;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Sección del juego -->
+    <div class="game-section">
+      <h1>Juego 3 en Raya</h1>
+      <div class="player-turn" id="playerTurn">Turno: Jugador 1 (Rojo)</div>
+      <div class="game-board" id="gameBoard"></div>
+      <div id="message"></div>
+      <button class="btn-restart" id="restartButton">Volver a jugar</button>
+    </div>
+
+    <!-- Marcador de puntos -->
+    <div class="scoreboard">
+      <h2>Puntuación</h2>
+      <p>Jugador 1 (Rojo): <span id="scorePlayer1">0</span> victorias</p>
+      <p>Jugador 2 (Azul): <span id="scorePlayer2">0</span> victorias</p>
+    </div>
+  </div>
+
+  <script>
+    const board = [
+      ['', '', ''],
+      ['', '', ''],
+      ['', '', '']
+    ];
+
+    let currentPlayer = 'x'; // Jugador 1: 'x', Jugador 2: 'o'
+    let gameOver = false;
+    let player1Wins = 0;
+    let player2Wins = 0;
+
+    const gameBoard = document.getElementById('gameBoard');
+    const playerTurn = document.getElementById('playerTurn');
+    const messageDiv = document.getElementById('message');
+    const scorePlayer1 = document.getElementById('scorePlayer1');
+    const scorePlayer2 = document.getElementById('scorePlayer2');
+    const restartButton = document.getElementById('restartButton');
+
+    // Crear el tablero
+    function createBoard() {
+      gameBoard.innerHTML = ''; // Limpiar el tablero
+
+      for (let row = 0; row < 3; row++) {
+        for (let col = 0; col < 3; col++) {
+          const cell = document.createElement('div');
+          cell.classList.add('cell');
+          cell.dataset.row = row;
+          cell.dataset.col = col;
+
+          // Agregar evento de clic
+          cell.addEventListener('click', handleCellClick);
+          gameBoard.appendChild(cell);
+        }
+      }
+    }
+
+    // Manejar clic en una celda
+    function handleCellClick(e) {
+      const row = e.target.dataset.row;
+      const col = e.target.dataset.col;
+
+      // Si la celda ya tiene valor o el juego terminó, no hacer nada
+      if (board[row][col] !== '' || gameOver) return;
+
+      // Actualizar tablero y marcar celda
+      board[row][col] = currentPlayer;
+      e.target.classList.add(currentPlayer);
+      e.target.textContent = currentPlayer === 'x' ? 'X' : 'O';
+
+      // Comprobar si hay un ganador
+      if (checkWinner()) {
+        gameOver = true;
+        setTimeout(() => {
+          const winner = currentPlayer === 'x' ? 'Jugador 1' : 'Jugador 2';
+          messageDiv.textContent = `¡${winner} ganó!`;
+          if (currentPlayer === 'x') {
+            player1Wins++;
+            scorePlayer1.textContent = player1Wins;
+          } else {
+            player2Wins++;
+            scorePlayer2.textContent = player2Wins;
+          }
+        }, 500);
+      } else if (board.flat().every(cell => cell !== '')) {
+        // Empate si todas las celdas están llenas
+        gameOver = true;
+        setTimeout(() => {
+          messageDiv.textContent = '¡Empate!';
+        }, 500);
+      } else {
+        // Cambiar de jugador
+        switchPlayer();
+      }
+    }
+
+    // Comprobar si hay un ganador
+    function checkWinner() {
+      // Comprobar filas, columnas y diagonales
+      for (let i = 0; i < 3; i++) {
+        if (board[i][0] === currentPlayer && board[i][1] === currentPlayer && board[i][2] === currentPlayer) return true;
+        if (board[0][i] === currentPlayer && board[1][i] === currentPlayer && board[2][i] === currentPlayer) return true;
+      }
+      if (board[0][0] === currentPlayer && board[1][1] === currentPlayer && board[2][2] === currentPlayer) return true;
+      if (board[0][2] === currentPlayer && board[1][1] === currentPlayer && board[2][0] === currentPlayer) return true;
+      return false;
+    }
+
+    // Cambiar de jugador
+    function switchPlayer() {
+      currentPlayer = currentPlayer === 'x' ? 'o' : 'x';
+      playerTurn.textContent = `Turno: ${currentPlayer === 'x' ? 'Jugador 1 (Rojo)' : 'Jugador 2 (Azul)'}`;
+
+      // Cambiar color de fondo dependiendo del jugador
+      if (currentPlayer === 'x') {
+        document.body.style.backgroundColor = '#e74c3c'; // Rojo para Jugador 1
+      } else {
+        document.body.style.backgroundColor = '#3498db'; // Azul para Jugador 2
+      }
+    }
+
+    // Volver a jugar
+    restartButton.addEventListener('click', () => {
+      // Reiniciar el juego
+      gameOver = false;
+      board.forEach((row, rowIndex) => row.fill('')); // Limpiar el tablero
+      createBoard(); // Crear un nuevo tablero
+      messageDiv.textContent = ''; // Limpiar mensaje
+    });
+
+    // Inicializar el juego
+    createBoard();
+  </script>
+</body>
+</html>
