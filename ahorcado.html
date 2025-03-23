@@ -5,7 +5,55 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Ahorcado - Marc's Games</title>
   <style>
+  @media (max-width: 768px) {
     body {
+      margin-top: 20px;
+      flex-direction: column;
+      padding: 10px;
+    }
+
+    .menu-button {
+      top: 10px;
+      left: 10px;
+      padding: 8px 15px;
+      font-size: 0.9em;
+    }
+
+    .container {
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    h1 {
+      font-size: 2em;
+    }
+
+    #wordDisplay {
+      font-size: 2em;
+      letter-spacing: 5px;
+    }
+
+    #keyboard button {
+      padding: 8px 12px;
+      font-size: 1em;
+    }
+
+    .btn-restart {
+      font-size: 1em;
+      padding: 8px 15px;
+    }
+
+    .scoreboard {
+      width: 100%;
+      padding: 15px;
+      font-size: 1em;
+    }
+
+    #hangmanImage {
+      max-width: 100px;
+    }
+  }
+body {
       font-family: Arial, sans-serif;
       text-align: center;
       margin-top: 50px;
