@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Adivina el número - Marc's Games</title>
+  <title>La noche me confunde - Marc's Games</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       text-align: center;
       margin-top: 50px;
-      background-color: #e74c3c;
+      background-color: black;
       display: flex;
       justify-content: center;
       transition: background-color 1s ease;
@@ -36,10 +36,11 @@
       padding: 30px;
       border-radius: 20px;
       box-shadow: 0 0 20px rgba(0,0,0,0.2);
+      display: none;
     }
 
-    h1 {
-      font-size: 2.5em;
+    h1, #introText {
+      font-size: 2em;
       color: #fff;
     }
 
@@ -50,7 +51,7 @@
     input[type="number"] {
       padding: 10px;
       font-size: 1.2em;
-      width: 80px;
+      width: 100px;
       border-radius: 10px;
       border: none;
       text-align: center;
@@ -78,6 +79,12 @@
       color: #fff;
     }
 
+    #points {
+      font-size: 1.3em;
+      color: #f1c40f;
+      margin-top: 10px;
+    }
+
     .btn-restart {
       margin-top: 20px;
       padding: 10px 20px;
@@ -92,55 +99,131 @@
     .btn-restart:hover {
       background-color: #2980b9;
     }
+
+    #attemptsLeft {
+      margin-top: 10px;
+      font-size: 1.2em;
+      color: #fff;
+    }
+
+    #intro {
+      color: #fff;
+      font-size: 1.8em;
+      margin-top: 100px;
+      animation: blink 1s infinite alternate;
+    }
+
+    @keyframes blink {
+      0% { opacity: 0.3; }
+      100% { opacity: 1; }
+    }
   </style>
 </head>
 <body>
   <a href="./index.html" class="menu-button">Menu</a>
 
-  <div class="game-section">
-    <h1>Adivina el número (1 - 100)</h1>
+  <div id="intro">
+    He tomado muchas cervezas... 🍻<br>
+    La noche me confunde... 🌙<br>
+    Creo que sé si un número es más grande o más pequeño... creo...
+  </div>
+
+  <div class="game-section" id="gameSection">
+    <h1>Adivina el número (1 - 1000)</h1>
     <div id="inputSection">
-      <input type="number" id="guessInput" min="1" max="100" />
-      <button class="btn-guess" onclick="makeGuess()">Probar</button>
+      <input type="number" id="guessInput" min="1" max="1000" />
+      <button class="btn-guess" onclick="makeGuess()" id="guessButton">Probar</button>
     </div>
     <div id="feedback"></div>
+    <div id="points"></div>
+    <div id="attemptsLeft"></div>
     <button class="btn-restart" onclick="restartGame()">Reiniciar juego</button>
   </div>
 
   <script>
-    let secretNumber = Math.floor(Math.random() * 100) + 1;
+    let secretNumber = Math.floor(Math.random() * 1000) + 1;
     let attempts = 0;
+    const maxAttempts = 17;
+    let confusionChance = 0.1;
+    const maxConfusion = 0.5;
+
+    const input = document.getElementById("guessInput");
+    const feedback = document.getElementById("feedback");
+    const pointsDisplay = document.getElementById("points");
+    const attemptsLeft = document.getElementById("attemptsLeft");
+    const guessButton = document.getElementById("guessButton");
+    const gameSection = document.getElementById("gameSection");
+    const intro = document.getElementById("intro");
+
+    function startGame() {
+      document.body.style.backgroundColor = "#e74c3c";
+      intro.style.display = "none";
+      gameSection.style.display = "block";
+      attemptsLeft.textContent = `Intentos restantes: ${maxAttempts - attempts}`;
+    }
+
+    setTimeout(startGame, 7000); // ⏳ intro más larga (7 segundos)
 
     function makeGuess() {
-      const input = document.getElementById("guessInput");
-      const feedback = document.getElementById("feedback");
       const guess = parseInt(input.value);
 
-      if (isNaN(guess) || guess < 1 || guess > 100) {
-        feedback.textContent = "Introduce un número válido entre 1 y 100.";
+      if (isNaN(guess) || guess < 1 || guess > 1000) {
+        feedback.textContent = "Ey... eso no me suena a un número entre 1 y 1000... 🍺";
         return;
       }
 
       attempts++;
+      const isConfused = Math.random() < confusionChance;
 
       if (guess === secretNumber) {
-        feedback.textContent = `¡Correcto! Has adivinado el número en ${attempts} intento(s). 🎉`;
+        const puntos = Math.floor((maxAttempts - attempts + 1) * (150 / maxAttempts));
+        feedback.textContent = `¡Guau! Lo adivinaste... ni yo me lo esperaba 🤯 Era el ${secretNumber}`;
+        pointsDisplay.textContent = `🏅 Puntuación: ${puntos} puntos`;
         document.body.style.backgroundColor = "#2ecc71";
-      } else if (guess < secretNumber) {
-        feedback.textContent = "Demasiado bajo. 📉 Intenta con un número más grande.";
-      } else {
-        feedback.textContent = "Demasiado alto. 📈 Intenta con un número más pequeño.";
+        attemptsLeft.textContent = "";
+        endGame();
+        return;
+      }
+
+      if (attempts >= maxAttempts) {
+        feedback.textContent = `😵 Uf... ya no puedo más... El número era ${secretNumber}`;
+        attemptsLeft.textContent = "";
+        pointsDisplay.textContent = "";
+        document.body.style.backgroundColor = "#34495e";
+        endGame();
+        return;
+      }
+
+      const realHint = guess < secretNumber ? "más grande" : "más pequeño";
+      const confusedHint = guess < secretNumber ? "más pequeño" : "más grande";
+      const finalHint = isConfused ? confusedHint : realHint;
+
+      feedback.textContent = `Diría que es ${finalHint}... creo... 🥴`;
+      attemptsLeft.textContent = `Intentos restantes: ${maxAttempts - attempts}`;
+
+      if (!isConfused && Math.abs(guess - secretNumber) < 100 && confusionChance < maxConfusion) {
+        confusionChance += 0.03;
       }
 
       input.value = "";
       input.focus();
     }
 
+    function endGame() {
+      input.disabled = true;
+      guessButton.disabled = true;
+    }
+
     function restartGame() {
-      secretNumber = Math.floor(Math.random() * 100) + 1;
+      secretNumber = Math.floor(Math.random() * 1000) + 1;
       attempts = 0;
-      document.getElementById("feedback").textContent = "";
-      document.getElementById("guessInput").value = "";
+      confusionChance = 0.1;
+      input.disabled = false;
+      guessButton.disabled = false;
+      feedback.textContent = "";
+      pointsDisplay.textContent = "";
+      attemptsLeft.textContent = `Intentos restantes: ${maxAttempts}`;
+      input.value = "";
       document.body.style.backgroundColor = "#e74c3c";
     }
   </script>
