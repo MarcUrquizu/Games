@@ -13,6 +13,22 @@
       display: flex;
       justify-content: center;
       transition: background-color 1s ease; /* Transición suave para el cambio de color */
+      position: relative;
+    }
+
+    .menu-button {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background-color: #fff;
+      color: #e74c3c;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      font-weight: bold;
+      cursor: pointer;
+      text-decoration: none;
+      z-index: 100;
     }
 
     .container {
@@ -114,6 +130,7 @@
   </style>
 </head>
 <body>
+  <a href="./index.html" class="menu-button">Menu</a>
   <div class="container">
     <!-- Sección del juego -->
     <div class="game-section">
