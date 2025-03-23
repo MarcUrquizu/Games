@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Color Snipe - Marc's Games</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #2c3e50;
+      color: #fff;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .menu-button {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background-color: #fff;
+      color: #2c3e50;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      font-weight: bold;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    h1 {
+      margin-top: 60px;
+      font-size: 2.5em;
+      color: #ecf0f1;
+    }
+
+    #targetColor {
+      font-size: 2em;
+      margin: 20px 0;
+    }
+
+    #grid {
+      display: grid;
+      grid-template-columns: repeat(4, 80px);
+      gap: 15px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    .box {
+      width: 80px;
+      height: 80px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform 0.2s;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    }
+
+    .box:hover {
+      transform: scale(1.1);
+    }
+
+    #scoreboard {
+      font-size: 1.2em;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 15px 25px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+    }
+
+    #game-over {
+      display: none;
+      font-size: 1.5em;
+      color: #e74c3c;
+      margin-top: 20px;
+    }
+
+    .btn-restart {
+      padding: 10px 20px;
+      background-color: #27ae60;
+      color: white;
+      font-size: 1em;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .btn-restart:hover {
+      background-color: #2ecc71;
+    }
+  </style>
+</head>
+<body>
+
+  <a href="./index.html" class="menu-button">Menu</a>
+
+  <h1>🎯 Color Snipe</h1>
+  <div id="targetColor">Haz clic en: <span id="colorName">Azul</span></div>
+
+  <div id="grid"></div>
+
+  <div id="scoreboard">Puntuación: <span id="score">0</span></div>
+
+  <div id="game-over">
+    ¡Perdiste!<br>
+    <button class="btn-restart" onclick="location.reload()">Reintentar</button>
+  </div>
+
+  <script>
+    const colors = [
+      { name: "Rojo", code: "red" },
+      { name: "Azul", code: "blue" },
+      { name: "Verde", code: "green" },
+      { name: "Amarillo", code: "yellow" },
+      { name: "Naranja", code: "orange" },
+      { name: "Morado", code: "purple" },
+      { name: "Rosa", code: "pink" },
+      { name: "Cian", code: "cyan" }
+    ];
+
+    let score = 0;
+    let correctColor;
+    let timeoutId = null;
+    let roundActive = true;
+
+    const grid = document.getElementById("grid");
+    const colorNameEl = document.getElementById("colorName");
+    const scoreEl = document.getElementById("score");
+    const gameOverEl = document.getElementById("game-over");
+
+    function startRound() {
+      grid.innerHTML = "";
+      roundActive = true;
+
+      const availableColors = colors.slice(0, 3 + Math.min(score, 5));
+      const totalBoxes = 6 + Math.floor(score / 2);
+
+      const boxColors = [];
+
+      for (let i = 0; i < totalBoxes; i++) {
+        const randomColor = availableColors[Math.floor(Math.random() * availableColors.length)];
+        boxColors.push(randomColor);
+      }
+
+      correctColor = boxColors[Math.floor(Math.random() * boxColors.length)];
+
+      // Color del texto (engañoso)
+      let fakeColor;
+      do {
+        fakeColor = availableColors[Math.floor(Math.random() * availableColors.length)];
+      } while (fakeColor.name === correctColor.name);
+
+      colorNameEl.textContent = correctColor.name;
+      colorNameEl.style.color = fakeColor.code;
+
+      boxColors.forEach((color) => {
+        const box = document.createElement("div");
+        box.classList.add("box");
+        box.style.backgroundColor = color.code;
+
+        box.addEventListener("click", () => {
+          if (!roundActive) return;
+
+          if (color.name === correctColor.name) {
+            clearTimeout(timeoutId);
+            roundActive = false;
+            score++;
+            scoreEl.textContent = score;
+            nextRound();
+          } else {
+            endGame();
+          }
+        });
+
+        grid.appendChild(box);
+      });
+
+      timeoutId = setTimeout(() => {
+        if (roundActive) {
+          roundActive = false;
+          endGame();
+        }
+      }, Math.max(3000 - score * 100, 1000));
+    }
+
+    function nextRound() {
+      setTimeout(startRound, 500);
+    }
+
+    function endGame() {
+      clearTimeout(timeoutId);
+      roundActive = false;
+      gameOverEl.style.display = "block";
+    }
+
+    startRound();
+  </script>
+</body>
+</html>
