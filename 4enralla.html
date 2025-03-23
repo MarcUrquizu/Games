@@ -5,11 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>4 en Raya</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
+        html, body {
+            height: 100%;
             margin: 0;
             padding: 0;
+            font-family: Arial, sans-serif;
+            text-align: center;
             background-color: #ffe6e6;
             transition: background-color 0.3s ease;
         }
@@ -44,11 +45,12 @@
             justify-content: center;
             position: relative;
             overflow: hidden;
-            border: 2px solid #007bff; /* Líneas azules entre los círculos */
+            border: 2px solid #007bff;
         }
         .cell .piece {
             width: 100%;
             height: 100%;
+            background-color: inherit;
             border-radius: 50%;
             position: absolute;
             top: -100%;
@@ -89,7 +91,7 @@
         const gameBoard = document.getElementById('game-board');
 
         function updateBackgroundColor() {
-            document.body.style.backgroundColor = currentPlayer === 'red' ? '#ff9999' : '#99ccff';
+            document.body.style.backgroundColor = currentPlayer === 'red' ? '#ff6666' : '#6699ff';
         }
 
         function createBoard() {
@@ -125,12 +127,11 @@
                     piece.classList.add('piece', currentPlayer);
                     cell.appendChild(piece);
 
-                    // Animación que pasa por todos los círculos
                     let delay = 0;
                     for (let i = 0; i <= r; i++) {
                         const tempCell = document.querySelector(`.cell[data-row='${i}'][data-col='${col}']`);
                         setTimeout(() => {
-                            tempCell.style.backgroundColor = currentPlayer === 'red' ? '#ffcccc' : '#cce5ff';
+                            tempCell.style.backgroundColor = currentPlayer === 'red' ? '#ff3333' : '#3366ff';
                         }, delay);
                         setTimeout(() => {
                             tempCell.style.backgroundColor = '#ddd';
@@ -143,8 +144,11 @@
                     }, delay);
 
                     if (checkWin(r, col)) {
-                        setTimeout(() => alert(`${currentPlayer === 'red' ? 'Rojo' : 'Azul'} gana!`), delay + 10);
-                        resetGame();
+                        setTimeout(() => {
+                            document.body.style.backgroundColor = currentPlayer === 'red' ? '#ff3333' : '#3366ff';
+                            alert(`${currentPlayer === 'red' ? 'Rojo' : 'Azul'} gana!`);
+                        }, delay + 10);
+                        return;
                     } else {
                         currentPlayer = currentPlayer === 'red' ? 'blue' : 'red';
                         updateBackgroundColor();
@@ -173,7 +177,9 @@
 
             for (const [deltaRow, deltaCol] of directions) {
                 const total = checkDirection(deltaRow, deltaCol) + checkDirection(-deltaRow, -deltaCol) - 1;
-                if (total >= 4) return true;
+                if (total >= 4) {
+                    return true;
+                }
             }
             return false;
         }
@@ -185,6 +191,7 @@
                 cell.style.backgroundColor = '#ddd';
             });
             currentPlayer = 'red';
+            document.body.style.backgroundColor = '#ffe6e6';
             updateBackgroundColor();
         }
 
