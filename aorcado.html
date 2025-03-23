@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Ahorcado - Marc's Games</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin-top: 50px;
+      background-color: #e74c3c;
+      display: flex;
+      justify-content: center;
+      transition: background-color 1s ease;
+      position: relative;
+    }
+
+    .menu-button {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background-color: #fff;
+      color: #e74c3c;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      font-weight: bold;
+      cursor: pointer;
+      text-decoration: none;
+      z-index: 100;
+    }
+
+    .container {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+    }
+
+    .game-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1 {
+      font-size: 2.5em;
+      color: #fff;
+    }
+
+    #wordDisplay {
+      font-size: 2.5em;
+      letter-spacing: 10px;
+      margin-top: 20px;
+      color: #fff;
+    }
+
+    #keyboard {
+      margin-top: 30px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      max-width: 500px;
+    }
+
+    #keyboard button {
+      padding: 10px 15px;
+      font-size: 1.2em;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      background-color: #ecf0f1;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    #keyboard button:hover:not(:disabled) {
+      background-color: #bdc3c7;
+    }
+
+    #keyboard button:disabled {
+      background-color: #95a5a6;
+      cursor: not-allowed;
+    }
+
+    #message {
+      font-size: 1.5em;
+      margin-top: 20px;
+      color: #fff;
+    }
+
+    .btn-restart {
+      margin-top: 30px;
+      padding: 10px 20px;
+      background-color: #2ecc71;
+      color: white;
+      font-size: 1.2em;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .btn-restart:hover {
+      background-color: #27ae60;
+    }
+
+    .scoreboard {
+      width: 200px;
+      padding: 20px;
+      background-color: rgba(255, 255, 255, 0.2);
+      border-radius: 10px;
+      color: #fff;
+      font-size: 1.2em;
+      text-align: center;
+    }
+
+    .scoreboard h2 {
+      font-size: 1.5em;
+    }
+
+    #hangmanImage {
+      max-width: 150px;
+      margin: 0 auto;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <a href="./index.html" class="menu-button">Menu</a>
+  <div class="container">
+    <div class="game-section">
+      <h1>Juego del Ahorcado</h1>
+      <img id="hangmanImage" src="ahorcado0.png" alt="Ahorcado">
+      <div id="wordDisplay">_ _ _ _ _</div>
+      <div id="keyboard"></div>
+      <div id="message"></div>
+      <button class="btn-restart" id="restartButton">Volver a jugar</button>
+    </div>
+    <div class="scoreboard">
+      <h2>Progreso</h2>
+      <p>Acierta antes de que se complete el dibujo.</p>
+    </div>
+  </div>
+
+  <script>
+    const palabras = ["CASA", "JUEGO", "PROGRAMAR", "HTML", "MESA", "JAVASCRIPT"];
+    let palabra = "";
+    let letrasAdivinadas = [];
+    let errores = 0;
+    const maxErrores = 7;
+
+    const wordDisplay = document.getElementById("wordDisplay");
+    const keyboard = document.getElementById("keyboard");
+    const message = document.getElementById("message");
+    const restartButton = document.getElementById("restartButton");
+    const hangmanImage = document.getElementById("hangmanImage");
+
+    function iniciarJuego() {
+      palabra = palabras[Math.floor(Math.random() * palabras.length)];
+      letrasAdivinadas = [];
+      errores = 0;
+      message.textContent = "";
+      mostrarPalabra();
+      crearTeclado();
+      actualizarImagen();
+    }
+
+    function mostrarPalabra() {
+      const display = palabra
+        .split("")
+        .map(letra => (letrasAdivinadas.includes(letra) ? letra : "_"))
+        .join(" ");
+      wordDisplay.textContent = display;
+
+      if (!display.includes("_")) {
+        message.textContent = "¡Ganaste! 🎉";
+        hangmanImage.src = `img/win.png`;
+        desactivarTeclado();
+      }
+    }
+
+    function crearTeclado() {
+      keyboard.innerHTML = "";
+      const letras = "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ";
+      letras.split("").forEach(letra => {
+        const btn = document.createElement("button");
+        btn.textContent = letra;
+        btn.addEventListener("click", () => manejarLetra(letra, btn));
+        keyboard.appendChild(btn);
+      });
+    }
+
+    function manejarLetra(letra, boton) {
+      boton.disabled = true;
+      if (palabra.includes(letra)) {
+        letrasAdivinadas.push(letra);
+        mostrarPalabra();
+      } else {
+        errores++;
+        actualizarImagen();
+        if (errores >= maxErrores) {
+          wordDisplay.textContent = palabra.split("").join(" ");
+          message.textContent = "¡Has perdido! 😢";
+          desactivarTeclado();
+        }
+      }
+    }
+
+    function actualizarImagen() {
+      hangmanImage.src = `img/ahorcado${errores}.png`;
+    }
+
+    function desactivarTeclado() {
+      const botones = keyboard.querySelectorAll("button");
+      botones.forEach(btn => btn.disabled = true);
+    }
+
+    restartButton.addEventListener("click", iniciarJuego);
+
+    iniciarJuego();
+  </script>
+</body>
+</html>
