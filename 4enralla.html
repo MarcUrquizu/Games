@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>4 en Raya</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            margin-top: 20px;
+        }
+        #game-board {
+            display: grid;
+            grid-template-columns: repeat(7, 50px);
+            grid-gap: 5px;
+            justify-content: center;
+            margin: 20px auto;
+        }
+        .cell {
+            width: 50px;
+            height: 50px;
+            background-color: #ddd;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .cell.red {
+            background-color: red;
+        }
+        .cell.yellow {
+            background-color: yellow;
+        }
+        #reset {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>4 en Raya</h1>
+    <div id="game-board"></div>
+    <button id="reset">Reiniciar Juego</button>
+
+    <script>
+        const rows = 6;
+        const cols = 7;
+        const board = [];
+        let currentPlayer = 'red';
+
+        const gameBoard = document.getElementById('game-board');
+
+        function createBoard() {
+            for (let r = 0; r < rows; r++) {
+                board[r] = [];
+                for (let c = 0; c < cols; c++) {
+                    board[r][c] = null;
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell');
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+                    cell.addEventListener('click', handleCellClick);
+                    gameBoard.appendChild(cell);
+                }
+            }
+        }
+
+        function handleCellClick(event) {
+            const col = event.target.dataset.col;
+            for (let r = rows - 1; r >= 0; r--) {
+                if (!board[r][col]) {
+                    board[r][col] = currentPlayer;
+                    const cell = document.querySelector(`.cell[data-row='${r}'][data-col='${col}']`);
+                    cell.classList.add(currentPlayer);
+                    if (checkWin(r, col)) {
+                        setTimeout(() => alert(`${currentPlayer === 'red' ? 'Rojo' : 'Amarillo'} gana!`), 10);
+                        resetGame();
+                    } else {
+                        currentPlayer = currentPlayer === 'red' ? 'yellow' : 'red';
+                    }
+                    break;
+                }
+            }
+        }
+
+        function checkWin(row, col) {
+            function checkDirection(deltaRow, deltaCol) {
+                let count = 0;
+                let r = row;
+                let c = col;
+                while (r >= 0 && r < rows && c >= 0 && c < cols && board[r][c] === currentPlayer) {
+                    count++;
+                    r += deltaRow;
+                    c += deltaCol;
+                }
+                return count;
+            }
+
+            const directions = [
+                [0, 1], [1, 0], [1, 1], [1, -1]
+            ];
+
+            for (const [deltaRow, deltaCol] of directions) {
+                const total = checkDirection(deltaRow, deltaCol) + checkDirection(-deltaRow, -deltaCol) - 1;
+                if (total >= 4) return true;
+            }
+            return false;
+        }
+
+        function resetGame() {
+            board.forEach(row => row.fill(null));
+            document.querySelectorAll('.cell').forEach(cell => {
+                cell.classList.remove('red', 'yellow');
+            });
+            currentPlayer = 'red';
+        }
+
+        document.getElementById('reset').addEventListener('click', resetGame);
+
+        createBoard();
+    </script>
+</body>
+</html>
