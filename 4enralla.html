@@ -10,7 +10,8 @@
             text-align: center;
             margin: 0;
             padding: 0;
-            background-color: #f4f4f4;
+            background-color: #ffe6e6;
+            transition: background-color 0.3s ease;
         }
         h1 {
             margin-top: 20px;
@@ -21,6 +22,17 @@
             grid-gap: 5px;
             justify-content: center;
             margin: 20px auto;
+            background-color: #007bff;
+            padding: 5px;
+            border-radius: 10px;
+        }
+        .arrow {
+            width: 50px;
+            height: 30px;
+            background-color: #ccc;
+            clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+            cursor: pointer;
+            margin: 0 auto;
         }
         .cell {
             width: 50px;
@@ -30,19 +42,36 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            border: 2px solid #007bff; /* Líneas azules entre los círculos */
         }
-        .cell.red {
+        .cell .piece {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            position: absolute;
+            top: -100%;
+            transition: top 0.5s ease-in-out;
+        }
+        .cell .piece.red {
             background-color: red;
         }
-        .cell.yellow {
-            background-color: yellow;
+        .cell .piece.blue {
+            background-color: blue;
         }
         #reset {
             margin-top: 20px;
             padding: 10px 20px;
             font-size: 16px;
             cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        #reset:hover {
+            background-color: #0056b3;
         }
     </style>
 </head>
@@ -59,7 +88,19 @@
 
         const gameBoard = document.getElementById('game-board');
 
+        function updateBackgroundColor() {
+            document.body.style.backgroundColor = currentPlayer === 'red' ? '#ff9999' : '#99ccff';
+        }
+
         function createBoard() {
+            for (let c = 0; c < cols; c++) {
+                const arrow = document.createElement('div');
+                arrow.classList.add('arrow');
+                arrow.dataset.col = c;
+                arrow.addEventListener('click', handleArrowClick);
+                gameBoard.appendChild(arrow);
+            }
+
             for (let r = 0; r < rows; r++) {
                 board[r] = [];
                 for (let c = 0; c < cols; c++) {
@@ -68,24 +109,45 @@
                     cell.classList.add('cell');
                     cell.dataset.row = r;
                     cell.dataset.col = c;
-                    cell.addEventListener('click', handleCellClick);
                     gameBoard.appendChild(cell);
                 }
             }
+            updateBackgroundColor();
         }
 
-        function handleCellClick(event) {
+        function handleArrowClick(event) {
             const col = event.target.dataset.col;
             for (let r = rows - 1; r >= 0; r--) {
                 if (!board[r][col]) {
                     board[r][col] = currentPlayer;
                     const cell = document.querySelector(`.cell[data-row='${r}'][data-col='${col}']`);
-                    cell.classList.add(currentPlayer);
+                    const piece = document.createElement('div');
+                    piece.classList.add('piece', currentPlayer);
+                    cell.appendChild(piece);
+
+                    // Animación que pasa por todos los círculos
+                    let delay = 0;
+                    for (let i = 0; i <= r; i++) {
+                        const tempCell = document.querySelector(`.cell[data-row='${i}'][data-col='${col}']`);
+                        setTimeout(() => {
+                            tempCell.style.backgroundColor = currentPlayer === 'red' ? '#ffcccc' : '#cce5ff';
+                        }, delay);
+                        setTimeout(() => {
+                            tempCell.style.backgroundColor = '#ddd';
+                        }, delay + 100);
+                        delay += 100;
+                    }
+
+                    setTimeout(() => {
+                        piece.style.top = '0';
+                    }, delay);
+
                     if (checkWin(r, col)) {
-                        setTimeout(() => alert(`${currentPlayer === 'red' ? 'Rojo' : 'Amarillo'} gana!`), 10);
+                        setTimeout(() => alert(`${currentPlayer === 'red' ? 'Rojo' : 'Azul'} gana!`), delay + 10);
                         resetGame();
                     } else {
-                        currentPlayer = currentPlayer === 'red' ? 'yellow' : 'red';
+                        currentPlayer = currentPlayer === 'red' ? 'blue' : 'red';
+                        updateBackgroundColor();
                     }
                     break;
                 }
@@ -119,9 +181,11 @@
         function resetGame() {
             board.forEach(row => row.fill(null));
             document.querySelectorAll('.cell').forEach(cell => {
-                cell.classList.remove('red', 'yellow');
+                cell.innerHTML = '';
+                cell.style.backgroundColor = '#ddd';
             });
             currentPlayer = 'red';
+            updateBackgroundColor();
         }
 
         document.getElementById('reset').addEventListener('click', resetGame);
