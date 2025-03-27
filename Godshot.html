@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Francotirador Marc's Game</title>
+  <link rel="stylesheet" href="style.css">
   <style>
     body {
       margin: 0;
@@ -54,27 +55,12 @@
 
     #score {
       position: absolute;
-      top: 10px;
+      top: 110px;
       left: 10px;
       font-size: 24px;
       background: white;
       padding: 5px 10px;
       border-radius: 10px;
-      z-index: 1001;
-    }
-
-    #menu-button {
-      position: absolute;
-      top: 50px;
-      left: 10px;
-      background-color: #fff;
-      color: #333;
-      padding: 8px 14px;
-      border: none;
-      border-radius: 6px;
-      font-weight: bold;
-      cursor: pointer;
-      text-decoration: none;
       z-index: 1001;
     }
 
@@ -85,6 +71,10 @@
       pointer-events: none;
       z-index: 1000;
       transform: translate(-50%, -50%);
+    }
+    .game-buttons {
+      background-color: #fff;
+      color: #e74c3c;
     }
 
     #lose-screen {
@@ -121,10 +111,14 @@
   </style>
 </head>
 <body>
+ 
   <div id="game">
     <img id="crosshair" src="https://png.pngtree.com/png-clipart/20230825/original/pngtree-sniper-scope-sight-view-crosshair-picture-image_8689332.png" alt="Mira">
     <div id="score">Puntos: 0</div>
-    <a id="menu-button" href="index.html">Menú</a>
+
+    <a href="./index.html" class="menu-button game-buttons">Menu</a>
+    <a href="help.html" class="help-button game-buttons">Info</a>
+
     <audio id="shoot-sound" src="img/Sonidogodshoot.mp4"></audio>
   </div>
   <div id="lose-screen">
@@ -195,12 +189,12 @@
       monigote.addEventListener('click', () => {
         if (!canShoot) return;
 
-        if (color === 'black') {
+        if (color === 'white') {
+          loseScreen.style.display = 'flex'; // Pierdes inmediatamente si tocas un monigote blanco
+          return;
+        } else if (color === 'black') {
           score++;
           blackCount--;
-        } else {
-          score--;
-          whiteCount--;
         }
 
         scoreDisplay.textContent = `Puntos: ${score}`;

@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>4 en Raya</title>
+  <link rel="stylesheet" href="style.css">
   <style>
     * {
       box-sizing: border-box;
@@ -14,21 +15,11 @@
       transition: background-color 0.4s ease;
       background-color: rgb(204, 71, 71); /* Fondo inicial para jugador 1 */
     }
-
-    .menu-button {
-      position: absolute;
-      top: 20px;
-      left: 20px;
-      background-color: #000;
+    .game-buttons {
+      background-color: #000000;
       color: #fff;
-      padding: 10px 20px;
-      border: none;
-      border-radius: 5px;
-      font-weight: bold;
-      cursor: pointer;
-      text-decoration: none;
-      z-index: 100;
     }
+ 
 
     .container {
       display: flex;
@@ -132,11 +123,25 @@
       text-align: center;
       font-size: 1.5em;
     }
+
+    .help-button {
+      position: absolute;
+      top: 65px;
+      left: 20px;
+      background-color: #000000;
+      color: #ffffff;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      font-weight: bold;
+      cursor: pointer;
+      text-decoration: none;
+    }
   </style>
 </head>
 <body id="gameBody">
-  <a href="./index.html" class="menu-button">Menu</a>
-
+  <a href="./index.html" class="menu-button game-buttons">Menu</a>
+  <a href="./help.html" class="help-button game-buttons">Info</a>
   <div class="container">
     <!-- Sección del juego -->
     <div class="game-section">

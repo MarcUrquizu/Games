@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Juego del Laberinto</title>
+  <link rel="stylesheet" href="style.css">
   <style>
     * {
       box-sizing: border-box;
@@ -18,21 +19,11 @@
       background-color: rgb(33, 129, 124);
       color: rgb(0, 0, 0);
     }
-
-    .menu-button {
-      position: absolute;
-      top: 20px;
-      left: 20px;
+    .game-buttons {
       background-color: #000000;
       color: #ffffff;
-      padding: 10px 20px;
-      border: none;
-      border-radius: 5px;
-      font-weight: bold;
-      cursor: pointer;
-      text-decoration: none;
-      z-index: 100;
     }
+    
 
     #levelDisplay {
       font-size: 1.5rem;
@@ -102,7 +93,8 @@
   </style>
 </head>
 <body>
-  <a href="./index.html" class="menu-button">Menu</a>
+  <a href="./index.html" class="menu-button game-buttons">Menu</a>
+  <a href="./help.html" class="help-button game-buttons">Info</a>
   <div id="levelDisplay">Nivel 1</div>
   <div id="stats">Movimientos: 0</div>
   <div id="maze"></div>

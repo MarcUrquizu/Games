@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>La noche me confunde - Marc's Games</title>
+  <link rel="stylesheet" href="style.css">
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -16,19 +17,9 @@
       position: relative;
     }
 
-    .menu-button {
-      position: absolute;
-      top: 20px;
-      left: 20px;
+    .game-buttons {
       background-color: #fff;
       color: #e74c3c;
-      padding: 10px 20px;
-      border: none;
-      border-radius: 5px;
-      font-weight: bold;
-      cursor: pointer;
-      text-decoration: none;
-      z-index: 100;
     }
 
     .game-section {
@@ -120,8 +111,9 @@
   </style>
 </head>
 <body>
-  <a href="./index.html" class="menu-button">Menu</a>
-
+  <a href="./index.html" class="menu-button game-buttons">Menu</a>
+  <a href="./help.html" class="help-button game-buttons">Info</a>
+  
   <div id="intro">
     He tomado muchas cervezas... 🍻<br>
     La noche me confunde... 🌙<br>
