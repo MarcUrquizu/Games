@@ -4,102 +4,129 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>3 en raya Marc's games</title>
-  <link rel="stylesheet" href="style.css">
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       font-family: Arial, sans-serif;
       text-align: center;
-      margin-top: 50px;
-      background-color: #e74c3c; /* Rojo inicial (Jugador 1) */
+      margin: 0;
+      background-color: #e74c3c;
       display: flex;
-      justify-content: center;
-      transition: background-color 1s ease; /* Transición suave para el cambio de color */
-      position: relative;
+      flex-direction: column;
+      align-items: center;
+      transition: background-color 1s ease;
+      min-height: 100vh;
     }
+
     .game-buttons {
       background-color: #fff;
       color: #e74c3c;
+      font-weight: bold;
+      text-decoration: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      position: absolute;
+      top: 10px;
+      z-index: 10;
     }
-   
+
+    .menu-button {
+      right: 10px;
+    }
+
+    .help-button {
+      left: 10px;
+    }
 
     .container {
       display: flex;
-      gap: 20px;
+      gap: 30px;
       align-items: flex-start;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 80px;
+      width: 100%;
+      max-width: 1200px;
+      padding: 0 20px 40px;
     }
 
     .game-section {
+      flex: 1;
+      min-width: 280px;
       display: flex;
       flex-direction: column;
       align-items: center;
     }
 
     h1 {
-      font-size: 2.5em;
-      color: #fff;
-    }
-
-    .game-board {
-      display: grid;
-      grid-template-columns: repeat(3, 120px); /* Tablero 3x3 */
-      grid-template-rows: repeat(3, 120px); 
-      grid-gap: 8px;
-      justify-content: center;
-      margin-top: 20px;
-    }
-
-    .cell {
-      width: 120px;
-      height: 120px;
-      background-color: #ecf0f1;
-      border-radius: 20px; /* Bordes más redondeados */
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      cursor: pointer;
-      font-size: 3em;
-      color: transparent;
-      transition: transform 0.2s ease, background-color 0.3s ease-in-out;
-      box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.2); /* Sombra para un toque artesanal */
-      transform: rotate(0deg); /* Esto ayuda a que las celdas se vean más juguetonas */
-    }
-
-    .cell.x {
-      color: #e74c3c; /* Rojo para X */
-      font-family: 'Courier New', Courier, monospace;
-      transform: rotate(-10deg); /* Añadimos rotación aleatoria */
-    }
-
-    .cell.o {
-      color: #3498db; /* Azul para O */
-      font-family: 'Arial', sans-serif;
-      transform: rotate(10deg); /* Añadimos rotación aleatoria */
-    }
-
-    #message {
-      font-size: 1.5em;
-      margin-top: 20px;
+      font-size: clamp(1.8rem, 4vw, 2.5rem);
       color: #fff;
     }
 
     .player-turn {
-      font-size: 1.8em;
+      font-size: clamp(1.2rem, 3vw, 1.8rem);
+      color: #fff;
+      margin-top: 10px;
+    }
+
+    .game-board {
+      display: grid;
+      grid-template-columns: repeat(3, min(25vw, 120px));
+      grid-template-rows: repeat(3, min(25vw, 120px));
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .cell {
+      background-color: #ecf0f1;
+      border-radius: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      font-size: clamp(2rem, 6vw, 3em);
+      color: transparent;
+      transition: transform 0.2s ease, background-color 0.3s ease-in-out;
+      box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.2);
+      aspect-ratio: 1 / 1;
+    }
+
+    .cell.x {
+      color: #e74c3c;
+      font-family: 'Courier New', Courier, monospace;
+      transform: rotate(-10deg);
+    }
+
+    .cell.o {
+      color: #3498db;
+      font-family: 'Arial', sans-serif;
+      transform: rotate(10deg);
+    }
+
+    #message {
+      font-size: 1.3em;
+      margin-top: 20px;
       color: #fff;
     }
 
     .scoreboard {
-      width: 200px;
-      padding: 20px;
       background-color: rgba(255, 255, 255, 0.2);
       border-radius: 10px;
       color: #fff;
-      font-size: 1.2em;
+      padding: 20px;
+      font-size: 1.1em;
+      min-width: 260px;
+      width: 100%;
+      max-width: 300px;
       text-align: left;
     }
 
     .scoreboard h2 {
       text-align: center;
-      font-size: 1.5em;
+      font-size: 1.4em;
     }
 
     .btn-restart {
@@ -107,7 +134,7 @@
       padding: 10px 20px;
       background-color: #2ecc71;
       color: white;
-      font-size: 1.2em;
+      font-size: 1.1em;
       border: none;
       border-radius: 8px;
       cursor: pointer;
@@ -117,27 +144,33 @@
     .btn-restart:hover {
       background-color: #27ae60;
     }
-    .help-button {
-      position: absolute;
-      top: 65px;
-      left: 20px;
-      background-color: #fff;
-      color: #e74c3c;
-      padding: 10px 20px;
-      border: none;
-      border-radius: 5px;
-      font-weight: bold;
-      cursor: pointer;
-      text-decoration: none;
-    }
 
+    @media (max-width: 600px) {
+      .game-buttons {
+        font-size: 0.9em;
+        padding: 8px 15px;
+      }
+
+      .container {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .game-board {
+        grid-template-columns: repeat(3, 30vw);
+        grid-template-rows: repeat(3, 30vw);
+      }
+
+      .cell {
+        font-size: 2em;
+      }
+    }
   </style>
 </head>
 <body>
   <a href="./index.html" class="menu-button game-buttons">Menu</a>
   <a href="./help.html" class="help-button game-buttons">Info</a>
   <div class="container">
-    <!-- Sección del juego -->
     <div class="game-section">
       <h1>Juego 3 en Raya</h1>
       <div class="player-turn" id="playerTurn">Turno: Jugador 1 (Rojo)</div>
@@ -145,8 +178,6 @@
       <div id="message"></div>
       <button class="btn-restart" id="restartButton">Volver a jugar</button>
     </div>
-
-    <!-- Marcador de puntos -->
     <div class="scoreboard">
       <h2>Puntuación</h2>
       <p>Jugador 1 (Rojo): <span id="scorePlayer1">0</span> victorias</p>
@@ -161,7 +192,7 @@
       ['', '', '']
     ];
 
-    let currentPlayer = 'x'; // Jugador 1: 'x', Jugador 2: 'o'
+    let currentPlayer = 'x';
     let gameOver = false;
     let player1Wins = 0;
     let player2Wins = 0;
@@ -173,38 +204,29 @@
     const scorePlayer2 = document.getElementById('scorePlayer2');
     const restartButton = document.getElementById('restartButton');
 
-    // Crear el tablero
     function createBoard() {
-      gameBoard.innerHTML = ''; // Limpiar el tablero
-
+      gameBoard.innerHTML = '';
       for (let row = 0; row < 3; row++) {
         for (let col = 0; col < 3; col++) {
           const cell = document.createElement('div');
           cell.classList.add('cell');
           cell.dataset.row = row;
           cell.dataset.col = col;
-
-          // Agregar evento de clic
           cell.addEventListener('click', handleCellClick);
           gameBoard.appendChild(cell);
         }
       }
     }
 
-    // Manejar clic en una celda
     function handleCellClick(e) {
       const row = e.target.dataset.row;
       const col = e.target.dataset.col;
-
-      // Si la celda ya tiene valor o el juego terminó, no hacer nada
       if (board[row][col] !== '' || gameOver) return;
 
-      // Actualizar tablero y marcar celda
       board[row][col] = currentPlayer;
       e.target.classList.add(currentPlayer);
       e.target.textContent = currentPlayer === 'x' ? 'X' : 'O';
 
-      // Comprobar si hay un ganador
       if (checkWinner()) {
         gameOver = true;
         setTimeout(() => {
@@ -219,20 +241,16 @@
           }
         }, 500);
       } else if (board.flat().every(cell => cell !== '')) {
-        // Empate si todas las celdas están llenas
         gameOver = true;
         setTimeout(() => {
           messageDiv.textContent = '¡Empate!';
         }, 500);
       } else {
-        // Cambiar de jugador
         switchPlayer();
       }
     }
 
-    // Comprobar si hay un ganador
     function checkWinner() {
-      // Comprobar filas, columnas y diagonales
       for (let i = 0; i < 3; i++) {
         if (board[i][0] === currentPlayer && board[i][1] === currentPlayer && board[i][2] === currentPlayer) return true;
         if (board[0][i] === currentPlayer && board[1][i] === currentPlayer && board[2][i] === currentPlayer) return true;
@@ -242,29 +260,19 @@
       return false;
     }
 
-    // Cambiar de jugador
     function switchPlayer() {
       currentPlayer = currentPlayer === 'x' ? 'o' : 'x';
       playerTurn.textContent = `Turno: ${currentPlayer === 'x' ? 'Jugador 1 (Rojo)' : 'Jugador 2 (Azul)'}`;
-
-      // Cambiar color de fondo dependiendo del jugador
-      if (currentPlayer === 'x') {
-        document.body.style.backgroundColor = '#e74c3c'; // Rojo para Jugador 1
-      } else {
-        document.body.style.backgroundColor = '#3498db'; // Azul para Jugador 2
-      }
+      document.body.style.backgroundColor = currentPlayer === 'x' ? '#e74c3c' : '#3498db';
     }
 
-    // Volver a jugar
     restartButton.addEventListener('click', () => {
-      // Reiniciar el juego
       gameOver = false;
-      board.forEach((row, rowIndex) => row.fill('')); // Limpiar el tablero
-      createBoard(); // Crear un nuevo tablero
-      messageDiv.textContent = ''; // Limpiar mensaje
+      board.forEach(row => row.fill(''));
+      createBoard();
+      messageDiv.textContent = '';
     });
 
-    // Inicializar el juego
     createBoard();
   </script>
 </body>

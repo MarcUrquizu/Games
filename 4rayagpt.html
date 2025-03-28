@@ -2,8 +2,8 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>4 en Raya</title>
-  <link rel="stylesheet" href="style.css">
   <style>
     * {
       box-sizing: border-box;
@@ -13,46 +13,71 @@
       margin: 0;
       font-family: sans-serif;
       transition: background-color 0.4s ease;
-      background-color: rgb(204, 71, 71); /* Fondo inicial para jugador 1 */
+      background-color: rgb(204, 71, 71);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
     }
+
     .game-buttons {
-      background-color: #000000;
+      background-color: #000;
       color: #fff;
+      font-weight: bold;
+      text-decoration: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      position: absolute;
+      top: 10px;
+      z-index: 10;
     }
- 
+
+    .menu-button {
+      right: 10px;
+    }
+
+    .help-button {
+      left: 10px;
+    }
 
     .container {
       display: flex;
-      flex-direction: row;
+      flex-wrap: wrap;
       justify-content: center;
-      align-items: flex-start;
-      gap: 40px;
-      padding-top: 60px;
+      gap: 30px;
+      width: 100%;
+      max-width: 1200px;
+      margin-top: 80px;
+      padding: 0 20px 40px;
     }
 
     .game-section {
       display: flex;
       flex-direction: column;
       align-items: center;
+      flex: 1;
+      min-width: 280px;
     }
 
     h1 {
       color: white;
+      font-size: clamp(1.8rem, 4vw, 2.5rem);
       margin-bottom: 10px;
     }
 
     #board {
       display: grid;
-      grid-template-columns: repeat(7, 60px);
+      grid-template-columns: repeat(7, min(12vw, 60px));
       gap: 5px;
       background-color: #1b5e66;
       padding: 10px;
       border-radius: 10px;
+      justify-content: center;
     }
 
     .cell {
-      width: 60px;
-      height: 60px;
+      width: min(12vw, 60px);
+      height: min(12vw, 60px);
       background-color: #3498db;
       border-radius: 8px;
       display: flex;
@@ -64,8 +89,8 @@
     }
 
     .disc {
-      width: 40px;
-      height: 40px;
+      width: 66%;
+      height: 66%;
       border-radius: 50%;
       background-color: white;
     }
@@ -82,7 +107,7 @@
       margin-top: 20px;
       font-size: 1.2rem;
       color: white;
-      transition: all 0.3s ease;
+      text-align: center;
     }
 
     #winner-message {
@@ -111,31 +136,36 @@
     }
 
     .scoreboard {
-      width: 200px;
+      width: 100%;
+      max-width: 300px;
+      min-width: 260px;
       padding: 20px;
       background-color: rgba(255, 255, 255, 0.2);
       border-radius: 10px;
       color: #fff;
-      font-size: 1.2em;
+      font-size: 1.1em;
+      text-align: left;
     }
 
     .scoreboard h2 {
       text-align: center;
-      font-size: 1.5em;
+      font-size: 1.4em;
     }
 
-    .help-button {
-      position: absolute;
-      top: 65px;
-      left: 20px;
-      background-color: #000000;
-      color: #ffffff;
-      padding: 10px 20px;
-      border: none;
-      border-radius: 5px;
-      font-weight: bold;
-      cursor: pointer;
-      text-decoration: none;
+    @media (max-width: 600px) {
+      #board {
+        grid-template-columns: repeat(7, 12vw);
+      }
+
+      .cell {
+        width: 12vw;
+        height: 12vw;
+      }
+
+      .game-buttons {
+        font-size: 0.9em;
+        padding: 8px 15px;
+      }
     }
   </style>
 </head>
@@ -143,7 +173,6 @@
   <a href="./index.html" class="menu-button game-buttons">Menu</a>
   <a href="./help.html" class="help-button game-buttons">Info</a>
   <div class="container">
-    <!-- Sección del juego -->
     <div class="game-section">
       <h1>4 en Raya</h1>
       <div id="board"></div>
@@ -151,7 +180,6 @@
       <button onclick="resetGame()">Reiniciar</button>
     </div>
 
-    <!-- Marcador de puntos -->
     <div class="scoreboard">
       <h2>Puntuación</h2>
       <p>Jugador 1 (🔴): <span id="scorePlayer1">0</span></p>

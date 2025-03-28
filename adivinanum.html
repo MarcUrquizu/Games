@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>La noche me confunde - Marc's Games</title>
+  <title>Adivina el número</title>
   <link rel="stylesheet" href="style.css">
   <style>
     body {
       font-family: Arial, sans-serif;
       text-align: center;
       margin-top: 50px;
-      background-color: black;
+      background-color: #e74c3c;
       display: flex;
       justify-content: center;
       transition: background-color 1s ease;
@@ -27,11 +27,11 @@
       padding: 30px;
       border-radius: 20px;
       box-shadow: 0 0 20px rgba(0,0,0,0.2);
-      display: none;
+      display: block; /* Mostrar directamente */
     }
 
-    h1, #introText {
-      font-size: 2em;
+    h1 {
+      font-size: 2.5em;
       color: #fff;
     }
 
@@ -96,29 +96,11 @@
       font-size: 1.2em;
       color: #fff;
     }
-
-    #intro {
-      color: #fff;
-      font-size: 1.8em;
-      margin-top: 100px;
-      animation: blink 1s infinite alternate;
-    }
-
-    @keyframes blink {
-      0% { opacity: 0.3; }
-      100% { opacity: 1; }
-    }
   </style>
 </head>
 <body>
   <a href="./index.html" class="menu-button game-buttons">Menu</a>
   <a href="./help.html" class="help-button game-buttons">Info</a>
-  
-  <div id="intro">
-    He tomado muchas cervezas... 🍻<br>
-    La noche me confunde... 🌙<br>
-    Creo que sé si un número es más grande o más pequeño... creo...
-  </div>
 
   <div class="game-section" id="gameSection">
     <h1>Adivina el número (1 - 1000)</h1>
@@ -136,40 +118,33 @@
     let secretNumber = Math.floor(Math.random() * 1000) + 1;
     let attempts = 0;
     const maxAttempts = 17;
-    let confusionChance = 0.1;
-    const maxConfusion = 0.5;
 
     const input = document.getElementById("guessInput");
     const feedback = document.getElementById("feedback");
     const pointsDisplay = document.getElementById("points");
     const attemptsLeft = document.getElementById("attemptsLeft");
     const guessButton = document.getElementById("guessButton");
-    const gameSection = document.getElementById("gameSection");
-    const intro = document.getElementById("intro");
 
     function startGame() {
-      document.body.style.backgroundColor = "#e74c3c";
-      intro.style.display = "none";
-      gameSection.style.display = "block";
       attemptsLeft.textContent = `Intentos restantes: ${maxAttempts - attempts}`;
     }
 
-    setTimeout(startGame, 7000); // ⏳ intro más larga (7 segundos)
+    // ⏱ Iniciar el juego inmediatamente
+    startGame();
 
     function makeGuess() {
       const guess = parseInt(input.value);
 
       if (isNaN(guess) || guess < 1 || guess > 1000) {
-        feedback.textContent = "Ey... eso no me suena a un número entre 1 y 1000... 🍺";
+        feedback.textContent = "Por favor, introduce un número entre 1 y 1000.";
         return;
       }
 
       attempts++;
-      const isConfused = Math.random() < confusionChance;
 
       if (guess === secretNumber) {
         const puntos = Math.floor((maxAttempts - attempts + 1) * (150 / maxAttempts));
-        feedback.textContent = `¡Guau! Lo adivinaste... ni yo me lo esperaba 🤯 Era el ${secretNumber}`;
+        feedback.textContent = `🎉 ¡Correcto! El número era ${secretNumber}.`;
         pointsDisplay.textContent = `🏅 Puntuación: ${puntos} puntos`;
         document.body.style.backgroundColor = "#2ecc71";
         attemptsLeft.textContent = "";
@@ -178,7 +153,7 @@
       }
 
       if (attempts >= maxAttempts) {
-        feedback.textContent = `😵 Uf... ya no puedo más... El número era ${secretNumber}`;
+        feedback.textContent = `😢 ¡Se acabaron los intentos! El número era ${secretNumber}.`;
         attemptsLeft.textContent = "";
         pointsDisplay.textContent = "";
         document.body.style.backgroundColor = "#34495e";
@@ -186,17 +161,13 @@
         return;
       }
 
-      const realHint = guess < secretNumber ? "más grande" : "más pequeño";
-      const confusedHint = guess < secretNumber ? "más pequeño" : "más grande";
-      const finalHint = isConfused ? confusedHint : realHint;
-
-      feedback.textContent = `Diría que es ${finalHint}... creo... 🥴`;
-      attemptsLeft.textContent = `Intentos restantes: ${maxAttempts - attempts}`;
-
-      if (!isConfused && Math.abs(guess - secretNumber) < 100 && confusionChance < maxConfusion) {
-        confusionChance += 0.03;
+      if (guess < secretNumber) {
+        feedback.textContent = "📈 El número es más grande.";
+      } else {
+        feedback.textContent = "📉 El número es más pequeño.";
       }
 
+      attemptsLeft.textContent = `Intentos restantes: ${maxAttempts - attempts}`;
       input.value = "";
       input.focus();
     }
@@ -209,7 +180,6 @@
     function restartGame() {
       secretNumber = Math.floor(Math.random() * 1000) + 1;
       attempts = 0;
-      confusionChance = 0.1;
       input.disabled = false;
       guessButton.disabled = false;
       feedback.textContent = "";
