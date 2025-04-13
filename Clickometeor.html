@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Color Snipe - Marc's Games</title>
+  <link rel="stylesheet" href="style.css">
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -16,10 +17,14 @@
       flex-direction: column;
       align-items: center;
     }
-
-    .menu-button {
+    .game-buttons {
+      background-color: #fff;
+      color: #2c3e50;
+    }
+   
+    .help-button {
       position: absolute;
-      top: 20px;
+      top: 65px;
       left: 20px;
       background-color: #fff;
       color: #2c3e50;
@@ -96,7 +101,8 @@
 </head>
 <body>
 
-  <a href="./index.html" class="menu-button">Menu</a>
+  <a href="./index.html" class="menu-button game-buttons">Menu</a>
+  <a href="./help.html" class="help-button game-buttons">Info</a>
 
   <h1>🎯 Color Snipe</h1>
   <div id="targetColor">Haz clic en: <span id="colorName">Azul</span></div>

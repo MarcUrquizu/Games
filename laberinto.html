@@ -2,63 +2,77 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Juego del Laberinto</title>
   <style>
     * {
       box-sizing: border-box;
     }
+
     body {
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-start;
-      align-items: center;
-      height: 100vh;
       margin: 0;
       font-family: sans-serif;
       background-color: rgb(33, 129, 124);
-      color: rgb(0, 0, 0);
+      color: #000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding-top: 70px;
+    }
+
+    .game-buttons {
+      background-color: #000;
+      color: #fff;
+      font-weight: bold;
+      text-decoration: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      position: absolute;
+      top: 10px;
+      z-index: 10;
     }
 
     .menu-button {
-      position: absolute;
-      top: 20px;
-      left: 20px;
-      background-color: #000000;
-      color: #ffffff;
-      padding: 10px 20px;
-      border: none;
-      border-radius: 5px;
-      font-weight: bold;
-      cursor: pointer;
-      text-decoration: none;
-      z-index: 100;
+      right: 10px;
+    }
+
+    .help-button {
+      left: 10px;
     }
 
     #levelDisplay {
       font-size: 1.5rem;
-      margin: 20px 0 5px 0;
+      margin: 10px 0 5px;
     }
+
     #stats {
       margin-bottom: 10px;
       font-size: 1rem;
     }
+
     #maze {
       display: grid;
       position: relative;
       margin-bottom: 20px;
+      touch-action: none;
     }
+
     .cell {
       background: white;
       transition: background 0.2s;
       background-size: cover;
     }
+
     .wall {
       background-color: #444;
       background-image: url('https://www.transparenttextures.com/patterns/45-degree-fabric-light.png');
     }
+
     .exit {
       background: limegreen;
     }
+
     #player {
       position: absolute;
       background: red;
@@ -66,26 +80,30 @@
       transition: transform 0.2s ease;
       z-index: 10;
     }
+
     #controlsGraphic {
       display: flex;
-      flex-direction: row;
-      align-items: flex-start;
+      flex-wrap: wrap;
       justify-content: center;
-      gap: 60px;
+      gap: 30px;
+      margin-bottom: 30px;
     }
+
     .control-group {
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 5px;
     }
+
     .control-row {
       display: flex;
       gap: 10px;
     }
+
     .key {
-      width: 40px;
-      height: 40px;
+      width: clamp(40px, 10vw, 60px);
+      height: clamp(40px, 10vw, 60px);
       border: 2px solid #333;
       background: #eee;
       display: flex;
@@ -95,14 +113,25 @@
       font-size: 1rem;
       border-radius: 6px;
       box-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+      user-select: none;
+      cursor: pointer;
     }
+
     .key.active {
       background: #ffcc00 !important;
     }
+
+    @media (max-width: 600px) {
+      #maze {
+        max-width: 90vw;
+      }
+    }
   </style>
 </head>
-<body>
-  <a href="./index.html" class="menu-button">Menu</a>
+<body id="gameBody">
+  <a href="./index.html" class="menu-button game-buttons">Menu</a>
+  <a href="./help.html" class="help-button game-buttons">Info</a>
+
   <div id="levelDisplay">Nivel 1</div>
   <div id="stats">Movimientos: 0</div>
   <div id="maze"></div>
@@ -110,22 +139,22 @@
   <div id="controlsGraphic">
     <div class="control-group">
       <div class="control-row">
-        <div class="key" id="key-arrowup">↑</div>
+        <div class="key" id="key-arrowup" onclick="triggerMove(0,-1)">↑</div>
       </div>
       <div class="control-row">
-        <div class="key" id="key-arrowleft">←</div>
-        <div class="key" id="key-arrowdown">↓</div>
-        <div class="key" id="key-arrowright">→</div>
+        <div class="key" id="key-arrowleft" onclick="triggerMove(-1,0)">←</div>
+        <div class="key" id="key-arrowdown" onclick="triggerMove(0,1)">↓</div>
+        <div class="key" id="key-arrowright" onclick="triggerMove(1,0)">→</div>
       </div>
     </div>
     <div class="control-group">
       <div class="control-row">
-        <div class="key" id="key-w">W</div>
+        <div class="key" id="key-w" onclick="triggerMove(0,-1)">W</div>
       </div>
       <div class="control-row">
-        <div class="key" id="key-a">A</div>
-        <div class="key" id="key-s">S</div>
-        <div class="key" id="key-d">D</div>
+        <div class="key" id="key-a" onclick="triggerMove(-1,0)">A</div>
+        <div class="key" id="key-s" onclick="triggerMove(0,1)">S</div>
+        <div class="key" id="key-d" onclick="triggerMove(1,0)">D</div>
       </div>
     </div>
   </div>
@@ -240,6 +269,10 @@
           }, 600);
         }
       }
+    }
+
+    function triggerMove(dx, dy) {
+      move(dx, dy);
     }
 
     const highlightKey = (keyId) => {
