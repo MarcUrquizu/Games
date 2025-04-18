@@ -4,7 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Adivina el número - Marc's Games</title>
+  <link rel="stylesheet" href="style.css">
   <style>
+
+.game-buttons {
+      background-color: #fff;
+      color: #e74c3c;
+}
+
     body {
       font-family: Arial, sans-serif;
       text-align: center;
@@ -102,11 +109,12 @@
 </head>
 <body>
   <a href="./index.html" class="menu-button">Menu</a>
+  <a href="help.html" class="help-button game-buttons">Info</a>
 
   <div class="game-section">
     <h1>Adivina el número (1 - 100)</h1>
     <div id="inputSection">
-      <input type="number" id="guessInput" min="1" max="100" />
+      <input type="number" id="guessInput" />
       <button class="btn-guess" onclick="makeGuess()" id="guessButton">Probar</button>
     </div>
     <div id="feedback"></div>
@@ -115,22 +123,26 @@
   </div>
 
   <script>
-    let secretNumber = Math.floor(Math.random() * 100) + 1;
-    let attempts = 0;
+    const MIN = 1;
+    const MAX = 100;
     const maxAttempts = 7;
+    let secretNumber = Math.floor(Math.random() * (MAX - MIN + 1)) + MIN;
+    let attempts = 0;
 
     const input = document.getElementById("guessInput");
     const feedback = document.getElementById("feedback");
     const attemptsLeft = document.getElementById("attemptsLeft");
     const guessButton = document.getElementById("guessButton");
 
+    input.setAttribute("min", MIN);
+    input.setAttribute("max", MAX);
     attemptsLeft.textContent = `Intentos restantes: ${maxAttempts - attempts}`;
 
     function makeGuess() {
       const guess = parseInt(input.value);
 
-      if (isNaN(guess) || guess < 1 || guess > 100) {
-        feedback.textContent = "Introduce un número válido entre 1 y 100.";
+      if (isNaN(guess) || guess < MIN || guess > MAX) {
+        feedback.textContent = `Introduce un número válido entre ${MIN} y ${MAX}.`;
         return;
       }
 
@@ -161,7 +173,7 @@
     }
 
     function restartGame() {
-      secretNumber = Math.floor(Math.random() * 100) + 1;
+      secretNumber = Math.floor(Math.random() * (MAX - MIN + 1)) + MIN;
       attempts = 0;
       input.disabled = false;
       guessButton.disabled = false;
