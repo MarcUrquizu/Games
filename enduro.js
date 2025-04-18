@@ -1,4 +1,3 @@
-
 //CARS
 var car = document.getElementById('car');
 car.init = function () { 
@@ -257,31 +256,23 @@ var key = {
       car.sx = 0;
       if (car.x > road.width * 0.15){
         if (key.pressed['left'] ||
-            key.pressed[37] || // Key: Left arrow
-            key.pressed[65]) { // Key: 'A'
+            key.pressed[37] || 
+            key.pressed[65]) {
           car.sx = -2.5;
         }
       } else car.crash(0.2);
       if (car.x < (road.width * 0.85) - car.width){
         if (key.pressed['right'] ||
-            key.pressed[39] || // Key: Right arrow
-            key.pressed[68]) { // Key: 'D'
+            key.pressed[39] || 
+            key.pressed[68]) {
           car.sx = 2.5;
         }
       } else car.crash(-0.2);
-      if (key.pressed['up'] ||
-          key.pressed[32] || // Key: Space
-          key.pressed[38] || // Key: Up arrow
-          key.pressed[87]) { // Key: 'W'
-        if (car.speed < car.maxSpeed) { 
-          car.speed += car.acc;
-          game.audio.oscillator.frequency.value += car.acc * 10;
-        }
-      } else {
-        if (car.speed > 0.2) {
-          car.speed -= car.break;
-          game.audio.oscillator.frequency.value -= car.break * 10;
-        }
+
+      // 🚀 Avance automático
+      if (car.speed < car.maxSpeed) { 
+        car.speed += car.acc;
+        game.audio.oscillator.frequency.value += car.acc * 10;
       }
     }
   }
@@ -362,14 +353,13 @@ game.audio = function () {
 };
 //COLORS
 game.colors = [
-  //sky //terrain //mountains
-  ['#228', '#040', 1], //day
-  ['#93c', '#440', 0.5], //afternoon 
-  ['#546', '#111', 0.2], //night
-  ['#888', '#aaa', 0.2], //fog
-  ['#545', '#111', 0.2], //night
-  ['#529', '#230', 0.3], //morning
-  ['#aaf', '#eee', 0.2], //snow
+  ['#228', '#040', 1],
+  ['#93c', '#440', 0.5],
+  ['#546', '#111', 0.2],
+  ['#888', '#aaa', 0.2],
+  ['#545', '#111', 0.2],
+  ['#529', '#230', 0.3],
+  ['#aaf', '#eee', 0.2],
 ];
 var sky = document.getElementById('sky');
 var terrain = document.getElementById('terrain');
