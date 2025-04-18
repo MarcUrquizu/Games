@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Laberinto Seguro Mejorado</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-family: sans-serif;
+    }
+
+    #pantalla-inicio {
+      background-color: black;
+      color: white;
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    #pantalla-inicio p {
+      font-size: 2.2em;
+      max-width: 800px;
+      margin: 0 auto 60px;
+    }
+
+    .btn-comenzar {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      width: 60px;
+      height: 60px;
+      background-color: #2ecc71;
+      color: white;
+      font-size: 1.2em;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+      z-index: 10;
+    }
+
+    .menu-button, .info-button {
+      position: absolute;
+      top: 20px;
+      background-color: white;
+      color: #e74c3c;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      font-weight: bold;
+      cursor: pointer;
+      z-index: 1000;
+      text-decoration: none;
+    }
+
+    .menu-button { left: 20px; }
+    .info-button { left: 130px; }
+
+    .nivel-indicador {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      font-size: 1.5em;
+      font-weight: bold;
+      color: white;
+      background-color: rgba(0, 0, 0, 0.4);
+      padding: 8px 15px;
+      border-radius: 10px;
+      z-index: 1000;
+    }
+
+    #flecha {
+      position: absolute;
+      bottom: 80px;
+      right: 90px;
+      width: 80px;
+      transform: rotate(45deg);
+      z-index: 999;
+      filter: drop-shadow(0 0 4px red);
+    }
+
+    #juego {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+      background-color: #eee;
+    }
+
+    .pared {
+      position: absolute;
+      background-color: #2c3e50;
+    }
+
+    .meta {
+      position: absolute;
+      width: 60px;
+      height: 60px;
+      background-color: green;
+      z-index: 5;
+    }
+
+    #jumpscare {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: black;
+      z-index: 1000;
+    }
+
+    #jumpscare img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  </style>
+</head>
+<body>
+
+<div id="pantalla-inicio">
+  <a href="./index.html" class="menu-button">Menú</a>
+  <a href="./info.html" class="info-button">Info</a>
+  <p>¡Hola! Bienvenido al laberinto.<br> Usa el cursor para llegar al otro lado sin tocar las paredes.</p>
+  <button class="btn-comenzar" onclick="iniciarJuego()" id="btnStart">▶</button>
+  <img id="flecha" src="https://png.pngtree.com/png-clipart/20220122/ourmid/pngtree-direction-arrow-red-irregular-triangle-png-image_4362206.png" alt="flecha" />
+</div>
+
+<div id="juego" style="display: none;">
+  <div class="nivel-indicador" id="nivelLabel">Nivel 1</div>
+</div>
+
+<div id="jumpscare">
+  <img src="https://cdn-0001.qstv.on.epicgames.com/UmFwHSIPPUUsHrSdrA/image/landscape_comp.jpeg" />
+</div>
+
+<audio id="screamSound">
+  <source src="scream-with-echo-46585.mp3" type="audio/mpeg" />
+</audio>
+
+<script>
+const juego = document.getElementById("juego");
+const pantallaInicio = document.getElementById("pantalla-inicio");
+const btnStart = document.getElementById("btnStart");
+const jumpscare = document.getElementById("jumpscare");
+const screamSound = document.getElementById("screamSound");
+const nivelLabel = document.getElementById("nivelLabel");
+const flecha = document.getElementById("flecha");
+
+const tamCelda = 30;
+let nivel = 1;
+let esquinaActual = 'bottomRight';
+let startX = null, startY = null;
+let mouseHabilitado = false;
+
+function iniciarJuego() {
+  const { x: btnX, y: btnY } = btnStart.getBoundingClientRect();
+  const gridX = Math.floor(btnX / tamCelda);
+  const gridY = Math.floor(btnY / tamCelda);
+
+  pantallaInicio.style.display = "none";
+  flecha.style.display = "none";
+  juego.style.display = "block";
+  mouseHabilitado = false;
+  nivel = 1;
+  actualizarNivel();
+
+  setTimeout(() => {
+    generarNivel(true, gridX, gridY);
+  }, 50);
+}
+
+function limpiarJuego() {
+  while (juego.children.length > 1) {
+    juego.removeChild(juego.lastChild);
+  }
+}
+
+function generarNivel(esPrimero, inicioX, inicioY) {
+  limpiarJuego();
+  actualizarNivel();
+
+  const cols = Math.floor(window.innerWidth / tamCelda);
+  const rows = Math.floor(window.innerHeight / tamCelda);
+  const grid = Array.from({ length: rows }, () => Array(cols).fill(1));
+
+  let sx, sy, ex, ey;
+
+  if (esPrimero) {
+    sx = inicioX;
+    sy = inicioY;
+    ex = 1;
+    ey = 1;
+  } else {
+    sx = startX;
+    sy = startY;
+
+    if (esquinaActual === 'bottomRight') {
+      ex = 1;
+      ey = 1;
+      esquinaActual = 'topLeft';
+    } else {
+      ex = cols - 2;
+      ey = rows - 2;
+      esquinaActual = 'bottomRight';
+    }
+  }
+
+  startX = ex;
+  startY = ey;
+
+  let x = sx, y = sy;
+  grid[y][x] = 0;
+  const path = [[x, y]];
+
+  while (x !== ex || y !== ey) {
+    if (x !== ex && (y === ey || Math.random() < 0.5)) {
+      x += ex > x ? 1 : -1;
+    } else if (y !== ey) {
+      y += ey > y ? 1 : -1;
+    }
+    grid[y][x] = 0;
+    path.push([x, y]);
+  }
+
+  // 🔳 Zona segura 3x3 en el inicio del nivel
+  for (let i = sy - 1; i <= sy + 1; i++) {
+    for (let j = sx - 1; j <= sx + 1; j++) {
+      if (i >= 0 && i < rows && j >= 0 && j < cols) {
+        grid[i][j] = 0;
+      }
+    }
+  }
+
+  for (let i = 0; i < rows; i++) {
+    for (let j = 0; j < cols; j++) {
+      if (grid[i][j] === 1) {
+        crearPared(j * tamCelda, i * tamCelda, tamCelda, tamCelda);
+      }
+    }
+  }
+
+  crearMeta(ex * tamCelda, ey * tamCelda, () => {
+    nivel++;
+    generarNivel(false);
+  });
+}
+
+function crearPared(x, y, w, h) {
+  const div = document.createElement("div");
+  div.className = "pared";
+  div.style.left = `${x}px`;
+  div.style.top = `${y}px`;
+  div.style.width = `${w}px`;
+  div.style.height = `${h}px`;
+  juego.appendChild(div);
+}
+
+function crearMeta(x, y, callback) {
+  const meta = document.createElement("div");
+  meta.className = "meta";
+  meta.style.left = `${x}px`;
+  meta.style.top = `${y}px`;
+  meta.addEventListener("mouseenter", callback);
+  juego.appendChild(meta);
+}
+
+function actualizarNivel() {
+  if (nivelLabel) nivelLabel.textContent = `Nivel ${nivel}`;
+}
+
+juego.addEventListener("mousemove", (e) => {
+  if (!mouseHabilitado) {
+    mouseHabilitado = true;
+    return;
+  }
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  if (el && el.classList.contains("pared")) {
+    mostrarJumpscare();
+  }
+});
+
+function mostrarJumpscare() {
+  jumpscare.style.display = "block";
+  juego.style.display = "none";
+  screamSound.currentTime = 0;
+  screamSound.play();
+
+  setTimeout(() => {
+    jumpscare.style.display = "none";
+    pantallaInicio.style.display = "flex";
+    flecha.style.display = "block";
+    esquinaActual = 'bottomRight';
+    startX = null;
+    startY = null;
+  }, 2000);
+}
+</script>
+
+</body>
+</html>
