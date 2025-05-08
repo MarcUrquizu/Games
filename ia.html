@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Asistente Matemático Multilingüe</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { display: flex; justify-content: center; align-items: center; height: 100vh; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f7f7f8; }
+    .card { background: #fff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 640px; padding: 32px; display: flex; flex-direction: column; }
+    /* Botón de reiniciar */
+    .reset-btn { position: fixed; top: 16px; right: 16px; z-index: 1000; background: #e53e3e; color: #fff; border: none; padding: 8px 12px; border-radius: 9999px; cursor: pointer; font-size: 0.9rem; }
+    .lang-select { margin-bottom: 16px; text-align: right; }
+    h2#promptHeader { font-size: 1.75rem; color: #111; margin-bottom: 24px; text-align: center; }
+    .conversation { flex: 1; overflow-y: auto; margin-bottom: 16px; display: flex; flex-direction: column; gap: 8px; padding: 0 8px; max-height: 300px; }
+    .message { max-width: 70%; padding: 12px 16px; border-radius: 20px; line-height: 1.4; position: relative; }
+    .user { align-self: flex-end; background: #e5e7eb; color: #111; }
+    .bot { align-self: flex-start; background: #00d66a; color: #fff; }
+    .bot::before { content: ''; position: absolute; top: 50%; left: -20px; transform: translateY(-50%); border: 10px solid transparent; border-right-color: #00d66a; }
+    .input-area { display: flex; gap: 8px; }
+    .input-area input { flex: 1; padding: 10px 16px; border: 1px solid #d1d5db; border-radius: 9999px; font-size: 1rem; }
+    .input-area button { padding: 0 16px; border: none; background: #111; color: #fff; border-radius: 9999px; cursor: pointer; font-size: 1rem; }
+  </style>
+</head>
+<body>
+  <button id="resetBtn" class="reset-btn">Reiniciar Chat</button>
+  <div class="card">
+    <div class="lang-select">
+      <label for="langSelect">Idioma: </label>
+      <select id="langSelect">
+        <option value="es">Castellano</option>
+        <option value="ca">Català</option>
+        <option value="en">English</option>
+        <option value="fr">Français</option>
+        <option value="it">Italiano</option>
+        <option value="de">Deutsch</option>
+      </select>
+    </div>
+    <h2 id="promptHeader">¿En qué puedo ayudarte?</h2>
+    <div id="conversation" class="conversation"></div>
+    <div class="input-area">
+      <input id="userInput" type="text" placeholder="Escribe aquí" autocomplete="off">
+      <button id="sendBtn">Enviar</button>
+    </div>
+  </div>
+  <script>
+    const langSelect = document.getElementById('langSelect');
+    const sendBtn = document.getElementById('sendBtn');
+    const userInput = document.getElementById('userInput');
+    const conv = document.getElementById('conversation');
+    const promptHeader = document.getElementById('promptHeader');
+
+    const greetingKeywords = {
+      es:['hola','buenas','buenos días','buenas tardes','holi'],
+      ca:['hola','bon dia','bona tarda','salut'],
+      en:['hello','hi','hey'],
+      fr:['bonjour','salut','coucou'],
+      it:['ciao','salve'],
+      de:['hallo','guten tag','moin']
+    };
+    const statusKeywords = {
+      es:['cómo estás','qué tal','cómo va'],
+      ca:['com estàs','què tal','com va'],
+      en:['how are you','how r you','how are u'],
+      fr:['comment ça va','comment allez-vous','ça va'],
+      it:['come stai','come va'],
+      de:['wie geht es','wie geht’s','wie gehts']
+    };
+    const wellSynonyms = {
+      es:['genial','fantástico','muy bien','perfecto'],
+      ca:['genial','fantàstic','molt bé','perfecte'],
+      en:['great','good','fine','well'],
+      fr:['bien','super','génial','parfait'],
+      it:['bene','ottimo','fantastico','perfetto'],
+      de:['gut','toll','prima','perfekt']
+    };
+
+    const templates = { es:{}, ca:{}, en:{}, fr:{}, it:{}, de:{} };
+    Object.assign(templates.es, { greetings:['{greeting} ¿cómo puedo ayudarte?','¡{greeting}! ¿qué necesitas?'], status:['Estoy {well}, ¿y tú?','Me siento {well}, gracias por preguntar.'], default:['Lo siento, no lo entiendo.'] });
+    Object.assign(templates.ca, { greetings:['{greeting}! En què et puc ajudar?','¡{greeting}! Què necessites?'], status:['Estic {well}, i tu?','Em trobo {well}, gràcies per preguntar.'], default:['Ho sento, no ho entenc.'] });
+    Object.assign(templates.en, { greetings:['{greeting}, how can I help you?','{greeting}! What do you need?'], status:["I'm {well}, how about you?", 'Feeling {well}, thanks for asking.'], default:['Sorry, I don\'t understand.'] });
+    Object.assign(templates.fr, { greetings:['{greeting}, comment puis-je vous aider?','{greeting}! Que voulez-vous?'], status:['Je suis {well}, et vous?','Je me sens {well}, merci de demander.'], default:['Désolé, je ne comprends pas.'] });
+    Object.assign(templates.it, { greetings:['{greeting}, come posso aiutarti?','{greeting}! Di cosa hai bisogno?'], status:['Sto {well}, e tu?','Mi sento {well}, grazie per aver chiesto.'], default:['Mi dispiace, non capisco.'] });
+    Object.assign(templates.de, { greetings:['{greeting}, wie kann ich dir helfen?','{greeting}! Was brauchst du?'], status:["Mir geht's {well}, und dir?","Ich fühle mich {well}, danke der Nachfrage."], default:['Entschuldigung, ich verstehe nicht.'] });
+
+    const texts = {
+      es:{result:'El resultado es',error:'No pude calcular eso. Asegúrate de usar una expresión matemática válida.',specialize:'Estoy especializado en operaciones matemáticas, pero próximamente sabré más de todo.'},
+      ca:{result:'El resultat és',error:'No he pogut calcular-ho. Assegura’t d’utilitzar una expressió vàlida.',specialize:'Estic especialitzat en operacions matemàtiques, però pròximament sabré més de tot.'},
+      en:{result:'The result is',error:'I couldn\'t calculate that. Make sure to use a valid mathematical expression.',specialize:'I’m specialized in mathematical operations, but soon I’ll know more about everything.'},
+      fr:{result:'Le résultat est',error:'Je n\'ai pas pu calculer cela. Assurez-vous d\'utiliser une expression mathématique valide.',specialize:'Je suis spécialisé dans les opérations mathématiques, mais bientôt j\'en saurai plus.'},
+      it:{result:'Il risultato è',error:'Non sono riuscito a calcolarlo. Assicurati di utilizzare un\'espressione matematica valida.',specialize:'Sono specializzato in operazioni matematiche, ma presto saprò di più su tutto.'},
+      de:{result:'Das Ergebnis ist',error:'Ich konnte das nicht berechnen. Stelle sicher, dass du einen gültigen mathematischen Ausdruck verwendest.',specialize:'Ich bin auf mathematische Operationen spezialisiert, aber bald werde ich mehr über alles wissen.'}
+    };
+
+    const insultPatterns = /(puta|idiota|mierda|maric[oó]n|zorra|gilipollas|imb[eé]cil|racista|machista|homof[oó]bo|homosexual|tont[oa])/i;
+
+    function appendMessage(text, cls) {
+      const msg = document.createElement('div'); msg.className = 'message ' + cls; msg.textContent = text; conv.appendChild(msg); conv.scrollTop = conv.scrollHeight;
+    }
+
+    function randomTemplate(arr, data) {
+      let tpl = arr[Math.floor(Math.random() * arr.length)];
+      for (const key in data) tpl = tpl.replace(`{${key}}`, data[key]);
+      return tpl;
+    }
+
+    function handleInput() {
+      const raw = userInput.value.trim(); if (!raw) return;
+      appendMessage(raw, 'user');
+
+      const lang = langSelect.value;
+      const clean = raw.toLowerCase().replace(/[^À-ſ\d\s]/gu, '').trim();
+      const token = clean.split(/\s+/)[0];
+      const tTemp = templates[lang];
+      const tText = texts[lang];
+      let reply;
+
+      if (/^[0-9+\-*/().\s^√]+$/.test(raw)) {
+        try {
+          const expr = raw.replace(/\^/g, '**').replace(/√\s*\(([^)]+)\)/g, 'Math.sqrt($1)');
+          reply = `${tText.result} ${eval(expr)}`;
+        } catch {
+          reply = tText.error;
+        }
+      } else if (greetingKeywords[lang].includes(token)) {
+        reply = `${randomTemplate(tTemp.greetings, { greeting: raw.split(' ')[0] })} ${tText.specialize}`;
+      } else if (statusKeywords[lang].some(s => clean.includes(s))) {
+        reply = randomTemplate(tTemp.status, { well: wellSynonyms[lang][Math.floor(Math.random() * wellSynonyms[lang].length)] });
+      } else {
+        reply = randomTemplate(tTemp.default, {});
+      }
+
+      appendMessage(reply, 'bot');
+      userInput.value = '';
+      userInput.focus();
+    }
+
+    // Evento para reiniciar el chat
+    const resetBtn = document.getElementById('resetBtn');
+    resetBtn.addEventListener('click', () => {
+      conv.innerHTML = '';        
+      userInput.value = '';
+      userInput.focus();
+    });
+
+    sendBtn.addEventListener('click', handleInput);
+    userInput.addEventListener('keydown', e => { if (e.key === 'Enter') handleInput(); });
+  </script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Mi Agente OpenAI</title>
+  <style>
+    body { font-family: sans-serif; max-width: 600px; margin: 2rem auto; }
+    #chat { border: 1px solid #ddd; padding: 1rem; height: 400px; overflow-y: auto; }
+    .mensaje { margin: .5rem 0; }
+    .user { text-align: right; color: navy; }
+    .bot  { text-align: left; color: darkgreen; }
+  </style>
+</head>
+<body>
+  <h1>Chat con mi Agente</h1>
+  <div id="chat"></div>
+  <form id="form">
+    <input type="text" id="input" placeholder="Escribe..." autocomplete="off" style="width:80%" required />
+    <button>Enviar</button>
+  </form>
+
+  <script>
+    const form = document.getElementById('form');
+    const input = document.getElementById('input');
+    const chat = document.getElementById('chat');
+
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      const texto = input.value.trim();
+      if (!texto) return;
+
+      // Mostrar tu mensaje
+      const userDiv = document.createElement('div');
+      userDiv.className = 'mensaje user';
+      userDiv.textContent = texto;
+      chat.appendChild(userDiv);
+      input.value = '';
+
+      // Llamada al servidor
+      try {
+        const resp = await fetch('http://localhost:3000/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mensaje: texto })
+        });
+        const data = await resp.json();
+
+        const botDiv = document.createElement('div');
+        botDiv.className = 'mensaje bot';
+        botDiv.textContent = data.respuesta;
+        chat.appendChild(botDiv);
+
+        // Scroll al final
+        chat.scrollTop = chat.scrollHeight;
+      } catch (err) {
+        console.error(err);
+      }
+    });
+  </script>
+</body>
+</html>

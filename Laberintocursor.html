@@ -31,6 +31,19 @@
       margin: 0 auto 60px;
     }
 
+    /* Selector de dispositivo */
+    #selector-dispositivo {
+      margin-bottom: 60px;
+    }
+    #selector-dispositivo label {
+      font-size: 1.2em;
+      margin-right: 10px;
+    }
+    #selector-dispositivo select {
+      font-size: 1em;
+      padding: 5px;
+    }
+
     .btn-comenzar {
       position: absolute;
       bottom: 0;
@@ -129,6 +142,14 @@
   <a href="./index.html" class="menu-button">Menú</a>
   <a href="./info.html" class="info-button">Info</a>
   <p>¡Hola! Bienvenido al laberinto.<br> Usa el cursor para llegar al otro lado sin tocar las paredes.</p>
+  <!-- Selector de dispositivo (sin afectar lógica de niveles) -->
+  <div id="selector-dispositivo">
+    <label for="platformSelect">Dispositivo:</label>
+    <select id="platformSelect">
+      <option value="desktop">Ordenador</option>
+      <option value="mobile">Móvil</option>
+    </select>
+  </div>
   <button class="btn-comenzar" onclick="iniciarJuego()" id="btnStart">▶</button>
   <img id="flecha" src="https://png.pngtree.com/png-clipart/20220122/ourmid/pngtree-direction-arrow-red-irregular-triangle-png-image_4362206.png" alt="flecha" />
 </div>
@@ -161,16 +182,22 @@ let startX = null, startY = null;
 let mouseHabilitado = false;
 
 function iniciarJuego() {
-  const { x: btnX, y: btnY } = btnStart.getBoundingClientRect();
-  const gridX = Math.floor(btnX / tamCelda);
-  const gridY = Math.floor(btnY / tamCelda);
+  // Leer dispositivo seleccionado para uso futuro (sin alterar niveles)
+  const plataforma = document.getElementById('platformSelect').value;
+  window.plataforma = plataforma;
 
+  // Ocultar inicio
   pantallaInicio.style.display = "none";
   flecha.style.display = "none";
   juego.style.display = "block";
   mouseHabilitado = false;
   nivel = 1;
   actualizarNivel();
+
+  // Código original para el primer nivel
+  const { x: btnX, y: btnY } = btnStart.getBoundingClientRect();
+  const gridX = Math.floor(btnX / tamCelda);
+  const gridY = Math.floor(btnY / tamCelda);
 
   setTimeout(() => {
     generarNivel(true, gridX, gridY);
@@ -218,7 +245,6 @@ function generarNivel(esPrimero, inicioX, inicioY) {
 
   let x = sx, y = sy;
   grid[y][x] = 0;
-  const path = [[x, y]];
 
   while (x !== ex || y !== ey) {
     if (x !== ex && (y === ey || Math.random() < 0.5)) {
@@ -227,10 +253,9 @@ function generarNivel(esPrimero, inicioX, inicioY) {
       y += ey > y ? 1 : -1;
     }
     grid[y][x] = 0;
-    path.push([x, y]);
   }
 
-  // 🔳 Zona segura 3x3 en el inicio del nivel
+  // Zona segura 3x3
   for (let i = sy - 1; i <= sy + 1; i++) {
     for (let j = sx - 1; j <= sx + 1; j++) {
       if (i >= 0 && i < rows && j >= 0 && j < cols) {
