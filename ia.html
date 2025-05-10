@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -6,7 +6,7 @@
   <title>IA Olap</title>
   <link rel="stylesheet" href="style.css">
   <style>
-        .game-buttons {
+    .game-buttons {
       background-color: #1e1e1e;
       color: #fff;
     }
@@ -30,7 +30,7 @@
 </head>
 <body>
 
-   <a href="./index.html" class="menu-button game-buttons">Menu</a>
+  <a href="./index.html" class="menu-button game-buttons">Menu</a>
   <a href="./help.html" class="help-button game-buttons">Info</a>
 
   <div class="card">
@@ -39,7 +39,7 @@
       <button id="resetBtn" class="reset-btn">Reiniciar chat</button>
     </div>
     <div class="lang-select">
-      <label for="langSelect">Idioma: </label>
+      <label for="langSelect">Idioma:</label>
       <select id="langSelect">
         <option value="es">Castellano</option>
         <option value="ca">Català</option>
@@ -57,14 +57,36 @@
   </div>
 
   <script>
-    const langSelect = document.getElementById('langSelect');
-    const sendBtn = document.getElementById('sendBtn');
-    const resetBtn = document.getElementById('resetBtn');
-    const userInput = document.getElementById('userInput');
-    const conv = document.getElementById('conversation');
+    // referencias DOM
+    const langSelect   = document.getElementById('langSelect');
+    const sendBtn      = document.getElementById('sendBtn');
+    const resetBtn     = document.getElementById('resetBtn');
+    const userInput    = document.getElementById('userInput');
+    const conv         = document.getElementById('conversation');
     const promptHeader = document.getElementById('promptHeader');
+    const langLabel    = document.querySelector('label[for="langSelect"]');
 
-    // Configuración de idiomas y palabras clave
+    // ==== Textos UI por idioma ====
+    const uiTexts = {
+      es: { promptHeader: '¿En qué puedo ayudarte?', placeholder: 'Escribe aquí', languageLabel: 'Idioma:', reset: 'Reiniciar chat', send: 'Enviar' },
+      ca: { promptHeader: 'En què et puc ajudar?', placeholder: 'Escriu aquí', languageLabel: 'Idioma:', reset: 'Reiniciar xat',    send: 'Envia' },
+      en: { promptHeader: 'How can I help you?',   placeholder: 'Type here',   languageLabel: 'Language:', reset: 'Reset chat',   send: 'Send' },
+      fr: { promptHeader: 'Comment puis-je vous aider ?', placeholder: 'Écrivez ici', languageLabel: 'Langue :', reset: 'Réinitialiser chat', send: 'Envoyer' },
+      it: { promptHeader: 'Come posso aiutarti?',   placeholder: 'Digita qui',  languageLabel: 'Lingua:',   reset: 'Reimposta chat', send: 'Invia' },
+      de: { promptHeader: 'Wie kann ich dir helfen?', placeholder: 'Hier eingeben', languageLabel: 'Sprache:', reset: 'Chat zurücksetzen', send: 'Senden' }
+    };
+
+    function updateUI() {
+      const lang = langSelect.value;
+      const txt  = uiTexts[lang];
+      promptHeader.textContent  = txt.promptHeader;
+      userInput.placeholder     = txt.placeholder;
+      langLabel.textContent     = txt.languageLabel;
+      resetBtn.textContent      = txt.reset;
+      sendBtn.textContent       = txt.send;
+    }
+
+    // ==== Lógica de conversación ====
     const greetingKeywords = {
       es: ['hola','buenas','buenos días','buenas tardes','holi'],
       ca: ['hola','bon dia','bona tarda','salut'],
@@ -93,55 +115,48 @@
     const templates = {
       es: {
         greetings: ['Hola, ¿cómo puedo ayudarte?','¡Hola! ¿Qué necesitas?'],
-        status: ['Estoy {well}, ¿y tú?','Me siento {well}, gracias por preguntar.'],
-        default: ['Lo siento, no lo entiendo.']
+        status:    ['Estoy {well}, ¿y tú?','Me siento {well}, gracias por preguntar.'],
+        default:   ['Lo siento, no lo entiendo.']
       },
       ca: {
         greetings: ['Hola! En què et puc ajudar?','¡Hola! Què necessites?'],
-        status: ['Estic {well}, i tu?','Em trobo {well}, gràcies per preguntar.'],
-        default: ['Ho sento, no ho entenc.']
+        status:    ['Estic {well}, i tu?','Em trobo {well}, gràcies per preguntar.'],
+        default:   ['Ho sento, no ho entenc.']
       },
       en: {
         greetings: ['Hello, how can I help you?','Hello! What do you need?'],
-        status: ["I'm {well}, how about you?","Feeling {well}, thanks for asking."],
-        default: ['Sorry, I don\'t understand.']
+        status:    ["I'm {well}, how about you?","Feeling {well}, thanks for asking."],
+        default:   ["Sorry, I don't understand."]
       },
       fr: {
         greetings: ['Bonjour, comment puis-je vous aider?','Bonjour! Que voulez-vous?'],
-        status: ['Je suis {well}, et vous?','Je me sens {well}, merci de demander.'],
-        default: ['Désolé, je ne comprends pas.']
+        status:    ['Je suis {well}, et vous?','Je me sens {well}, merci de demander.'],
+        default:   ['Désolé, je ne comprends pas.']
       },
       it: {
         greetings: ['Ciao, come posso aiutarti?','Ciao! Di cosa hai bisogno?'],
-        status: ['Sto {well}, e tu?','Mi sento {well}, grazie per aver chiesto.'],
-        default: ['Mi dispiace, non capisco.']
+        status:    ['Sto {well}, e tu?','Mi sento {well}, grazie per aver chiesto.'],
+        default:   ['Mi dispiace, non capisco.']
       },
       de: {
-        greetings: ['Hallo, wie kann ich dir helfen?','Hallo! Was brauchst du?'],
-        status: ["Mir geht's {well}, und dir?","Ich fühle mich {well}, danke der Nachfrage."],
-        default: ['Entschuldigung, ich verstehe nicht.']
+        greetings: ["Hallo, wie kann ich dir helfen?","Hallo! Was brauchst du?"],
+        status:    ["Mir geht's {well}, und dir?","Ich fühle mich {well}, danke der Nachfrage."],
+        default:   ['Entschuldigung, ich verstehe nicht.']
       }
     };
     const texts = {
-      es: { result: 'El resultado es', error: 'No pude calcular eso. Asegúrate de usar una expresión matemática válida.', specialize: 'Estoy especializado en operaciones matemáticas.' },
-      ca: { result: 'El resultat és', error: 'No he pogut calcular-ho. Assegura’t d’utilitzar una expressió vàlida.', specialize: 'Estic especialitzat en operacions matemàtiques.' },
-      en: { result: 'The result is', error: 'I couldn\'t calculate that. Make sure to use a valid mathematical expression.', specialize: 'I’m specialized in mathematical operations.' },
-      fr: { result: 'Le résultat est', error: 'Je n\'ai pas pu calculer cela. Assurez-vous d\'utiliser une expression mathématique valide.', specialize: 'Je suis spécialisé dans les opérations mathématiques.' },
-      it: { result: 'Il risultato è', error: 'Non sono riuscito a calcolarlo. Assicurati di utilizzare un\'espressione matematica valida.', specialize: 'Sono specializzato in operazioni matematiche.' },
-      de: { result: 'Das Ergebnis ist', error: 'Ich konnte das nicht berechnen. Stelle sicher, dass du einen gültigen mathematischen Ausdruck verwendest.', specialize: 'Ich bin auf mathematische Operationen spezialisiert.' }
+      es: { result: 'El resultado es', error: 'No pude calcular eso. Asegúrate de usar una expresión matemática válida.' },
+      ca: { result: 'El resultat és', error: 'No he pogut calcular-ho. Assegura’t d’utilitzar una expressió vàlida.' },
+      en: { result: 'The result is',  error: 'I couldn\'t calculate that. Make sure to use a valid mathematical expression.' },
+      fr: { result: 'Le résultat est', error: 'Je n\'ai pas pu calculer cela. Assurez-vous d\'utiliser une expression mathématique valide.' },
+      it: { result: 'Il risultato è',  error: 'Non sono riuscito a calcolarlo. Assicurati di utilizzare un\'espressione matematica valida.' },
+      de: { result: 'Das Ergebnis ist', error: 'Ich konnte das nicht berechnen. Stelle sicher, dass du einen gültigen mathematischen Ausdruck verwendest.' }
     };
-
     const insultPatterns = /(puta|idiota|mierda|maric[oó]n|zorra|gilipollas|imb[eé]cil|racista|machista|homof[oó]bo|homosexual|tont[oa])/i;
 
-    // Evaluación segura de expresiones
     function safeEvaluate(input) {
-      // Solo caracteres permitidos: dígitos, operadores, paréntesis, espacios, . ^ √
-      if (!/^[0-9+\-*/().\s^√]+$/.test(input)) {
-        throw new Error('Expresión no válida');
-      }
-      // Reemplazar ^ y √(...) antes de evaluar
+      if (!/^[0-9+\-*/().\s^√]+$/.test(input)) throw new Error('Expresión no válida');
       let expr = input.replace(/\^/g, '**').replace(/√\s*\(([^)]+)\)/g, 'Math.sqrt($1)');
-      // Usar Function en lugar de eval para mayor control
       return new Function('return ' + expr)();
     }
 
@@ -155,7 +170,6 @@
 
     function resetChat() {
       conv.innerHTML = '';
-      promptHeader.style.display = 'block';
       userInput.value = '';
       userInput.focus();
     }
@@ -166,29 +180,26 @@
       if (insultPatterns.test(raw)) { resetChat(); return; }
       appendMessage(raw, 'user');
 
-      const lang = langSelect.value;
+      const lang  = langSelect.value;
       const clean = raw.toLowerCase().replace(/[^\p{L}\d\s]/gu, '').trim();
       const token = clean.split(/\s+/)[0];
       let reply;
-      // Reconocer expresiones matemáticas
+
       if (/^[0-9+\-*/().\s^√]+$/.test(raw)) {
         try {
           const result = safeEvaluate(raw);
           reply = `${texts[lang].result} ${result}`;
-        } catch (e) {
+        } catch {
           reply = texts[lang].error;
         }
       }
-      // Saludo
       else if (greetingKeywords[lang].includes(token)) {
         reply = templates[lang].greetings[0];
       }
-      // Estado
       else if (statusKeywords[lang].some(s => clean.includes(s))) {
-        const well = wellSynonyms[lang][Math.floor(Math.random() * wellSynonyms[lang].length)];
+        const well = wellSynonyms[lang][Math.floor(Math.random()*wellSynonyms[lang].length)];
         reply = templates[lang].status[0].replace('{well}', well);
       }
-      // Respuesta por defecto
       else {
         reply = templates[lang].default[0];
       }
@@ -198,6 +209,12 @@
       userInput.focus();
     }
 
+    // --- inicialización ---
+    updateUI();
+    langSelect.addEventListener('change', () => {
+      updateUI();
+      resetChat();
+    });
     sendBtn.addEventListener('click', handleInput);
     resetBtn.addEventListener('click', resetChat);
     userInput.addEventListener('keydown', e => { if (e.key === 'Enter') handleInput(); });
