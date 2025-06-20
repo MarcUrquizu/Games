@@ -3,19 +3,26 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Juego de Laberinto 2D - Esquinas Aleatorias</title>
+  <title>Juego de Laberinto 2</title>
   <style>
-    body { margin:0; background:#222; color:#fff; font-family:sans-serif; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background:#222; color:#fff; font-family:sans-serif; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; min-height:100vh; padding-top:60px; }
+    .game-buttons { background-color: #000; color: #fff; font-weight: bold; text-decoration: none; padding: 8px 16px; border-radius: 5px; position: absolute; top: 10px; z-index: 10; }
+    .menu-button { right: 10px; }
+    .help-button { left: 10px; }
     #info { margin-bottom:10px; font-size:1.2em; }
     canvas { background:#000; border:2px solid #fff; }
   </style>
 </head>
 <body>
+  <!-- Botones de Menú e Info -->
+  <a href="index.html" class="menu-button game-buttons">Menu</a>
+  <a href="help.html" class="help-button game-buttons">Info</a>
+
   <div id="info">Nivel: 1 | Tiempo: 0s</div>
   <canvas id="gameCanvas" width="600" height="400"></canvas>
 
   <script>
-    // Configuración
     let level = 1;
     const maxLevels = 10;
     const minCols = 15, minRows = 10;
@@ -23,95 +30,145 @@
     const visibilityRadius = 3;
     const cellTraversalTime = 200;
 
-    // Estado
     let cols, rows;
     let cellW, cellH, offsetX, offsetY;
     let wallThickness;
     let grid, stack, current;
     let px, py, radius, speed;
-    let goalI, goalJ;
+    let startCorner = [0,0];
+    let goalCorner = [0,0];
     let keys = { up:false, down:false, left:false, right:false };
     let lastTime = 0;
     let startTime, timerInterval;
     let gameWon = false;
 
-    class Cell { constructor(i,j){ this.i=i; this.j=j; this.walls=[true,true,true,true]; this.visited=false; } index(i,j){ return (i<0||j<0||i>=cols||j>=rows)?-1:i+j*cols; } checkNeighbors(){ const dirs=[[0,-1],[1,0],[0,1],[-1,0]], n=[]; for(const [dx,dy] of dirs){ const nb=grid[this.index(this.i+dx,this.j+dy)]; if(nb&&!nb.visited) n.push(nb);} return n.length?n[Math.floor(Math.random()*n.length)]:undefined; }}
-    function removeWalls(a,b){ const dx=a.i-b.i; if(dx===1){a.walls[3]=false;b.walls[1]=false;}else if(dx===-1){a.walls[1]=false;b.walls[3]=false;} const dy=a.j-b.j; if(dy===1){a.walls[0]=false;b.walls[2]=false;}else if(dy===-1){a.walls[2]=false;b.walls[0]=false;} }
+    class Cell {
+      constructor(i,j){ this.i=i; this.j=j; this.walls=[true,true,true,true]; this.visited=false; }
+      index(i,j){ return (i<0||j<0||i>=cols||j>=rows)?-1:i+j*cols; }
+      checkNeighbors(){ const dirs=[[0,-1],[1,0],[0,1],[-1,0]]; const n=[]; for(const [dx,dy] of dirs){ const nb=grid[this.index(this.i+dx,this.j+dy)]; if(nb&&!nb.visited) n.push(nb);} return n.length?n[Math.floor(Math.random()*n.length)]:undefined; }
+    }
+
+    function removeWalls(a,b){
+      const dx = a.i - b.i;
+      if(dx===1){ a.walls[3]=false; b.walls[1]=false; }
+      else if(dx===-1){ a.walls[1]=false; b.walls[3]=false; }
+      const dy = a.j - b.j;
+      if(dy===1){ a.walls[0]=false; b.walls[2]=false; }
+      else if(dy===-1){ a.walls[2]=false; b.walls[0]=false; }
+    }
 
     function initLevel(){
-      // Ajustar laberinto
       cols = minCols + Math.ceil((maxCols-minCols)*(level-1)/(maxLevels-1));
       rows = minRows + Math.ceil((maxRows-minRows)*(level-1)/(maxLevels-1));
       const canvas = document.getElementById('gameCanvas');
       cellW = Math.floor(canvas.width/cols);
       cellH = Math.floor(canvas.height/rows);
-      offsetX = Math.floor((canvas.width-cellW*cols)/2);
-      offsetY = Math.floor((canvas.height-cellH*rows)/2);
+      offsetX = Math.floor((canvas.width - cellW*cols)/2);
+      offsetY = Math.floor((canvas.height - cellH*rows)/2);
       radius = Math.min(cellW,cellH)*0.3;
-      speed = cellW/cellTraversalTime;
-      wallThickness = Math.max(2,Math.floor(Math.min(cellW,cellH)*0.05));
-      // Generar laberinto
+      speed = cellW / cellTraversalTime;
+      wallThickness = Math.max(2, Math.floor(Math.min(cellW,cellH)*0.05));
+
       grid=[]; stack=[];
       for(let j=0;j<rows;j++) for(let i=0;i<cols;i++) grid.push(new Cell(i,j));
-      current = grid[0]; generateMaze();
-            // Determinar posición de inicio y meta
-      let si, sj;
-      if (level === 1) {
-        // primer nivel inicio arriba izquierda, meta abajo derecha
-        si = 0; sj = 0;
-        goalI = cols - 1;
-        goalJ = rows - 1;
-      } else {
-        // inicio donde terminó la meta del nivel anterior
-        si = goalI;
-        sj = goalJ;
-        // meta en esquina aleatoria distinta de la de inicio
-        const corners = [ [0,0],[cols-1,0],[0,rows-1],[cols-1,rows-1] ];
-        const otherCorners = corners.filter(c => !(c[0] === si && c[1] === sj));
-        const [gi, gj] = otherCorners[Math.floor(Math.random() * otherCorners.length)];
-        goalI = gi;
-        goalJ = gj;
+      current=grid[0]; generateMaze();
+
+      const corners = [[0,0],[cols-1,0],[0,rows-1],[cols-1,rows-1]];
+      if(level===1){ startCorner = corners[0]; goalCorner  = corners[3]; }
+      else {
+        startCorner = goalCorner.slice();
+        let newGoal;
+        do { newGoal = corners[Math.floor(Math.random()*corners.length)]; }
+        while(newGoal[0]===goalCorner[0] && newGoal[1]===goalCorner[1]);
+        goalCorner = newGoal;
       }
-      // posición jugador en centro de celda de inicio
-      px = offsetX + (si + 0.5) * cellW;
-      py = offsetY + (sj + 0.5) * cellH;
+
+      px = offsetX + (startCorner[0] + 0.5)*cellW;
+      py = offsetY + (startCorner[1] + 0.5)*cellH;
       gameWon = false;
+
       clearInterval(timerInterval);
-      startTime = Date.now(); timerInterval = setInterval(updateTimer,1000);
+      startTime = Date.now();
+      timerInterval = setInterval(updateTimer,1000);
       lastTime = performance.now();
       requestAnimationFrame(loop);
     }
 
-    function generateMaze(){ current.visited=true; const next=current.checkNeighbors(); if(next){ stack.push(current); removeWalls(current,next); current=next; generateMaze(); }else if(stack.length){ current=stack.pop(); generateMaze(); }}
+    function generateMaze(){
+      current.visited=true;
+      const next = current.checkNeighbors();
+      if(next){ stack.push(current); removeWalls(current,next); current=next; generateMaze(); }
+      else if(stack.length){ current=stack.pop(); generateMaze(); }
+    }
 
-    function updateTimer(){ if(gameWon) return; const sec=Math.floor((Date.now()-startTime)/1000); document.getElementById('info').textContent = `Nivel: ${level} | Tiempo: ${sec}s`; }
+    function updateTimer(){ if(gameWon) return; const sec = Math.floor((Date.now()-startTime)/1000); document.getElementById('info').textContent=`Nivel: ${level} | Tiempo: ${sec}s`; }
 
     document.addEventListener('keydown',e=>{ const k=e.key.toLowerCase(); if(k==='w'||k==='arrowup')keys.up=true; if(k==='s'||k==='arrowdown')keys.down=true; if(k==='a'||k==='arrowleft')keys.left=true; if(k==='d'||k==='arrowright')keys.right=true; });
     document.addEventListener('keyup',e=>{ const k=e.key.toLowerCase(); if(k==='w'||k==='arrowup')keys.up=false; if(k==='s'||k==='arrowdown')keys.down=false; if(k==='a'||k==='arrowleft')keys.left=false; if(k==='d'||k==='arrowright')keys.right=false; });
 
-    function loop(time){ const dt=time-lastTime; lastTime=time; update(dt); draw(); if(!gameWon) requestAnimationFrame(loop); }
-    function update(dt){ let vx=0,vy=0; if(keys.up)vy-=1; if(keys.down)vy+=1; if(keys.left)vx-=1; if(keys.right)vx+=1; const len=Math.hypot(vx,vy); if(len>0){vx/=len;vy/=len;} let nx=px+vx*speed*dt; let ny=py+vy*speed*dt; // colisiones
-      const ci=Math.floor((px-offsetX)/cellW), cj=Math.floor((py-offsetY)/cellH);
+    function loop(time){ const dt = time - lastTime; lastTime = time; update(dt); draw(); if(!gameWon) requestAnimationFrame(loop); }
+
+    function update(dt){
+      let vx=0, vy=0;
+      if(keys.up) vy--;
+      if(keys.down) vy++;
+      if(keys.left) vx--;
+      if(keys.right) vx++;
+      const len = Math.hypot(vx,vy);
+      if(len>0){ vx/=len; vy/=len; }
+
+      let nx = px + vx*speed*dt;
+      let ny = py + vy*speed*dt;
+      const ci = Math.floor((px-offsetX)/cellW);
+      const cj = Math.floor((py-offsetY)/cellH);
       const cell = grid[cj*cols+ci];
       if(nx-radius < offsetX+ci*cellW && cell.walls[3]) nx = offsetX+ci*cellW+radius;
       if(nx+radius > offsetX+(ci+1)*cellW && cell.walls[1]) nx = offsetX+(ci+1)*cellW-radius;
       if(ny-radius < offsetY+cj*cellH && cell.walls[0]) ny = offsetY+cj*cellH+radius;
       if(ny+radius > offsetY+(cj+1)*cellH && cell.walls[2]) ny = offsetY+(cj+1)*cellH-radius;
-      px=nx; py=ny;
-      // victoria
-      const vi=Math.floor((px-offsetX)/cellW), vj=Math.floor((py-offsetY)/cellH);
-      if(vi===goalI && vj===goalJ){ gameWon=true; clearInterval(timerInterval); const t=Math.floor((Date.now()-startTime)/1000); const info=document.getElementById('info'); if(level<maxLevels){ info.textContent=`¡Nivel ${level} completado en ${t}s!`; setTimeout(()=>{level++; initLevel();},1000);} else{ info.textContent=`¡Completaste ${maxLevels} niveles en ${t}s!`; }}
+
+      px = nx; py = ny;
+
+      const vi = Math.floor((px-offsetX)/cellW);
+      const vj = Math.floor((py-offsetY)/cellH);
+      if(vi===goalCorner[0] && vj===goalCorner[1]){
+        gameWon=true;
+        clearInterval(timerInterval);
+        const t = Math.floor((Date.now()-startTime)/1000);
+        const infoDiv = document.getElementById('info');
+        if(level<maxLevels){ infoDiv.textContent=`¡Nivel ${level} completado en ${t}s!`; level++; setTimeout(initLevel,1000); }
+        else{ infoDiv.textContent=`¡Completaste los ${maxLevels} niveles en ${t}s!`; }
+      }
     }
 
-    function draw(){ const canvas=document.getElementById('gameCanvas'); const ctx=canvas.getContext('2d'); ctx.clearRect(0,0,canvas.width,canvas.height); ctx.fillStyle='#fff'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.lineWidth=wallThickness; ctx.strokeStyle='#000';
-      // muros
-      grid.forEach(c=>{ const x=offsetX+c.i*cellW, y=offsetY+c.j*cellH; ctx.beginPath(); if(c.walls[0])ctx.moveTo(x,y),ctx.lineTo(x+cellW,y); if(c.walls[1])ctx.moveTo(x+cellW,y),ctx.lineTo(x+cellW,y+cellH); if(c.walls[2])ctx.moveTo(x+cellW,y+cellH),ctx.lineTo(x,y+cellH); if(c.walls[3])ctx.moveTo(x,y+cellH),ctx.lineTo(x,y); ctx.stroke(); });
-      // salida
-      ctx.fillStyle='green'; ctx.fillRect(offsetX+goalI*cellW+radius, offsetY+goalJ*cellH+radius, cellW-2*radius, cellH-2*radius);
-      // jugador
+    function draw(){
+      const canvas = document.getElementById('gameCanvas');
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle = '#fff'; ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.lineWidth = wallThickness;
+      ctx.strokeStyle = '#000';
+      grid.forEach(c=>{
+        const x = offsetX + c.i*cellW;
+        const y = offsetY + c.j*cellH;
+        ctx.beginPath();
+        if(c.walls[0]) ctx.moveTo(x,y),ctx.lineTo(x+cellW,y);
+        if(c.walls[1]) ctx.moveTo(x+cellW,y),ctx.lineTo(x+cellW,y+cellH);
+        if(c.walls[2]) ctx.moveTo(x+cellW,y+cellH),ctx.lineTo(x,y+cellH);
+        if(c.walls[3]) ctx.moveTo(x,y+cellH),ctx.lineTo(x,y);
+        ctx.stroke();
+      });
+      ctx.fillStyle='green'; ctx.fillRect(offsetX+goalCorner[0]*cellW+radius, offsetY+goalCorner[1]*cellH+radius, cellW-2*radius, cellH-2*radius);
       ctx.fillStyle='blue'; ctx.beginPath(); ctx.arc(px,py,radius,0,2*Math.PI); ctx.fill();
-      // niebla
-      if(level>1 && !gameWon){ const fov = visibilityRadius*Math.min(cellW,cellH); ctx.save(); ctx.beginPath(); ctx.rect(0,0,canvas.width,canvas.height); ctx.arc(px,py,fov,0,2*Math.PI,true); ctx.clip('evenodd'); ctx.fillStyle='#000'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.restore(); }
+      if(level>1 && !gameWon){
+        let fov = visibilityRadius * Math.min(cellW, cellH);
+        if (level >= 5) fov *= 0.7;
+        ctx.save(); ctx.beginPath(); ctx.rect(0,0,canvas.width,canvas.height);
+        ctx.arc(px,py,fov,0,2*Math.PI,true);
+        ctx.clip('evenodd');
+        ctx.fillStyle='#000'; ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.restore();
+      }
     }
 
     initLevel();
