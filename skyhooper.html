@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sky Hopper</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #87ceeb; overflow: hidden; }
+    canvas { display: block; }
+    #score { position: absolute; top: 10px; left: 10px; font: 20px Arial; color: #fff; }
+    #restartBtn {
+      position: absolute;
+      left: 50%; bottom: 50px;
+      transform: translateX(-50%);
+      padding: 10px 20px;
+      font-size: 20px;
+      display: none;
+      cursor: pointer;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+  <div id="score">Altura: 0 m</div>
+  <button id="restartBtn">Volver a jugar</button>
+  <canvas id="gameCanvas"></canvas>
+  <script>
+    // URLs de sprites
+    const playerURL = "https://images.vexels.com/media/users/3/246497/isolated/preview/c4ec48235199c646c02c169c813d2ebe-pixelart-personajes-vinilo-color-de-los-80-4.png";
+    const platformURL = "https://e7.pngegg.com/pngimages/851/570/png-clipart-pixel-art-2d-platform-text-computer-thumbnail.png";
+    const playerSprite = new Image(), platformSprite = new Image();
+    playerSprite.crossOrigin = platformSprite.crossOrigin = "Anonymous";
+    playerSprite.src = playerURL;
+    platformSprite.src = platformURL;
+
+    // Canvas y estado global
+    let canvas, ctx, W, H, groundY;
+    let player, platforms, score, gameOver;
+    const restartBtn = document.getElementById('restartBtn');
+
+    // Estrellas
+    let stars = [];
+    const starCount = 100;
+
+    // Esperar a que carguen los sprites
+    let imgsLoaded = 0;
+    [playerSprite, platformSprite].forEach(img => {
+      img.onload = img.onerror = () => {
+        if (++imgsLoaded === 2) initCanvas();
+      };
+    });
+
+    function initCanvas() {
+      canvas = document.getElementById('gameCanvas');
+      ctx = canvas.getContext('2d');
+      window.addEventListener('resize', onResize);
+      onResize();
+
+      restartBtn.addEventListener('click', restartGame);
+      document.addEventListener('keydown', onKeyDown);
+      document.addEventListener('keyup', onKeyUp);
+
+      restartGame();
+    }
+
+    function onResize() {
+      W = canvas.width = window.innerWidth;
+      H = canvas.height = window.innerHeight;
+      groundY = H - 20;
+      if (stars.length) {
+        stars = [];
+        createStars();
+      }
+    }
+
+    function onKeyDown(e) {
+      if ((e.key === 'ArrowUp' || e.key === 'w' || e.key === ' ') && player.onGround) {
+        player.vy = player.jumpStrength;
+        player.onGround = false;
+      }
+      if (e.key === 'ArrowLeft' || e.key === 'a') player.vx = -7;
+      if (e.key === 'ArrowRight' || e.key === 'd') player.vx = 7;
+    }
+    function onKeyUp(e) {
+      if (['ArrowLeft','a','ArrowRight','d'].includes(e.key)) player.vx = 0;
+    }
+
+    function lerp(a, b, t) { return a + (b - a) * t; }
+    function lerpColor(c0, c1, t) {
+      return `rgb(${
+        Math.round(lerp(c0.r, c1.r, t))
+      },${
+        Math.round(lerp(c0.g, c1.g, t))
+      },${
+        Math.round(lerp(c0.b, c1.b, t))
+      })`;
+    }
+
+    class Player {
+      constructor() {
+        this.width = 50; this.height = 50;
+        this.x = W / 2; this.y = groundY - this.height;
+        this.vx = 0; this.vy = 0;
+        this.gravity = 0.6; this.jumpStrength = -15;
+        this.onGround = true;
+      }
+      update() {
+        this.vy += this.gravity;
+        this.y += this.vy;
+        this.x += this.vx;
+        this.x = Math.max(0, Math.min(this.x, W - this.width));
+      }
+      draw() {
+        if (playerSprite.complete && playerSprite.naturalWidth > 0) {
+          ctx.drawImage(playerSprite, this.x, this.y, this.width, this.height);
+        } else {
+          ctx.fillStyle = '#ff0';
+          ctx.fillRect(this.x, this.y, this.width, this.height);
+        }
+      }
+    }
+
+    class Platform {
+      constructor(x, y, w = 120, h = 24) {
+        this.x = x; this.y = y; this.width = w; this.height = h;
+      }
+      draw() {
+        if (platformSprite.complete && platformSprite.naturalWidth > 0) {
+          ctx.drawImage(platformSprite, this.x, this.y, this.width, this.height);
+        } else {
+          ctx.fillStyle = '#654321';
+          ctx.fillRect(this.x, this.y, this.width, this.height);
+        }
+      }
+    }
+
+    function clamp(x, min, max) { return Math.max(min, Math.min(x, max)); }
+
+    function initPlatforms() {
+      platforms = [];
+      const maxSpacing = Math.min(H / 5, 150), maxReach = 350;
+      platforms.push(new Platform(0, groundY, W, 20));
+      let prevX = player.x;
+      for (let i = 1; i < 6; i++) {
+        const y = groundY - i * maxSpacing;
+        let x = prevX + (Math.random() * 2 - 1) * maxReach;
+        x = clamp(x, 0, W - 120);
+        platforms.push(new Platform(x, y));
+        prevX = x;
+      }
+    }
+
+    function updatePlatforms() {
+      if (player.y < H / 3) {
+        const dy = (H / 3) - player.y;
+        player.y = H / 3;
+        platforms.forEach(p => p.y += dy);
+        score += Math.floor(dy / 10);
+        document.getElementById('score').innerText = 'Altura: ' + Math.floor(score) + ' m';
+        platforms = platforms.filter(p => p.y < H);
+
+        // Mover estrellas si estamos en zona oscura
+        if (score >= 250) {
+          stars.forEach(s => {
+            s.y += dy * 0.6;
+            if (s.y > H) {
+              s.y = Math.random() * -H * 0.2;
+              s.x = Math.random() * W;
+            }
+          });
+        }
+
+        const maxSpacing = Math.min(H / 5, 150), maxReach = 350;
+        while (platforms.length < 7) {
+          const last = platforms[0];
+          const y = last.y - maxSpacing;
+          let x = last.x + (Math.random() * 2 - 1) * maxReach;
+          x = clamp(x, 0, W - 120);
+          platforms.unshift(new Platform(x, y));
+        }
+      }
+    }
+
+    function handleCollisions() {
+      player.onGround = false;
+      platforms.forEach(p => {
+        const bottom = player.y + player.height;
+        if (player.vy > 0 &&
+            player.x < p.x + p.width &&
+            player.x + player.width > p.x &&
+            bottom >= p.y && bottom <= p.y + p.height) {
+          player.y = p.y - player.height;
+          player.vy = 0;
+          player.onGround = true;
+        }
+      });
+    }
+
+    function clear() { ctx.clearRect(0, 0, W, H); }
+
+    // Generar estrellas en posiciones aleatorias
+    function createStars() {
+      for (let i = 0; i < starCount; i++) {
+        stars.push({
+          x: Math.random() * W,
+          y: Math.random() * H,
+          size: Math.random() * 2 + 1
+        });
+      }
+    }
+
+    function drawStars(alpha) {
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = '#fff';
+      stars.forEach(s => {
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.restore();
+    }
+
+    // Fondo en dos fases + estrellas
+    function drawBackground() {
+      const topStart = { r: 135, g: 206, b: 235 };
+      const topMid   = { r:   0, g:   0, b:   0 };
+      const botStart = { r: 255, g: 255, b: 255 };
+      const botMid   = { r:   0, g:  17, b:  51 };
+
+      // 0–250 m
+      const t1 = Math.min(score / 250, 1);
+      // 250–500 m
+      const t2 = score > 250 ? Math.min((score - 250) / 250, 1) : 0;
+
+      let topColor, botColor;
+      if (t2 === 0) {
+        // fase 1: cielo→espacio
+        topColor = lerpColor(topStart, topMid, t1);
+        botColor = lerpColor(botStart, botMid, t1);
+      } else {
+        // fase 2: espacio→negro total
+        topColor = lerpColor(topMid, { r:0, g:0, b:0 }, t2);
+        botColor = lerpColor(botMid, { r:0, g:0, b:0 }, t2);
+      }
+
+      const grad = ctx.createLinearGradient(0, 0, 0, H);
+      grad.addColorStop(0, topColor);
+      grad.addColorStop(1, botColor);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+
+      // Fade-in de estrellas 250→500 m
+      if (score >= 250) {
+        const alpha = Math.min((score - 250) / 250, 1);
+        drawStars(alpha);
+      }
+    }
+
+    function gameLoop() {
+      if (gameOver) return;
+      clear();
+      drawBackground();
+      updatePlatforms();
+      handleCollisions();
+      player.update();
+      platforms.forEach(p => p.draw());
+      player.draw();
+      if (player.y > H) {
+        gameOver = true;
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = '#fff';
+        ctx.font = '40px Arial';
+        ctx.fillText('¡Game Over!', W/2 - 100, H/2 - 20);
+        restartBtn.style.display = 'block';
+        return;
+      }
+      requestAnimationFrame(gameLoop);
+    }
+
+    function restartGame() {
+      gameOver = false;
+      restartBtn.style.display = 'none';
+      score = 0;
+      document.getElementById('score').innerText = 'Altura: 0 m';
+      player = new Player();
+      initPlatforms();
+      stars = [];
+      createStars();
+      gameLoop();
+    }
+  </script>
+</body>
+</html>
