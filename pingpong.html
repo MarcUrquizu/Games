@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Juego de Ping Pong vs Pared</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #f0f0f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: sans-serif;
+    }
+    canvas {
+      background: #111;
+      display: block;
+      margin-top: 20px;
+      border: 2px solid #333;
+    }
+    #controls {
+      margin-top: 10px;
+    }
+    #score {
+      font-size: 1.2em;
+      color: #333;
+    }
+    button {
+      padding: 8px 16px;
+      font-size: 1em;
+      margin-left: 10px;
+      cursor: pointer;
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <h1>Ping Pong VS Pared</h1>
+  <div id="score">Puntuación: 0</div>
+  <canvas id="gameCanvas" width="800" height="500"></canvas>
+  <div id="controls">
+    <button id="startButton">Iniciar</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const paddleWidth = 100;
+    const paddleHeight = 20;
+    const paddleSpeed = 7;
+    let paddleX;
+    const paddleY = canvas.height - paddleHeight - 10;
+    const ballRadius = 10;
+    let ballX, ballY, ballVX, ballVY;
+    let score = 0;
+    let animating = false;
+    let leftPressed = false;
+    let rightPressed = false;
+
+    // Dibujar paddle y bola
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // Pared superior
+      ctx.fillStyle = '#555';
+      ctx.fillRect(0, 0, canvas.width, 5);
+      // Paddle
+      ctx.fillStyle = '#0f0';
+      ctx.fillRect(paddleX, paddleY, paddleWidth, paddleHeight);
+      // Bola
+      ctx.beginPath();
+      ctx.arc(ballX, ballY, ballRadius, 0, Math.PI * 2);
+      ctx.fillStyle = '#ff0';
+      ctx.fill();
+    }
+
+    // Actualizar física y controles
+    function update() {
+      if (!animating) return;
+
+      // Mover paddle según teclas
+      if (leftPressed) {
+        paddleX -= paddleSpeed;
+        if (paddleX < 0) paddleX = 0;
+      }
+      if (rightPressed) {
+        paddleX += paddleSpeed;
+        if (paddleX + paddleWidth > canvas.width) paddleX = canvas.width - paddleWidth;
+      }
+
+      ballX += ballVX;
+      ballY += ballVY;
+
+      // Rebote contra paredes laterales
+      if (ballX + ballRadius > canvas.width || ballX - ballRadius < 0) {
+        ballVX = -ballVX;
+      }
+      // Rebote contra pared superior
+      if (ballY - ballRadius < 5) {
+        ballY = 5 + ballRadius;
+        ballVY = -ballVY;
+        score++;
+        document.getElementById('score').innerText = `Puntuación: ${score}`;
+      }
+      // Rebote contra paddle
+      if (
+        ballY + ballRadius >= paddleY &&
+        ballX > paddleX && ballX < paddleX + paddleWidth
+      ) {
+        ballY = paddleY - ballRadius;
+        ballVY = -ballVY;
+      }
+      // Si falla el paddle
+      if (ballY - ballRadius > canvas.height) {
+        animating = false;
+        const btn = document.getElementById('startButton');
+        btn.innerText = 'Reiniciar';
+        btn.disabled = false;
+      }
+
+      draw();
+      if (animating) requestAnimationFrame(update);
+    }
+
+    // Iniciar o reiniciar juego
+    function startGame() {
+      if (animating) return; // evita múltiples bucles
+      paddleX = (canvas.width - paddleWidth) / 2;
+      ballX = canvas.width / 2;
+      ballY = paddleY - ballRadius;
+      ballVX = 4;
+      ballVY = -6;
+      score = 0;
+      document.getElementById('score').innerText = 'Puntuación: 0';
+      animating = true;
+      const btn = document.getElementById('startButton');
+      btn.innerText = 'Jugando...';
+      btn.disabled = true;    
+      requestAnimationFrame(update);
+    }
+
+    // Eventos de teclado
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') {
+        leftPressed = true;
+      }
+      if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') {
+        rightPressed = true;
+      }
+    });
+    document.addEventListener('keyup', (e) => {
+      if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') {
+        leftPressed = false;
+      }
+      if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') {
+        rightPressed = false;
+      }
+    });
+
+    document.getElementById('startButton').addEventListener('click', startGame);
+    draw();
+  </script>
+</body>
+</html>
