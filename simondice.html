@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simon Dice</title>
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #222;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      height: 100vh;
+      margin: 0;
+      justify-content: center;
+    }
+    .game-container {
+      display: grid;
+      grid-template-columns: repeat(2, 150px);
+      grid-template-rows: repeat(2, 150px);
+      gap: 10px;
+    }
+    .color-btn {
+      width: 150px;
+      height: 150px;
+      border: 2px solid #333;
+      border-radius: 10px;
+      cursor: pointer;
+      opacity: 0.8;
+      transition: opacity 0.2s;
+      pointer-events: none;
+    }
+    .color-btn.active {
+      opacity: 1;
+      box-shadow: 0 0 20px #fff;
+    }
+    #green { background: #2ecc71; }
+    #red   { background: #e74c3c; }
+    #yellow{ background: #f1c40f; }
+    #blue  { background: #3498db; }
+    .controls {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    #start { background: #27ae60; color: #fff; }
+    #score { font-size: 18px; }
+  </style>
+</head>
+<body>
+  <h1>Simon Dice</h1>
+  <div class="game-container">
+    <div id="green" class="color-btn"></div>
+    <div id="red" class="color-btn"></div>
+    <div id="yellow" class="color-btn"></div>
+    <div id="blue" class="color-btn"></div>
+  </div>
+  <div class="controls">
+    <button id="start">Iniciar Juego</button>
+    <div id="score">Game Over</div>
+  </div>
+
+  <script>
+    // Configuración básica
+    const frequencies = { green: 329.63, red: 261.63, yellow: 220.00, blue: 164.81 };
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const BASE_DELAY = 600;              // Retraso inicial entre colores
+    const MIN_DELAY = 200;               // Retraso mínimo
+    const SPEED_STEP_POINTS = 5;         // Cada cuántos puntos aumenta velocidad
+    const VOLUME = 3.0;                  // Ganancia de audio
+
+    // Reproduce sonido para un color
+    function playSound(color) {
+      const osc = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      osc.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      osc.frequency.value = frequencies[color];
+      osc.type = 'sine';
+      gainNode.gain.setValueAtTime(VOLUME, audioCtx.currentTime);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+    }
+
+    // Calcula retraso dinámico según puntuación
+    function getDelayByLevel(level) {
+      const speedSteps = Math.floor((level - 1) / SPEED_STEP_POINTS);
+      return Math.max(MIN_DELAY, BASE_DELAY - speedSteps * 100);
+    }
+
+    const buttonColors = ["green", "red", "yellow", "blue"];
+    let gameSequence = [], userSequence = [];
+    let level = 0, allowInput = false;
+    const buttons = {};
+    const scoreEl = document.getElementById('score');
+    const startBtn = document.getElementById('start');
+
+    // Inicializa botones
+    buttonColors.forEach(color => {
+      buttons[color] = document.getElementById(color);
+      buttons[color].addEventListener('click', () => handleUserClick(color));
+    });
+    startBtn.addEventListener('click', startGame);
+
+    function startGame() {
+      gameSequence = [];
+      level = 0;
+      allowInput = false;
+      updateScore();
+      updateButtons();
+      nextSequence();
+    }
+
+    function nextSequence() {
+      allowInput = false;
+      updateButtons();
+      userSequence = [];
+      level++;
+      updateScore();
+      const randomColor = buttonColors[Math.floor(Math.random() * 4)];
+      gameSequence.push(randomColor);
+      playSequence();
+    }
+
+    function playSequence() {
+      let delay = 0;
+      const stepDelay = getDelayByLevel(level);
+      gameSequence.forEach(color => {
+        setTimeout(() => animateButton(color), delay);
+        delay += stepDelay;
+      });
+      // Permite entrada tras terminar la secuencia
+      setTimeout(() => { allowInput = true; updateButtons(); }, delay);
+    }
+
+    function animateButton(color) {
+      playSound(color);
+      const btn = buttons[color];
+      btn.classList.add('active');
+      setTimeout(() => btn.classList.remove('active'), 300);
+    }
+
+    function blinkAll(times = 3) {
+      const blinkDelay = 300;
+      for (let i = 0; i < times; i++) {
+        setTimeout(() => buttonColors.forEach(c => animateButton(c)), i * blinkDelay);
+      }
+    }
+
+    function handleUserClick(color) {
+      if (!allowInput) return;
+      userSequence.push(color);
+      animateButton(color);
+      checkUserInput(userSequence.length - 1);
+    }
+
+    function checkUserInput(idx) {
+      if (userSequence[idx] !== gameSequence[idx]) {
+        allowInput = false;
+        updateButtons();
+        blinkAll();
+        setTimeout(() => {
+          // Reiniciar sin alert
+          gameSequence = [];
+          level = 0;
+          updateScore();
+        }, 3 * 300);
+        return;
+      }
+      if (userSequence.length === gameSequence.length) {
+        setTimeout(nextSequence, 1000);
+      }
+    }
+
+    function updateScore() {
+      scoreEl.textContent = level === 0 ? 'Game Over' : 'Puntuación: ' + (level - 1);
+    }
+
+    function updateButtons() {
+      buttonColors.forEach(color => {
+        buttons[color].style.pointerEvents = allowInput ? 'auto' : 'none';
+      });
+    }
+  </script>
+</body>
+</html>
