@@ -74,12 +74,34 @@
     // Configuración básica
     const frequencies = { green: 329.63, red: 261.63, yellow: 220.00, blue: 164.81 };
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const BASE_DELAY = 600;              // Retraso inicial entre colores
-    const MIN_DELAY = 200;               // Retraso mínimo
-    const SPEED_STEP_POINTS = 5;         // Cada cuántos puntos aumenta velocidad
-    const VOLUME = 3.0;                  // Ganancia de audio
+    const BASE_DELAY = 600;
+    const MIN_DELAY = 200;
+    const SPEED_STEP_POINTS = 5;
+    const VOLUME = 3.0;
+    const IDLE_LIMIT = 5000; // 5 segundos
 
-    // Reproduce sonido para un color
+    let idleTimer;
+    function startIdleTimer() {
+      clearIdleTimer();
+      idleTimer = setTimeout(() => {
+        loseByIdle();
+      }, IDLE_LIMIT);
+    }
+    function clearIdleTimer() {
+      if (idleTimer) clearTimeout(idleTimer);
+    }
+
+    function loseByIdle() {
+      allowInput = false;
+      updateButtons();
+      blinkAll();
+      setTimeout(() => {
+        gameSequence = [];
+        level = 0;
+        updateScore();
+      }, 3 * 300);
+    }
+
     function playSound(color) {
       const osc = audioCtx.createOscillator();
       const gainNode = audioCtx.createGain();
@@ -91,10 +113,9 @@
       osc.start(); osc.stop(audioCtx.currentTime + 0.3);
     }
 
-    // Calcula retraso dinámico según puntuación
     function getDelayByLevel(level) {
-      const speedSteps = Math.floor((level - 1) / SPEED_STEP_POINTS);
-      return Math.max(MIN_DELAY, BASE_DELAY - speedSteps * 100);
+      const steps = Math.floor((level - 1) / SPEED_STEP_POINTS);
+      return Math.max(MIN_DELAY, BASE_DELAY - steps * 100);
     }
 
     const buttonColors = ["green", "red", "yellow", "blue"];
@@ -104,7 +125,6 @@
     const scoreEl = document.getElementById('score');
     const startBtn = document.getElementById('start');
 
-    // Inicializa botones
     buttonColors.forEach(color => {
       buttons[color] = document.getElementById(color);
       buttons[color].addEventListener('click', () => handleUserClick(color));
@@ -115,8 +135,7 @@
       gameSequence = [];
       level = 0;
       allowInput = false;
-      updateScore();
-      updateButtons();
+      updateScore(); updateButtons();
       nextSequence();
     }
 
@@ -138,8 +157,11 @@
         setTimeout(() => animateButton(color), delay);
         delay += stepDelay;
       });
-      // Permite entrada tras terminar la secuencia
-      setTimeout(() => { allowInput = true; updateButtons(); }, delay);
+      setTimeout(() => {
+        allowInput = true;
+        updateButtons();
+        startIdleTimer();
+      }, delay);
     }
 
     function animateButton(color) {
@@ -158,25 +180,21 @@
 
     function handleUserClick(color) {
       if (!allowInput) return;
+      clearIdleTimer();
       userSequence.push(color);
       animateButton(color);
       checkUserInput(userSequence.length - 1);
+      startIdleTimer();
     }
 
     function checkUserInput(idx) {
       if (userSequence[idx] !== gameSequence[idx]) {
-        allowInput = false;
-        updateButtons();
-        blinkAll();
-        setTimeout(() => {
-          // Reiniciar sin alert
-          gameSequence = [];
-          level = 0;
-          updateScore();
-        }, 3 * 300);
+        allowInput = false; updateButtons(); clearIdleTimer(); blinkAll();
+        setTimeout(() => { gameSequence = []; level = 0; updateScore(); }, 3 * 300);
         return;
       }
       if (userSequence.length === gameSequence.length) {
+        clearIdleTimer();
         setTimeout(nextSequence, 1000);
       }
     }
