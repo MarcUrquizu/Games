@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Joc de Gramàtica</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; line-height: 1.6; padding: 20px; padding-top: 80px; position: relative; }
+    .game-buttons { background-color: #000; color: #fff; font-weight: bold; text-decoration: none; padding: 8px 16px; border-radius: 5px; position: absolute; top: 20px; z-index: 10; }
+    .menu-button { right: 20px; }
+    .help-button { left: 20px; }
+    .controls { margin-bottom: 20px; }
+    .controls button { margin-right: 10px; padding: 10px; border: none; cursor: pointer; }
+    .text-area { border: 1px solid #ccc; padding: 15px; border-radius: 8px; white-space: pre-wrap; }
+    .word { cursor: pointer; }
+    .pronoun { background-color: #d0eaff; }
+    .verb { background-color: #ffd0d0; }
+    .adverb { background-color: #d0ffd8; }
+    .prep { background-color: #fff2b3; }
+    .conj { background-color: #f0d0ff; }
+    .selected { outline: 2px solid #333; }
+    #bottom-controls { margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <!-- Botones de Menú e Info -->
+  <a href="./index.html" class="menu-button game-buttons">Menu</a>
+  <a href="./help.html" class="help-button game-buttons">Info</a>
+
+  <h1>Joc de Gramàtica en Català</h1>
+
+  <div class="controls">
+    <span>Mode: </span>
+    <button id="mode-pronouns">Pronoms</button>
+    <button id="mode-verbs">Verbs</button>
+    <button id="mode-adverbs">Adverbis</button>
+    <button id="mode-preposicions">Preposicions</button>
+    <button id="mode-conjuncions">Conjuncions</button>
+  </div>
+
+  <div class="text-area" id="text-area">
+    Amb alegria jo vaig a la biblioteca cada matí per estudiar gramàtica catalana i compartir llibres amb els amics.<br>
+    Mentre jo llegeixo en silenci entre pàgines antigues, tu observes atentament els exemples i aprens cada detall.<br>
+    Després de les classes, nosaltres parlem de les regles i corregim exercicis clarament per millorar junts.<br>
+    Sempre responc amb cura i escric dictats per perfeccionar la redacció en català a cada sessió.<br>
+    Aprenc contínuament amb entusiasme davant de cada explicació, i ells també comparteixen coneixements.<br>
+    Amb esforç i alegria, corregim errors i celebrem cada avançament en grup.<br>
+    Així creix la nostra confiança i fluïdesa en l’idioma, mentre gaudim de l’aprenentatge cooperatiu.
+  </div>
+
+  <div class="controls" id="bottom-controls">
+    <button id="check-all">Mostra respostes</button>
+  </div>
+
+  <div id="result"></div>
+
+  <script>
+    // Botons i configuració
+    const btnPron = document.getElementById('mode-pronouns');
+    const btnVer = document.getElementById('mode-verbs');
+    const btnAdv = document.getElementById('mode-adverbs');
+    const btnPrep = document.getElementById('mode-preposicions');
+    const btnCon = document.getElementById('mode-conjuncions');
+    const buttons = [btnPron, btnVer, btnAdv, btnPrep, btnCon];
+    const colors = { pronoms: '#d0eaff', verbs: '#ffd0d0', adverbis: '#d0ffd8', preposicions: '#fff2b3', conjuncions: '#f0d0ff' };
+    const modeClass = { pronoms: 'pronoun', verbs: 'verb', adverbis: 'adverb', preposicions: 'prep', conjuncions: 'conj' };
+    let currentMode = null;
+    function setMode(mode, btn) {
+      currentMode = mode;
+      buttons.forEach(b => b.style.backgroundColor = '');
+      btn.style.backgroundColor = colors[mode];
+    }
+    btnPron.onclick = () => setMode('pronoms', btnPron);
+    btnVer.onclick = () => setMode('verbs', btnVer);
+    btnAdv.onclick = () => setMode('adverbis', btnAdv);
+    btnPrep.onclick = () => setMode('preposicions', btnPrep);
+    btnCon.onclick = () => setMode('conjuncions', btnCon);
+
+    // Llistes de respostes
+    const answers = {
+      pronoms: ['jo','tu','ells','nosaltres'],
+      verbs: ['va','comparteixes','llegeixen','parlem','corregim','responc','escriuen','observo','aprenc'],
+      adverbis: ['ràpidament','clarament','contínuament','atentament','sempre'],
+      preposicions: ['amb','a','per','sobre','en','entre','de'],
+      conjuncions: ['i','mentre']
+    };
+
+    // Envolta cada paraula en spans
+    const textEl = document.getElementById('text-area');
+    textEl.innerHTML = textEl.textContent.split(/(\s+)/).map(w => {
+      if (/^\s+$/.test(w)) return w;
+      const clean = w.replace(/[.,?!;]/g, '').toLowerCase();
+      return `<span class="word" data-word="${clean}">${w}</span>`;
+    }).join('');
+
+    // Gestor de clic
+    textEl.addEventListener('click', e => {
+      if (!e.target.classList.contains('word') || !currentMode) return;
+      e.target.classList.toggle('selected');
+      e.target.classList.toggle(modeClass[currentMode]);
+    });
+
+    // Mostra resultats amb errors de no seleccionades
+    document.getElementById('check-all').onclick = () => {
+      const resEl = document.getElementById('result');
+      document.querySelectorAll('.word').forEach(span => { span.style.backgroundColor = ''; });
+      let html = '<h2>Resultats Finals</h2>';
+      const errors = [];
+      Object.keys(modeClass).forEach(key => {
+        const list = answers[key] || [];
+        const allSpans = Array.from(document.querySelectorAll('.word'));
+        const total = allSpans.filter(s => list.includes(s.dataset.word)).length;
+        const selectedSpans = Array.from(document.querySelectorAll(`.word.selected.${modeClass[key]}`));
+        selectedSpans.forEach(span => {
+          if (list.includes(span.dataset.word)) span.style.backgroundColor = 'lightgreen';
+          else { span.style.backgroundColor = 'lightcoral'; errors.push(span.dataset.word); }
+        });
+        allSpans.forEach(span => {
+          if (list.includes(span.dataset.word) && !span.classList.contains('selected')) {
+            span.style.backgroundColor = 'lightcoral'; errors.push(span.dataset.word);
+          }
+        });
+        const correct = selectedSpans.filter(s => list.includes(s.dataset.word)).length;
+        const label = key.charAt(0).toUpperCase() + key.slice(1);
+        html += `<p><strong>${label}:</strong> has encertat ${correct} de ${total}.</p>`;
+      });
+      html += '<h3>Respostes correctes:</h3><ul>';
+      Object.keys(answers).forEach(key => {
+        const label = key.charAt(0).toUpperCase() + key.slice(1);
+        html += `<li><strong>${label}:</strong> ${answers[key].join(', ')}.</li>`;
+      });
+      html += '</ul>';
+      html += `<p><strong>Nombre d'errors:</strong> ${errors.length}</p>`;
+      if (errors.length) html += `<h3>Errors (incorreccions i omissions):</h3><p>${errors.join(', ')}</p>`;
+      resEl.innerHTML = html;
+    };
+  </script>
+</body>
+</html>

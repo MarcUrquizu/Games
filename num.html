@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Combinaciones de 4 Cifras</title>
+    <style>
+        .combinacion {
+            cursor: pointer;
+            font-size: 18px;
+            margin: 5px;
+            display: inline-block;
+        }
+        .tachado {
+            text-decoration: line-through;
+        }
+        .desaparecer {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Combinaciones posibles de 4 cifras</h1>
+    <div id="combinaciones"></div>
+
+    <script>
+        // Primeros tres dígitos pueden ser 1, 2, 3, 4, 5
+        const primeros_digitos = [1, 2, 3, 4, 5];
+        // Cuarto dígito puede ser 0, 6, 7, 8, 9
+        const cuarto_digito = [0, 6, 7, 8, 9];
+
+        let combinaciones = [];
+
+        // Generar todas las combinaciones posibles
+        for (let i of primeros_digitos) {
+            for (let j of primeros_digitos) {
+                for (let k of primeros_digitos) {
+                    for (let l of cuarto_digito) {
+                        combinaciones.push(`${i}${j}${k}${l}`);
+                    }
+                }
+            }
+        }
+
+        // Mostrar las combinaciones en el HTML
+        const contenedor = document.getElementById('combinaciones');
+        combinaciones.forEach(comb => {
+            const div = document.createElement('div');
+            div.textContent = comb;
+            div.classList.add('combinacion');
+            // Añadir evento de clic para tachar o desaparecer
+            div.addEventListener('click', () => {
+                // Cambiar entre tachar y desaparecer
+                if (div.classList.contains('tachado')) {
+                    div.classList.add('desaparecer');
+                } else {
+                    div.classList.add('tachado');
+                }
+            });
+            contenedor.appendChild(div);
+        });
+    </script>
+</body>
+</html>

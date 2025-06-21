@@ -132,13 +132,14 @@
     const crosshair = document.getElementById('crosshair');
     const shootSound = document.getElementById('shoot-sound');
     const loseScreen = document.getElementById('lose-screen');
+
     let score = 0;
     let monigoteCount = 0;
-    let blackCount = 0;
-    let whiteCount = 0;
+    let redCount = 0;
+    let greenCount = 0;
     const maxMonigotes = 15;
-    const maxBlack = 10;
-    const maxWhite = 5;
+    const maxRed = 10;
+    const maxGreen = 5;
     let canShoot = true;
 
     document.addEventListener('mousemove', e => {
@@ -151,21 +152,20 @@
       shootSound.currentTime = 0;
       shootSound.play();
       canShoot = false;
-      setTimeout(() => {
-        canShoot = true;
-      }, 1000);
+      setTimeout(() => { canShoot = true; }, 1000);
     });
 
     function createMonigote() {
       if (monigoteCount >= maxMonigotes) return;
 
       let color;
-      if (blackCount < maxBlack && whiteCount < maxWhite) {
-        color = Math.random() < 0.6 ? 'black' : 'white';
-      } else if (blackCount < maxBlack) {
-        color = 'black';
-      } else if (whiteCount < maxWhite) {
-        color = 'white';
+      if (redCount < maxRed && greenCount < maxGreen) {
+        // 60% de vermells, 40% de verds clars
+        color = Math.random() < 0.6 ? 'red' : 'lightgreen';
+      } else if (redCount < maxRed) {
+        color = 'red';
+      } else if (greenCount < maxGreen) {
+        color = 'lightgreen';
       } else {
         return;
       }
@@ -189,12 +189,13 @@
       monigote.addEventListener('click', () => {
         if (!canShoot) return;
 
-        if (color === 'white') {
-          loseScreen.style.display = 'flex'; // Pierdes inmediatamente si tocas un monigote blanco
+        if (color === 'lightgreen') {
+          // Pierdes inmediatamente si tocas un monigote verd clar
+          loseScreen.style.display = 'flex';
           return;
-        } else if (color === 'black') {
+        } else if (color === 'red') {
           score++;
-          blackCount--;
+          redCount--;
         }
 
         scoreDisplay.textContent = `Puntos: ${score}`;
@@ -208,8 +209,8 @@
 
       game.appendChild(monigote);
       monigoteCount++;
-      if (color === 'black') blackCount++;
-      if (color === 'white') whiteCount++;
+      if (color === 'red') redCount++;
+      if (color === 'lightgreen') greenCount++;
 
       function moveMonigote() {
         if (!monigote.parentNode) return;
@@ -219,7 +220,6 @@
         monigote.style.top = `${y}px`;
         setTimeout(moveMonigote, 5000);
       }
-
       moveMonigote();
     }
 
