@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Flappy Bird</title>
+  <style>
+    body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: #70c5ce; }
+    canvas { background: #70c5ce; border: 2px solid #000; }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas" width="320" height="480"></canvas>
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Parámetros de juego
+    const pipeWidth = 60;
+    const pipeGap = 120;
+    const pipeSpeed = 2;
+
+    // Imagen del pájaro
+    const birdImg = new Image();
+    birdImg.src = 'https://www.pngarts.com/files/10/Flappy-Bird-Pixel-Art-PNG-Image-Transparent-Background.png';
+
+    const W = canvas.width;
+    const H = canvas.height;
+
+    // Hitboxes y márgenes
+    const birdHitbox = { offsetX: 18, offsetY: 12, width: 14, height: 12 };
+
+    let bird, pipes, score, gameOver, lastPipeTime, gameStarted, gameOverHandled;
+
+    function initGame() {
+      bird = { x: 40, y: H/2 - 20, w: 50, h: 35, gravity: 0.6, lift: -8, velocity: 0 };
+      pipes = [];
+      score = 0;
+      gameOver = false;
+      gameOverHandled = false;
+      lastPipeTime = Date.now();
+    }
+
+    function createPipe() {
+      const topHeight = Math.random() * (H - pipeGap - 40) + 20;
+      pipes.push({ x: W, y: 0, w: pipeWidth, h: topHeight, passed: false });
+      pipes.push({ x: W, y: topHeight + pipeGap, w: pipeWidth, h: H - topHeight - pipeGap, passed: false });
+    }
+
+    function update() {
+      if (!gameStarted || gameOver) return;
+      // Movimiento del pájaro
+      bird.velocity += bird.gravity;
+      bird.y += bird.velocity;
+
+      // Colisión con suelo/techo
+      const bX = bird.x + birdHitbox.offsetX;
+      const bY = bird.y + birdHitbox.offsetY;
+      const bW = birdHitbox.width;
+      const bH = birdHitbox.height;
+      if (bY < 0 || bY + bH > H) gameOver = true;
+
+      // Crear nuevos tubos
+      const now = Date.now();
+      if (now - lastPipeTime > 1500) {
+        createPipe();
+        lastPipeTime = now;
+      }
+
+      // Actualizar tubos y detectar colisiones
+      pipes.forEach(p => {
+        p.x -= pipeSpeed;
+        if (bX < p.x + p.w && bX + bW > p.x && bY < p.y + p.h && bY + bH > p.y) {
+          gameOver = true;
+        }
+        if (!p.passed && p.x + p.w < bX) {
+          p.passed = true;
+          score += 1;
+        }
+      });
+
+      // Eliminar tubos fuera de pantalla
+      pipes = pipes.filter(p => p.x + p.w > 0);
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+
+      if (!gameStarted) {
+        // Mensaje de inicio
+        ctx.fillStyle = 'white';
+        ctx.font = '24px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Pulsa para empezar', W / 2, H / 2);
+        return;
+      }
+
+      // Dibujar pájaro
+      ctx.drawImage(birdImg, bird.x, bird.y, bird.w, bird.h);
+
+      // Dibujar tubos como rectángulos verdes
+      ctx.fillStyle = 'green';
+      pipes.forEach(p => ctx.fillRect(p.x, p.y, p.w, p.h));
+
+      // Puntuación
+      const scoreStr = score.toString();
+      ctx.font = '32px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = 'black';
+      ctx.strokeText(scoreStr, W / 2, 10);
+      ctx.fillStyle = 'white';
+      ctx.fillText(scoreStr, W / 2, 10);
+
+      // Game Over
+      if (gameOver) {
+        ctx.fillStyle = 'red';
+        ctx.font = '36px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('¡Game Over!', W / 2, H / 2);
+      }
+    }
+
+    function loop() {
+      update();
+      draw();
+
+      // Si acabó la partida, tras 3s reiniciar pantalla de inicio
+      if (gameOver && !gameOverHandled) {
+        gameOverHandled = true;
+        setTimeout(() => {
+          gameStarted = false;
+          initGame();
+        }, 3000);
+      }
+
+      requestAnimationFrame(loop);
+    }
+
+    // Control de juego y saltos (click y teclas)
+    function handleJump() {
+      if (!gameStarted) {
+        gameStarted = true;
+        initGame();
+      }
+      if (!gameOver) bird.velocity = bird.lift;
+    }
+    canvas.addEventListener('mousedown', handleJump);
+    canvas.addEventListener('touchstart', e => { e.preventDefault(); handleJump(); }, { passive: false });
+    document.addEventListener('keydown', e => {
+      if (e.code === 'Space' || e.code === 'ArrowUp') {
+        handleJump();
+      }
+    });
+
+    // Inicializar y empezar bucle
+    gameStarted = false;
+    initGame();
+    loop();
+  </script>
+</body>
+</html>
