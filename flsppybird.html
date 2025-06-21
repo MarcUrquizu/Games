@@ -18,6 +18,8 @@
     const pipeWidth = 60;
     const pipeGap = 120;
     const pipeSpeed = 2;
+    const entranceHeight = 10; // altura de la entrada de la tubería
+    const entranceExtra = 20; // excedente de ancho para la entrada
 
     // Imagen del pájaro
     const birdImg = new Image();
@@ -97,9 +99,25 @@
       // Dibujar pájaro
       ctx.drawImage(birdImg, bird.x, bird.y, bird.w, bird.h);
 
-      // Dibujar tubos como rectángulos verdes
-      ctx.fillStyle = 'green';
-      pipes.forEach(p => ctx.fillRect(p.x, p.y, p.w, p.h));
+      // Dibujar tubos como rectángulos verdes y mostrar entrada
+      pipes.forEach(p => {
+        // Cuerpo de la tubería
+        ctx.fillStyle = 'green';
+        ctx.fillRect(p.x, p.y, p.w, p.h);
+        // Entrada de la tubería más larga que la tubería
+        ctx.fillStyle = 'darkgreen';
+        const extra = entranceExtra; // excedente total de ancho
+        const exOffset = extra / 2;
+        const drawX = p.x - exOffset;
+        const drawW = p.w + extra;
+        if (p.y === 0) {
+          // tubería superior: entrada al lado inferior
+          ctx.fillRect(drawX, p.h - entranceHeight, drawW, entranceHeight);
+        } else {
+          // tubería inferior: entrada al lado superior
+          ctx.fillRect(drawX, p.y, drawW, entranceHeight);
+        }
+      });
 
       // Puntuación
       const scoreStr = score.toString();
