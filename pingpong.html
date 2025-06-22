@@ -4,6 +4,28 @@
   <meta charset="UTF-8">
   <title>Juego de Ping Pong vs Pared</title>
   <style>
+
+    .game-buttons {
+      background-color: #ffffff;
+      color: #e74c3c;
+      font-weight: bold;
+      text-decoration: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      position: absolute;
+      top: 10px;
+      z-index: 10;
+    }
+
+    .menu-button {
+      right: 10px;
+    }
+
+    .help-button {
+      left: 10px;
+    }
+
+
     body { margin: 0; padding: 0; background: #f0f0f0; display: flex; flex-direction: column; align-items: center; font-family: sans-serif; }
     canvas { background: #111; margin-top: 20px; border: 2px solid #333; }
     #controls { margin-top: 10px; }
@@ -13,6 +35,11 @@
   </style>
 </head>
 <body>
+
+<a href="./index.html" class="menu-button game-buttons">Menu</a>
+  <a href="./help.html" class="help-button game-buttons">Info</a>
+
+
   <h1>Ping Pong VS Pared</h1>
   <div id="score">Puntuación: 0</div>
   <canvas id="gameCanvas" width="800" height="500"></canvas>
