@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Pop ball</title>
+  <title>Juego de Ping Pong vs Pared</title>
   <style>
     body { margin: 0; padding: 0; background: #f0f0f0; display: flex; flex-direction: column; align-items: center; font-family: sans-serif; }
     canvas { background: #111; margin-top: 20px; border: 2px solid #333; }
@@ -10,32 +10,9 @@
     #score { font-size: 1.2em; color: #333; }
     button { padding: 8px 16px; font-size: 1em; cursor: pointer; }
     button:disabled { opacity: 0.6; cursor: not-allowed; }
-
-    /* Botones de menú e información */
-    .game-buttons {
-      background-color: #ffffff;
-      color: #e74c3c;
-      font-weight: bold;
-      text-decoration: none;
-      padding: 10px 20px;
-      border-radius: 5px;
-      position: absolute;
-      top: 10px;
-      z-index: 10;
-    }
-    .menu-button {
-      right: 10px;
-    }
-    .help-button {
-      left: 10px;
-    }
   </style>
 </head>
 <body>
-  <!-- Botones añadidos -->
-  <a href="./index.html" class="menu-button game-buttons">Menu</a>
-  <a href="./help.html" class="help-button game-buttons">Info</a>
-
   <h1>Ping Pong VS Pared</h1>
   <div id="score">Puntuación: 0</div>
   <canvas id="gameCanvas" width="800" height="500"></canvas>
@@ -59,19 +36,8 @@
     let blocks = [];
     let balls = [];
 
-    // Colores secuencia para multicolor
-    const seqColors = [
-      '#FF0', // amarillo
-      '#FFA500', // naranja
-      '#F00', // rojo
-      '#FFC0CB', // rosa
-      '#0F0', // verde
-      '#00F', // azul
-      '#0FF', // cian
-      '#FFF', // blanco
-      '#800080', // morado
-      'rainbow' // multicolor (gradient)
-    ];
+    // Secuencia de colores para multicolor
+    const seqColors = ['#FF0','#FFA500','#F00','#FFC0CB','#0F0','#00F','#0FF','#FFF','#800080','rainbow'];
     let seqIndex = 0;
 
     function nextWave() {
@@ -86,7 +52,7 @@
           const life = Math.floor(Math.random() * (maxL - minL + 1)) + minL;
           let type = null;
           const rnd = Math.random();
-          if (rnd < 0.02 && seqIndex < seqColors.length - 1) type = 'multi';
+          if (rnd < 0.02 && seqIndex < seqColors.length - 2) type = 'multi';
           else if (rnd < 0.10) type = 'extra';
           else if (rnd < 0.18) type = 'double';
           else if (rnd < 0.25) type = 'clear';
@@ -114,13 +80,7 @@
         ctx.quadraticCurveTo(b.x, b.y, b.x + r, b.y);
         if (b.type === 'multi') {
           const grad = ctx.createLinearGradient(b.x, b.y, b.x + b.width, b.y + b.height);
-          grad.addColorStop(0, 'red');
-          grad.addColorStop(0.17, 'orange');
-          grad.addColorStop(0.34, 'yellow');
-          grad.addColorStop(0.51, 'green');
-          grad.addColorStop(0.68, 'blue');
-          grad.addColorStop(0.85, 'indigo');
-          grad.addColorStop(1, 'violet');
+          ['red','orange','yellow','green','blue','indigo','violet'].forEach((col,i) => grad.addColorStop(i/6, col));
           ctx.fillStyle = grad;
         } else if (b.type === 'extra') ctx.fillStyle = '#0f0';
         else if (b.type === 'double') ctx.fillStyle = '#0ff';
@@ -128,34 +88,22 @@
         else ctx.fillStyle = '#00f';
         ctx.fill();
         ctx.strokeStyle = '#000'; ctx.stroke();
-        if (b.life > 1) {
-          ctx.fillStyle = '#fff'; ctx.font = '12px sans-serif';
-          ctx.fillText(b.life, b.x + b.width / 2 - 4, b.y + b.height / 2 + 4);
-        }
+        if (b.life > 1) { ctx.fillStyle = '#fff'; ctx.font = '12px sans-serif'; ctx.fillText(b.life, b.x + b.width/2 - 4, b.y + b.height/2 + 4); }
       });
     }
 
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = '#555'; ctx.fillRect(0, 0, canvas.width, 5);
+      ctx.fillStyle = '#555'; ctx.fillRect(0,0,canvas.width,5);
       drawBlocks();
       ctx.fillStyle = '#0ff'; ctx.fillRect(paddleX, paddleY, paddleWidth, paddleHeight);
       balls.forEach(b => {
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, ballRadius, 0, Math.PI * 2);
+        ctx.beginPath(); ctx.arc(b.x,b.y,ballRadius,0,Math.PI*2);
         if (b.color === 'rainbow') {
-          const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, ballRadius);
-          grad.addColorStop(0, 'red');
-          grad.addColorStop(0.17, 'orange');
-          grad.addColorStop(0.34, 'yellow');
-          grad.addColorStop(0.51, 'green');
-          grad.addColorStop(0.68, 'blue');
-          grad.addColorStop(0.85, 'indigo');
-          grad.addColorStop(1, 'violet');
+          const grad = ctx.createLinearGradient(b.x-ballRadius,b.y-ballRadius,b.x+ballRadius,b.y+ballRadius);
+          ['red','orange','yellow','green','blue','indigo','violet'].forEach((col,i) => grad.addColorStop(i/6, col));
           ctx.fillStyle = grad;
-        } else {
-          ctx.fillStyle = b.color;
-        }
+        } else ctx.fillStyle = b.color;
         ctx.fill();
       });
     }
@@ -164,55 +112,50 @@
       if (!animating) return;
       if (leftPressed) paddleX = Math.max(0, paddleX - paddleSpeed);
       if (rightPressed) paddleX = Math.min(canvas.width - paddleWidth, paddleX + paddleSpeed);
-      balls.forEach((b, i) => {
-        b.x += b.vx;
-        b.y += b.vy;
-        if (b.x + ballRadius > canvas.width || b.x - ballRadius < 0) b.vx = -b.vx;
-        if (b.y - ballRadius < 5) { b.y = 5 + ballRadius; b.vy = -b.vy; }
-        if (b.y + ballRadius >= paddleY && b.x > paddleX && b.x < paddleX + paddleWidth) { b.y = paddleY - ballRadius; b.vy = -b.vy; }
-        for (let j = 0; j < blocks.length; j++) {
-          const blk = blocks[j];
-          if (b.x > blk.x && b.x < blk.x + blk.width && b.y - ballRadius < blk.y + blk.height && b.y + ballRadius > blk.y) {
-            blk.life -= b.power;
-            if (blk.life <= 0) {
-              if (blk.type === 'multi') {
-                seqIndex = Math.min(seqIndex + 1, seqColors.length - 1);
-                balls.forEach(x => { x.color = seqColors[seqIndex]; x.power = seqIndex + 1; });
-              } else if (blk.type === 'extra') {
-                balls.push({ x: blk.x + blk.width/2, y: blk.y + blk.height/2, vx: 4, vy: -6, color: b.color, power: b.power });
-              } else if (blk.type === 'double') {
-                balls.push({ x: blk.x + blk.width/2, y: blk.y + blk.height/2, vx: 4, vy: -6, color: b.color, power: b.power });
-              } else if (blk.type === 'clear') {
-                blocks = blocks.filter(x => x.row !== blk.row);
-              }
-              blocks.splice(j, 1);
-              score++;
-              document.getElementById('score').innerText = 'Puntuación: ' + score;
+      balls.forEach((b,i) => {
+        b.x += b.vx; b.y += b.vy;
+        if (b.x+ballRadius>canvas.width||b.x-ballRadius<0) b.vx=-b.vx;
+        if (b.y-ballRadius<5) { b.y=5+ballRadius; b.vy=-b.vy; }
+        if (b.y+ballRadius>=paddleY && b.x>paddleX && b.x<paddleX+paddleWidth) {
+          b.y=paddleY-ballRadius;
+          const speed=Math.hypot(b.vx,b.vy);
+          const ang = (Math.random()*Math.PI/2)-Math.PI/4;
+          b.vx=speed*Math.sin(ang);
+          b.vy=-speed*Math.cos(ang);
+        }
+        for (let j=0;j<blocks.length;j++){
+          const blk=blocks[j];
+          if (b.x>blk.x&&b.x<blk.x+blk.width&&b.y-ballRadius<blk.y+blk.height&&b.y+ballRadius>blk.y) {
+            blk.life-=b.power;
+            if (blk.life<=0) {
+              if (blk.type==='multi' && seqIndex<seqColors.length-1) {
+                seqIndex++; balls.forEach(x=>{ x.color=seqColors[seqIndex]; x.power=seqIndex+1; });
+              } else if (blk.type==='extra') balls.push({x:blk.x+blk.width/2,y:blk.y+blk.height/2,vx:4,vy:-6,color:b.color,power:b.power});
+              else if (blk.type==='double') balls.push({x:blk.x+blk.width/2,y:blk.y+blk.height/2,vx:4,vy:-6,color:b.color,power:b.power});
+              else if (blk.type==='clear') blocks=blocks.filter(x=>x.row!==blk.row);
+              blocks.splice(j,1); score++; document.getElementById('score').innerText='Puntuación: '+score;
             }
-            b.vy = -b.vy;
-            break;
+            b.vy=-b.vy; break;
           }
         }
-        if (b.y - ballRadius > canvas.height) balls.splice(i, 1);
+        if (b.y-ballRadius>canvas.height) balls.splice(i,1);
       });
-      if (balls.length === 0) { animating = false; const btn = document.getElementById('startButton'); btn.disabled = false; btn.innerText = 'Reiniciar'; return; }
-      if (blocks.length === 0) nextWave();
-      draw(); if (animating) requestAnimationFrame(update);
+      if (balls.length===0) { animating=false; let btn=document.getElementById('startButton'); btn.disabled=false; btn.innerText='Reiniciar'; return; }
+      if (blocks.length===0) nextWave(); draw(); if(animating) requestAnimationFrame(update);
     }
 
-    function startGame() {
-      if (animating) return;
-      paddleX = (canvas.width - paddleWidth) / 2;
-      score = 0; wave = 0; seqIndex = 0;
-      document.getElementById('score').innerText = 'Puntuación: 0';
-      initBalls(); nextWave(); animating = true;
-      const btn = document.getElementById('startButton'); btn.disabled = true; btn.innerText = 'Jugando...';
+    function startGame(){
+      if(animating) return;
+      paddleX=(canvas.width-paddleWidth)/2; score=0; wave=0; seqIndex=0;
+      document.getElementById('score').innerText='Puntuación: 0';
+      initBalls(); nextWave(); animating=true;
+      let btn=document.getElementById('startButton'); btn.disabled=true; btn.innerText='Jugando...';
       requestAnimationFrame(update);
     }
 
-    document.addEventListener('keydown', e => { if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') leftPressed = true; if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') rightPressed = true; });
-    document.addEventListener('keyup', e => { if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') leftPressed = false; if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') rightPressed = false; });
-    document.getElementById('startButton').addEventListener('click', startGame);
+    document.addEventListener('keydown',e=>{ if(['ArrowLeft','a'].includes(e.key)) leftPressed=true; if(['ArrowRight','d'].includes(e.key)) rightPressed=true; });
+    document.addEventListener('keyup',e=>{ if(['ArrowLeft','a'].includes(e.key)) leftPressed=false; if(['ArrowRight','d'].includes(e.key)) rightPressed=false; });
+    document.getElementById('startButton').addEventListener('click',startGame);
     draw();
   </script>
 </body>
