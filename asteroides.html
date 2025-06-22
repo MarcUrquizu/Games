@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Galaxy Collector</title>
+  <!-- Fuente retro -->
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    html, body { margin:0; padding:0; overflow:hidden; background:#000; font-family:'Press Start 2P',monospace; }
+    #game { display:block; margin:0 auto; border:2px solid #fff; background:url('starfield.png') center/cover no-repeat; }
+    #hud { position:fixed; top:0; left:0; width:100%; display:flex; justify-content:space-between; align-items:center;
+      background:rgba(0,0,0,0.6); color:#fff; padding:8px 16px; box-sizing:border-box; z-index:10; }
+    #hud span { font-size:14px; }
+    #restart { padding:6px 12px; background:#222; color:#fff; border:1px solid #555; cursor:pointer; border-radius:4px; font-size:12px; }
+    #restart:hover { background:#444; }
+  </style>
+</head>
+<body>
+  <div id="hud">
+    <span id="score">Puntuación: 0</span>
+    <span id="lives">Vidas: 3</span>
+    <button id="restart">Reiniciar</button>
+  </div>
+  <canvas id="game"></canvas>
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+let W = innerWidth, H = innerHeight;
+window.addEventListener('resize', ()=>{ W = innerWidth; H = innerHeight; canvas.width = W; canvas.height = H; });
+canvas.width = W; canvas.height = H;
+
+let keys = {}, ship, stars, asteroids;
+let score, lives, level, gameOver;
+let asteroidTimer, asteroidSpawnRate, starTimer, starSpawnRate, asteroidSpeedFactor;
+
+const scoreEl = document.getElementById('score'), livesEl = document.getElementById('lives');
+document.getElementById('restart').addEventListener('click', init);
+window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
+window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+
+function init() {
+  score = 0; lives = 3; level = 1; gameOver = false;
+  asteroidSpawnRate = 2; asteroidTimer = 0;
+  starSpawnRate = 3; starTimer = 0;
+  asteroidSpeedFactor = 1;
+  ship = { x: W/2, y: H/2, vx: 0, vy: 0, angle: 0, speed: 250, r: 20 };
+  stars = [];
+  asteroids = [];
+  scoreEl.textContent = `Puntuación: ${score}`;
+  livesEl.textContent = `Vidas: ${lives}`;
+  for (let i = 0; i < 5; i++) spawnMovingStar();
+  lastTime = performance.now();
+  requestAnimationFrame(gameLoop);
+}
+
+function spawnMovingStar() {
+  const r = 15;
+  const side = Math.floor(Math.random() * 4);
+  let x = side === 1 ? W + r : side === 2 ? Math.random() * W : side === 3 ? Math.random() * W : -r;
+  let y = side === 0 ? Math.random() * H : side === 2 ? -r : side === 3 ? H + r : Math.random() * H;
+  const dx = (W/2 - x) + (Math.random() - 0.5) * 200;
+  const dy = (H/2 - y) + (Math.random() - 0.5) * 200;
+  const mag = Math.hypot(dx, dy);
+  const speed = 80;
+  stars.push({ x, y, r, vx: dx/mag * speed, vy: dy/mag * speed });
+}
+
+function spawnAsteroid(r = 30, x = null, y = null) {
+  let xx = x, yy = y;
+  if (xx === null || yy === null) {
+    const side = Math.floor(Math.random() * 4);
+    xx = side === 1 ? W + r : side === 2 ? Math.random() * W : side === 3 ? Math.random() * W : -r;
+    yy = side === 0 ? Math.random() * H : side === 2 ? -r : side === 3 ? H + r : Math.random() * H;
+  }
+  const dx = (W/2 - xx) + (Math.random() - 0.5) * 200;
+  const dy = (H/2 - yy) + (Math.random() - 0.5) * 200;
+  const mag = Math.hypot(dx, dy);
+  const speed = (50 + (level - 1) * 20) * asteroidSpeedFactor;
+  asteroids.push({ x: xx, y: yy, r, vx: dx/mag * speed, vy: dy/mag * speed });
+}
+
+function update(dt) {
+  if (gameOver) return;
+  asteroidSpeedFactor += dt * 0.1;
+  const spawnInterval = asteroidSpawnRate / asteroidSpeedFactor;
+
+  // Mover nave
+  let dx = 0, dy = 0;
+  if (keys['a'] || keys['arrowleft']) dx--;
+  if (keys['d'] || keys['arrowright']) dx++;
+  if (keys['w'] || keys['arrowup']) dy--;
+  if (keys['s'] || keys['arrowdown']) dy++;
+  const m = Math.hypot(dx, dy);
+  if (m > 0) {
+    ship.vx = dx/m * ship.speed;
+    ship.vy = dy/m * ship.speed;
+    ship.angle = Math.atan2(dy, dx);
+  } else {
+    ship.vx = ship.vy = 0;
+  }
+  ship.x = Math.min(W - ship.r, Math.max(ship.r, ship.x + ship.vx * dt));
+  ship.y = Math.min(H - ship.r, Math.max(ship.r + 40, ship.y + ship.vy * dt));
+
+  // Actualizar estrellas
+  stars.forEach(s => { s.x += s.vx * dt; s.y += s.vy * dt; });
+  stars = stars.filter(s => {
+    if (Math.hypot(ship.x - s.x, ship.y - s.y) < ship.r + s.r) {
+      score += 10;
+      scoreEl.textContent = `Puntuación: ${score}`;
+      const newLevel = Math.floor(score / 50) + 1;
+      if (newLevel > level) level = newLevel;
+      spawnMovingStar();
+      return false;
+    }
+    return true;
+  });
+  starTimer += dt;
+  if (starTimer > starSpawnRate) { spawnMovingStar(); starTimer = 0; }
+
+  // Generar asteroides
+  asteroidTimer += dt;
+  if (asteroidTimer > spawnInterval) { spawnAsteroid(); asteroidTimer = 0; }
+  asteroids.forEach(a => { a.x += a.vx * dt; a.y += a.vy * dt; });
+
+  // Fragmentar colisiones asteroide-asteroide
+  const survivors = [];
+  const fragments = [];
+  const collided = new Set();
+  for (let i = 0; i < asteroids.length; i++) {
+    for (let j = i + 1; j < asteroids.length; j++) {
+      const a = asteroids[i], b = asteroids[j];
+      if (collided.has(a) || collided.has(b)) continue;
+      const dist = Math.hypot(a.x - b.x, a.y - b.y);
+      if (dist < a.r + b.r) {
+        collided.add(a);
+        collided.add(b);
+        [a, b].forEach(obj => {
+          const nr = obj.r / 2;
+          if (nr > 5) {
+            for (let k = 0; k < 2; k++) {
+              const dx2 = (W/2 - obj.x) + (Math.random() - 0.5) * 200;
+              const dy2 = (H/2 - obj.y) + (Math.random() - 0.5) * 200;
+              const mag2 = Math.hypot(dx2, dy2);
+              const speed2 = (50 + (level - 1) * 20) * asteroidSpeedFactor;
+              fragments.push({
+                x: obj.x,
+                y: obj.y,
+                r: nr,
+                vx: dx2 / mag2 * speed2,
+                vy: dy2 / mag2 * speed2
+              });
+            }
+          }
+        });
+      }
+    }
+  }
+  asteroids.forEach(a => { if (!collided.has(a)) survivors.push(a); });
+  asteroids = survivors.concat(fragments);
+
+  // Colisiones nave-asteroide
+  asteroids = asteroids.filter(a => {
+    if (Math.hypot(ship.x - a.x, ship.y - a.y) < ship.r + a.r) {
+      lives--;
+      livesEl.textContent = `Vidas: ${lives}`;
+      if (lives <= 0) gameOver = true;
+      return false;
+    }
+    return true;
+  });
+}
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  stars.forEach(s => {
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, 2 * Math.PI);
+    ctx.fillStyle = '#ff0';
+    ctx.fill();
+  });
+  asteroids.forEach(a => {
+    ctx.beginPath();
+    ctx.arc(a.x, a.y, a.r, 0, 2 * Math.PI);
+    ctx.fillStyle = '#888';
+    ctx.fill();
+  });
+  ctx.save();
+  ctx.translate(ship.x, ship.y);
+  ctx.rotate(ship.angle);
+  ctx.beginPath();
+  ctx.moveTo(ship.r, 0);
+  ctx.lineTo(-ship.r, ship.r/2);
+  ctx.lineTo(-ship.r, -ship.r/2);
+  ctx.closePath();
+  ctx.fillStyle = '#0ff';
+  ctx.fill();
+  ctx.restore();
+  if (gameOver) {
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#fff';
+    ctx.font = '48px "Press Start 2P"';
+    ctx.textAlign = 'center';
+    ctx.fillText('GAME OVER', W/2, H/2 - 20);
+    ctx.font = '16px "Press Start 2P"';
+    ctx.fillText(`Puntuación: ${score}`, W/2, H/2 + 20);
+  }
+}
+
+let lastTime;
+function gameLoop(ts) {
+  if (!lastTime) lastTime = ts;
+  const dt = (ts - lastTime) / 1000;
+  lastTime = ts;
+  update(dt);
+  draw();
+  if (!gameOver) requestAnimationFrame(gameLoop);
+}
+
+init();
+</script>
+</body>
+</html>
+<!--       if (b.x + b.width > blocks[j].x && b.x < blocks[j].x + blocks[j].width &&
+ -->
