@@ -2,13 +2,33 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Flappy Bird</title>
   <style>
-    body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: #70c5ce; }
+    body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: #70c5ce; position: relative; }
     canvas { background: #70c5ce; border: 2px solid #000; }
+
+    /* Botones de menú e información */
+    .game-buttons {
+      background-color: #ffffff;
+      color: #e74c3c;
+      font-weight: bold;
+      text-decoration: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      position: absolute;
+      top: 10px;
+      z-index: 10;
+    }
+    .menu-button { right: 10px; }
+    .help-button { left: 10px; }
   </style>
 </head>
 <body>
+  <!-- Botones añadidos -->
+  <a href="./index.html" class="menu-button game-buttons">Menu</a>
+  <a href="./help.html" class="help-button game-buttons">Info</a>
+
   <canvas id="gameCanvas" width="320" height="480"></canvas>
   <script>
     const canvas = document.getElementById('gameCanvas');
@@ -50,7 +70,6 @@
 
     function update() {
       if (!gameStarted || gameOver) return;
-      // Movimiento del pájaro
       bird.velocity += bird.gravity;
       bird.y += bird.velocity;
 
@@ -88,7 +107,6 @@
       ctx.clearRect(0, 0, W, H);
 
       if (!gameStarted) {
-        // Mensaje de inicio
         ctx.fillStyle = 'white';
         ctx.font = '24px sans-serif';
         ctx.textAlign = 'center';
@@ -99,36 +117,30 @@
       // Dibujar pájaro
       ctx.drawImage(birdImg, bird.x, bird.y, bird.w, bird.h);
 
-      // Dibujar tubos como rectángulos verdes y mostrar entrada
+      // Dibujar tubos
       pipes.forEach(p => {
-        // Cuerpo de la tubería
         ctx.fillStyle = 'green';
         ctx.fillRect(p.x, p.y, p.w, p.h);
-        // Entrada de la tubería más larga que la tubería
         ctx.fillStyle = 'darkgreen';
-        const extra = entranceExtra; // excedente total de ancho
-        const exOffset = extra / 2;
+        const exOffset = entranceExtra / 2;
         const drawX = p.x - exOffset;
-        const drawW = p.w + extra;
+        const drawW = p.w + entranceExtra;
         if (p.y === 0) {
-          // tubería superior: entrada al lado inferior
           ctx.fillRect(drawX, p.h - entranceHeight, drawW, entranceHeight);
         } else {
-          // tubería inferior: entrada al lado superior
           ctx.fillRect(drawX, p.y, drawW, entranceHeight);
         }
       });
 
       // Puntuación
-      const scoreStr = score.toString();
       ctx.font = '32px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
       ctx.lineWidth = 4;
       ctx.strokeStyle = 'black';
-      ctx.strokeText(scoreStr, W / 2, 10);
+      ctx.strokeText(score, W / 2, 10);
       ctx.fillStyle = 'white';
-      ctx.fillText(scoreStr, W / 2, 10);
+      ctx.fillText(score, W / 2, 10);
 
       // Game Over
       if (gameOver) {
@@ -142,36 +154,22 @@
     function loop() {
       update();
       draw();
-
-      // Si acabó la partida, tras 3s reiniciar pantalla de inicio
       if (gameOver && !gameOverHandled) {
         gameOverHandled = true;
-        setTimeout(() => {
-          gameStarted = false;
-          initGame();
-        }, 3000);
+        setTimeout(() => { gameStarted = false; initGame(); }, 3000);
       }
-
       requestAnimationFrame(loop);
     }
 
-    // Control de juego y saltos (click y teclas)
     function handleJump() {
-      if (!gameStarted) {
-        gameStarted = true;
-        initGame();
-      }
+      if (!gameStarted) { gameStarted = true; initGame(); }
       if (!gameOver) bird.velocity = bird.lift;
     }
     canvas.addEventListener('mousedown', handleJump);
     canvas.addEventListener('touchstart', e => { e.preventDefault(); handleJump(); }, { passive: false });
-    document.addEventListener('keydown', e => {
-      if (e.code === 'Space' || e.code === 'ArrowUp') {
-        handleJump();
-      }
-    });
+    document.addEventListener('keydown', e => { if (e.code === 'Space' || e.code === 'ArrowUp') handleJump(); });
 
-    // Inicializar y empezar bucle
+    // Iniciar juego
     gameStarted = false;
     initGame();
     loop();

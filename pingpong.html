@@ -10,9 +10,32 @@
     #score { font-size: 1.2em; color: #333; }
     button { padding: 8px 16px; font-size: 1em; cursor: pointer; }
     button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* Botones de menú e información */
+    .game-buttons {
+      background-color: #ffffff;
+      color: #e74c3c;
+      font-weight: bold;
+      text-decoration: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      position: absolute;
+      top: 10px;
+      z-index: 10;
+    }
+    .menu-button {
+      right: 10px;
+    }
+    .help-button {
+      left: 10px;
+    }
   </style>
 </head>
 <body>
+  <!-- Botones añadidos -->
+  <a href="./index.html" class="menu-button game-buttons">Menu</a>
+  <a href="./help.html" class="help-button game-buttons">Info</a>
+
   <h1>Ping Pong VS Pared</h1>
   <div id="score">Puntuación: 0</div>
   <canvas id="gameCanvas" width="800" height="500"></canvas>
@@ -38,17 +61,17 @@
 
     // Colores secuencia para multicolor
     const seqColors = [
-    '#FF0', // amarillo
-    '#FFA500', // naranja
-    '#F00', // rojo
-    '#FFC0CB', // rosa
-    '#0F0', // verde
-    '#00F', // azul
-    '#0FF', // cian
-    '#FFF', // blanco
-    '#800080', // morado
-    'rainbow' // multicolor (gradient)
-];
+      '#FF0', // amarillo
+      '#FFA500', // naranja
+      '#F00', // rojo
+      '#FFC0CB', // rosa
+      '#0F0', // verde
+      '#00F', // azul
+      '#0FF', // cian
+      '#FFF', // blanco
+      '#800080', // morado
+      'rainbow' // multicolor (gradient)
+    ];
     let seqIndex = 0;
 
     function nextWave() {
@@ -121,7 +144,6 @@
         ctx.beginPath();
         ctx.arc(b.x, b.y, ballRadius, 0, Math.PI * 2);
         if (b.color === 'rainbow') {
-          // Gradiente arcoíris radial más visible
           const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, ballRadius);
           grad.addColorStop(0, 'red');
           grad.addColorStop(0.17, 'orange');

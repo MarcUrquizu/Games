@@ -15,6 +15,7 @@
       height: 100vh;
       margin: 0;
       justify-content: center;
+      transition: background-color 1s ease;
     }
     .game-container {
       display: grid;
@@ -55,9 +56,27 @@
     }
     #start { background: #27ae60; color: #fff; }
     #score { font-size: 18px; }
+
+    /* Botones de menú e información */
+    .game-buttons {
+      background-color: #ffffff;
+      color: #e74c3c;
+      font-weight: bold;
+      text-decoration: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      position: absolute;
+      top: 10px;
+      z-index: 10;
+    }
+    .menu-button { right: 10px; }
+    .help-button { left: 10px; }
   </style>
 </head>
 <body>
+  <a href="./index.html" class="menu-button game-buttons">Menu</a>
+  <a href="./help.html" class="help-button game-buttons">Info</a>
+
   <h1>Simon Dice</h1>
   <div class="game-container">
     <div id="green" class="color-btn"></div>
@@ -71,50 +90,39 @@
   </div>
 
   <script>
-    // Configuración básica
     const frequencies = { green: 329.63, red: 261.63, yellow: 220.00, blue: 164.81 };
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const BASE_DELAY = 600;
     const MIN_DELAY = 200;
     const SPEED_STEP_POINTS = 5;
     const VOLUME = 3.0;
-    const IDLE_LIMIT = 5000; // 5 segundos
+    const IDLE_LIMIT = 5000;
 
     let idleTimer;
     function startIdleTimer() {
       clearIdleTimer();
-      idleTimer = setTimeout(() => {
-        loseByIdle();
-      }, IDLE_LIMIT);
+      idleTimer = setTimeout(loseByIdle, IDLE_LIMIT);
     }
-    function clearIdleTimer() {
-      if (idleTimer) clearTimeout(idleTimer);
-    }
+    function clearIdleTimer() { if (idleTimer) clearTimeout(idleTimer); }
 
     function loseByIdle() {
       allowInput = false;
       updateButtons();
       blinkAll();
-      setTimeout(() => {
-        gameSequence = [];
-        level = 0;
-        updateScore();
-      }, 3 * 300);
+      setTimeout(() => { gameSequence = []; level = 0; updateScore(); }, 3 * 300);
     }
 
     function playSound(color) {
       const osc = audioCtx.createOscillator();
       const gainNode = audioCtx.createGain();
-      osc.connect(gainNode);
-      gainNode.connect(audioCtx.destination);
-      osc.frequency.value = frequencies[color];
-      osc.type = 'sine';
+      osc.connect(gainNode); gainNode.connect(audioCtx.destination);
+      osc.frequency.value = frequencies[color]; osc.type = 'sine';
       gainNode.gain.setValueAtTime(VOLUME, audioCtx.currentTime);
       osc.start(); osc.stop(audioCtx.currentTime + 0.3);
     }
 
-    function getDelayByLevel(level) {
-      const steps = Math.floor((level - 1) / SPEED_STEP_POINTS);
+    function getDelayByLevel(lvl) {
+      const steps = Math.floor((lvl - 1) / SPEED_STEP_POINTS);
       return Math.max(MIN_DELAY, BASE_DELAY - steps * 100);
     }
 
@@ -140,13 +148,10 @@
     }
 
     function nextSequence() {
-      allowInput = false;
-      updateButtons();
-      userSequence = [];
-      level++;
-      updateScore();
-      const randomColor = buttonColors[Math.floor(Math.random() * 4)];
-      gameSequence.push(randomColor);
+      allowInput = false; updateButtons(); userSequence = [];
+      level++; updateScore();
+      const rnd = buttonColors[Math.floor(Math.random() * buttonColors.length)];
+      gameSequence.push(rnd);
       playSequence();
     }
 
@@ -157,11 +162,7 @@
         setTimeout(() => animateButton(color), delay);
         delay += stepDelay;
       });
-      setTimeout(() => {
-        allowInput = true;
-        updateButtons();
-        startIdleTimer();
-      }, delay);
+      setTimeout(() => { allowInput = true; updateButtons(); startIdleTimer(); }, delay);
     }
 
     function animateButton(color) {
@@ -180,22 +181,15 @@
 
     function handleUserClick(color) {
       if (!allowInput) return;
-      clearIdleTimer();
-      userSequence.push(color);
-      animateButton(color);
-      checkUserInput(userSequence.length - 1);
-      startIdleTimer();
-    }
-
-    function checkUserInput(idx) {
+      clearIdleTimer(); userSequence.push(color); animateButton(color);
+      const idx = userSequence.length - 1;
       if (userSequence[idx] !== gameSequence[idx]) {
         allowInput = false; updateButtons(); clearIdleTimer(); blinkAll();
         setTimeout(() => { gameSequence = []; level = 0; updateScore(); }, 3 * 300);
         return;
       }
       if (userSequence.length === gameSequence.length) {
-        clearIdleTimer();
-        setTimeout(nextSequence, 1000);
+        clearIdleTimer(); setTimeout(nextSequence, 1000);
       }
     }
 
