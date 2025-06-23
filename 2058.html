@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Demo 2048 Animado</title>
+  <style>
+
+ .game-buttons {
+      background-color: #000000;
+      color: #ffffff;
+      font-weight: bold;
+      text-decoration: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      position: absolute;
+      top: 10px;
+      z-index: 10;
+    }
+
+    .menu-button {
+      right: 10px;
+    }
+
+    .help-button {
+      left: 10px;
+    }
+
+    body { background: #faf8ef; font-family: 'Arial', sans-serif; display: flex; flex-direction: column; align-items: center; margin: 0; padding: 20px; }
+    h1 { margin-bottom: 10px; color: #776e65; }
+    #game { background: #bbada0; position: relative; width: 360px; height: 360px; border-radius: 6px; }
+    .tile { position: absolute; width: 80px; height: 80px; line-height: 80px; text-align: center; font-size: 24px; font-weight: bold; color: #776e65; border-radius: 3px; transition: background 0.2s; }
+    .tile.empty { background: transparent; }
+    .tile-2    { background: #eee4da; }
+    .tile-4    { background: #ede0c8; }
+    .tile-8    { background: #f2b179; color: #f9f6f2; }
+    .tile-16   { background: #f59563; color: #f9f6f2; }
+    .tile-32   { background: #f67c5f; color: #f9f6f2; }
+    .tile-64   { background: #f65e3b; color: #f9f6f2; }
+    .tile-128  { background: #edcf72; color: #f9f6f2; font-size: 20px; }
+    .tile-256  { background: #edcc61; color: #f9f6f2; font-size: 20px; }
+    .tile-512  { background: #edc850; color: #f9f6f2; font-size: 20px; }
+    .tile-1024 { background: #edc53f; color: #f9f6f2; font-size: 18px; }
+    .tile-2048 { background: #edc22e; color: #f9f6f2; font-size: 18px; }
+    #gameOver {
+      display: none;
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 100%;
+      text-align: center;
+      font-size: 48px;
+      color: rgba(255,0,0,0.8);
+      font-weight: bold;
+      z-index: 10;
+      text-shadow: 2px 2px #333;
+    }
+    #score { margin-top: 15px; font-size: 18px; }
+    #controls { margin-top: 10px; }
+    button { padding: 8px 12px; font-size: 16px; margin: 0 5px; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+ <a href="./index.html" class="menu-button game-buttons">Menu</a>
+  <a href="./help.html" class="help-button game-buttons">Info</a>
+
+  <h1>Demo 2048 Animado</h1>
+  <div id="game">
+    <div id="gameOver">GAME OVER</div>
+  </div>
+  <div id="score">Máximo: <span id="maxTile">0</span></div>
+  <div id="controls">
+    <button id="newGame">Nuevo Juego</button>
+  </div>
+  <script>
+    const size = 4;
+    const tileSize = 80;
+    const tileMargin = 8;
+    let grid = [];
+    let gameOver = false;
+    const gameEl = document.getElementById('game');
+    const maxTileEl = document.getElementById('maxTile');
+    const gameOverEl = document.getElementById('gameOver');
+
+    function initGrid() {
+      gameOver = false;
+      gameOverEl.style.display = 'none';
+      gameEl.querySelectorAll('.tile').forEach(t => t.remove());
+      grid = Array(size).fill().map(() => Array(size).fill(0));
+      createTiles();
+      addRandom();
+      addRandom();
+      render();
+    }
+
+    function createTiles() {
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          const tile = document.createElement('div');
+          tile.className = 'tile empty';
+          positionTile(tile, r, c);
+          gameEl.appendChild(tile);
+        }
+      }
+    }
+
+    function positionTile(tile, r, c) {
+      tile.style.top = `${r * (tileSize + tileMargin) + tileMargin}px`;
+      tile.style.left = `${c * (tileSize + tileMargin) + tileMargin}px`;
+    }
+
+    function addRandom() {
+      const empty = [];
+      for (let r = 0; r < size; r++) for (let c = 0; c < size; c++) if (!grid[r][c]) empty.push({r,c});
+      if (!empty.length) return;
+      const {r,c} = empty[Math.floor(Math.random() * empty.length)];
+      grid[r][c] = Math.random() < 0.9 ? 2 : 4;
+    }
+
+    function render() {
+      const tiles = gameEl.querySelectorAll('.tile');
+      let max = 0;
+      tiles.forEach((tileEl, index) => {
+        const r = Math.floor(index / size), c = index % size;
+        const val = grid[r][c];
+        tileEl.textContent = val || '';
+        tileEl.className = 'tile' + (val ? ' tile-' + val : ' empty');
+        positionTile(tileEl, r, c);
+        if (val > max) max = val;
+      });
+      maxTileEl.textContent = max;
+    }
+
+    function slideArray(arr) {
+      const nonZero = arr.filter(v => v);
+      for (let i = 0; i < nonZero.length - 1; i++) {
+        if (nonZero[i] === nonZero[i + 1]) {
+          nonZero[i] *= 2;
+          nonZero[i + 1] = 0;
+        }
+      }
+      const merged = nonZero.filter(v => v);
+      while (merged.length < size) merged.push(0);
+      return merged;
+    }
+
+    function rotateGrid(arr) {
+      const ng = Array(size).fill().map(() => Array(size).fill(0));
+      for (let r = 0; r < size; r++) for (let c = 0; c < size; c++) ng[c][size-1-r] = arr[r][c];
+      return ng;
+    }
+
+    function move(dir) {
+      if (gameOver) return;
+      const tiles = Array.from(gameEl.querySelectorAll('.tile'));
+      const oldRects = tiles.map(t => t.getBoundingClientRect());
+      let newGrid = grid.map(row => [...row]);
+      for (let i = 0; i < dir; i++) newGrid = rotateGrid(newGrid);
+      let moved = false;
+      for (let r = 0; r < size; r++) {
+        const orig = newGrid[r].join();
+        newGrid[r] = slideArray(newGrid[r]);
+        if (newGrid[r].join() !== orig) moved = true;
+      }
+      for (let i = 0; i < (4 - dir) % 4; i++) newGrid = rotateGrid(newGrid);
+      if (!moved) return;
+      grid = newGrid;
+      render();
+      tiles.forEach((tile, index) => {
+        const newRect = tile.getBoundingClientRect();
+        const oldRect = oldRects[index];
+        const dx = oldRect.left - newRect.left;
+        const dy = oldRect.top - newRect.top;
+        tile.style.transition = 'none';
+        tile.style.transform = `translate(${dx}px, ${dy}px)`;
+        requestAnimationFrame(() => {
+          tile.style.transition = 'transform 0.2s ease';
+          tile.style.transform = '';
+        });
+      });
+      setTimeout(() => {
+        addRandom();
+        render();
+        if (isGameOver()) showGameOver();
+      }, 250);
+    }
+
+    function isGameOver() {
+      if (grid.some(row => row.includes(0))) return false;
+      for (let r = 0; r < size; r++) for (let c = 0; c < size-1; c++) if (grid[r][c] === grid[r][c+1]) return false;
+      for (let c = 0; c < size; c++) for (let r = 0; r < size-1; r++) if (grid[r][c] === grid[r+1][c]) return false;
+      return true;
+    }
+
+    function showGameOver() {
+      gameOver = true;
+      gameOverEl.style.display = 'block';
+    }
+
+    document.addEventListener('keydown', e => {
+      const key = e.key.toLowerCase();
+      switch (key) {
+        case 'arrowleft': case 'a': move(0); break;
+        case 'arrowdown': case 's': move(1); break;
+        case 'arrowright': case 'd': move(2); break;
+        case 'arrowup': case 'w': move(3); break;
+      }
+    });
+
+    document.getElementById('newGame').addEventListener('click', initGrid);
+    initGrid();
+  </script>
+</body>
+</html>
