@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Olap</title>
+  <link rel="icon" type="image/png" href="img/favicon.png">
+  <!-- Pixel font -->
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    /* RESET Y BOX-SIZING */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      height: 100%;
+      overflow: hidden; /* Desactivar scroll */
+    }
+    body {
+      font-family: 'Press Start 2P', cursive;
+      background: #111;
+      color: #0ff;
+      text-align: center;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      zoom: 1.1;
+      position: relative;
+    }
+    /* SCANLINES */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      background: repeating-linear-gradient(
+        0deg,
+        rgba(0,0,0,0) 0px,
+        rgba(0,0,0,0) 2px,
+        rgba(0,0,0,0.1) 2px,
+        rgba(0,0,0,0.1) 4px
+      );
+    }
+    /* STARS CANVAS, cubre todo el documento */
+    #stars {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: -1;
+    }
+    /* HEADER ESTÁTICO CON GLOW */
+    header { margin-bottom: 20px; z-index: 1; }
+    header h1 {
+      font-size: 48px;
+      color: #fff;
+      text-shadow: 0 0 8px #0ff, 0 0 16px #0ff;
+    }
+    /* GRID DE BOTONES */
+    .btn-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 140px));
+      gap: 16px;
+      width: 100%; max-width: 1000px;
+      z-index: 1;
+      padding-bottom: 20px;
+      justify-content: center;
+    }
+    .btn {
+      width: 140px; height: 60px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #111;
+      background: #0ff;
+      border: 2px solid #0ff;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      text-shadow: 0 0 4px #0ff;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .btn:hover {
+      transform: perspective(100px) rotateX(5deg) scale(1.05);
+      box-shadow: 0 0 12px #0ff, 0 0 20px #0ff;
+    }
+  </style>
+</head>
+<body>
+  <!-- Canvas para estrellas en todo el viewport -->
+  <canvas id="stars"></canvas>
+
+  <header><h1>OLAP</h1></header>
+
+  <div class="btn-container">
+    <a class="btn" href="memory.html">Memory</a>
+    <a class="btn" href="laberinto.html">Laberinto</a>
+    <a class="btn" href="3ratlla.html">3 en raya</a>
+    <a class="btn" href="4rayagpt.html">4 en raya</a>
+    <a class="btn" href="Clickometeor.html">Color snipe</a>
+    <a class="btn" href="ahorcado.html">Ahorcado</a>
+    <a class="btn" href="adivinanum.html">Adivina el número</a>
+    <a class="btn" href="Godshot.html">God Shot</a>
+    <a class="btn" href="pcman.html">Pcman</a>
+    <a class="btn" href="enduro.html">Enduro</a>
+    <a class="btn" href="Laberintocursor.html">???</a>
+    <a class="btn" href="ia.html">IA</a>
+    <a class="btn" href="catala.html">Gramática catalana</a>
+    <a class="btn" href="skyhooper.html">Sky hopper</a>
+    <a class="btn" href="laberinto2.html">Laberinto 2</a>
+    <a class="btn" href="flsppybird.html">Flappy Bird</a>
+    <a class="btn" href="simondice.html">Simon Dice</a>
+    <a class="btn" href="pingpong.html">Breakout</a>
+    <a class="btn" href="asteroides.html">Galaxy-collector</a>
+    <a class="btn" href="2058.html">2048</a>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('stars');
+    const ctx = canvas.getContext('2d');
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('load', () => {
+      resizeCanvas();
+      initStars();
+      loop();
+    });
+    window.addEventListener('resize', () => {
+      resizeCanvas();
+      initStars();
+    });
+
+    let stars = [];
+    function initStars() {
+      stars = Array.from({ length: 500 }).map(() => ({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        r: Math.random() * 1.6 + 0.4,
+        d: Math.random() * 0.7 + 0.3
+      }));
+    }
+    function drawStars() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#fff';
+      stars.forEach(s => {
+        ctx.globalAlpha = s.d;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+    function loop() {
+      drawStars();
+      requestAnimationFrame(loop);
+    }
+  </script>
+</body>
+</html>
