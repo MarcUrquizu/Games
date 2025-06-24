@@ -3,282 +3,301 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Memori Marc's games</title>
-  <link rel="stylesheet" href="style.css">
+  <title>Juego de Memoria 10×6</title>
   <style>
+    :root {
+      --color-bg-1: #e74c3c;
+      --color-bg-2: #3498db;
+      --color-white-transparent: rgba(255,255,255,0.2);
+      --gap: 16px;
+      --card-size: 70px;
+      --font-base: 16px;
+      --flip-duration: 0.6s;
+    }
+
+    /* Reset global */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
     body {
       font-family: Arial, sans-serif;
-      text-align: center;
-      margin-top: 50px;
-      background-color: #e74c3c; /* Rojo inicial (Jugador 1) */
-      display: flex;
-      justify-content: center;
-      transition: background-color 1s ease; /* Transición suave para el cambio de color */
-    }
-    .game-buttons {
-      background-color: #fff;
-      color: #e74c3c;
-    }
-    
-
-    .container {
-      display: flex;
-      gap: 20px;
-      align-items: flex-start;
-    }
-
-    .game-section {
+      font-size: var(--font-base);
+      line-height: 1.4;
+      color: #fff;
+      background-color: var(--color-bg-1);
+      transition: background-color 0.5s ease;
       display: flex;
       flex-direction: column;
       align-items: center;
+      padding: var(--gap);
     }
 
-    h1 {
-      font-size: 2.5em;
-      color: #fff;
+    /* HEADER */
+    .header {
+      width: 100%;
+      max-width: 1200px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--gap);
+    }
+    .nav-buttons {
+      display: flex;
+      gap: var(--gap);
+    }
+    .nav-buttons a {
+      padding: 0.5em 1em;
+      background: #fff;
+      color: var(--color-bg-1);
+      text-decoration: none;
+      font-weight: bold;
+      border-radius: 4px;
     }
 
+    /* TÍTULO Y TURNO */
+    .title-container {
+      text-align: center;
+    }
+    .title-container h1 {
+      font-size: 2rem;
+    }
+    .title-container .player-turn {
+      margin-top: 0.25em;
+      font-size: 1.2rem;
+    }
+
+    /* ÁREA PRINCIPAL */
+    .main {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: var(--gap);
+      width: 100%;
+      max-width: 1200px;
+    }
+
+    /* TABLERO: añadimos perspective */
     .game-board {
       display: grid;
-      grid-template-columns: repeat(10, 70px); /* Aumenté el tamaño de las cartas */
-      grid-template-rows: repeat(6, 70px); /* Aumenté el tamaño de las cartas */
-      grid-gap: 8px;
-      justify-content: center;
-      margin-top: 20px;
+      grid-template-columns: repeat(auto-fit, minmax(var(--card-size), 1fr));
+      gap: calc(var(--gap) / 2);
+      justify-items: center;
+      width: 100%;
+      perspective: 800px;
     }
 
+    /* CARTA con animación 3D */
     .card {
-      width: 70px; /* Tamaño de la carta */
-      height: 70px; /* Tamaño de la carta */
-      background-color: #000;
-      border-radius: 8px;
+      width: var(--card-size);
+      height: var(--card-size);
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform var(--flip-duration) ease;
+      cursor: pointer;
+    }
+    /* cara “trasera” (antes oculto fondo negro) */
+    .card::before {
+      content: '';
+      position: absolute;
+      width: 100%; height: 100%;
+      background: #000;
+      border-radius: 6px;
+      backface-visibility: hidden;
+    }
+    /* cara “frontal” con el emoji */
+    .card span {
+      position: absolute;
+      width: 100%; height: 100%;
       display: flex;
       justify-content: center;
       align-items: center;
-      cursor: pointer;
-      font-size: 2.5em; /* Aumenté el tamaño de la fuente */
-      color: transparent;
-      transition: transform 0.3s ease-in-out;
-    }
-
-    .card.flipped {
-      background-color: #ecf0f1;
+      font-size: 2rem;
+      background: #ecf0f1;
       color: #3498db;
+      border-radius: 6px;
+      backface-visibility: hidden;
       transform: rotateY(180deg);
     }
 
+    /* cuando está volteada */
+    .card.flipped {
+      transform: rotateY(180deg);
+    }
+
+    /* matched sigue igual */
     .card.matched {
-      background-color: #2ecc71;
-      color: #fff;
-      cursor: not-allowed;
+      background: #2ecc71 !important;
+      color: #fff !important;
+      cursor: default;
     }
 
-    .hidden {
-      visibility: hidden;
-    }
-
-    #message {
-      font-size: 1.5em;
-      margin-top: 20px;
-      color: #fff;
-    }
-
-    .player-turn {
-      font-size: 1.8em;
-      color: #fff;
-    }
-
-    .match-message {
-      font-size: 1.2em;
-      color: #fff;
-      margin-top: 10px;
-    }
-
+    /* Marcador */
     .scoreboard {
-      width: 200px;
-      padding: 20px;
-      background-color: rgba(255, 255, 255, 0.2);
-      border-radius: 10px;
-      color: #fff;
-      font-size: 1.2em;
-      text-align: left;
+      background: var(--color-white-transparent);
+      border-radius: 8px;
+      padding: var(--gap);
+      font-size: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5em;
+    }
+    .scoreboard h2 {
+      font-size: 1.4rem;
+      text-align: center;
     }
 
-    .scoreboard h2 {
-      text-align: center;
-      font-size: 1.5em;
+    /* Mensajes */
+    #message, .match-message {
+      height: 1.2em;
+      margin-top: 0.5em;
+      font-size: 1rem;
+      color: #fff;
+      text-shadow: 0 0 3px rgba(0,0,0,0.5);
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 992px) {
+      :root { --card-size: 60px; }
+      .title-container h1 { font-size: 1.8rem; }
+    }
+    @media (max-width: 768px) {
+      .main {
+        grid-template-columns: 1fr;
+      }
+      .scoreboard {
+        order: -1;
+        margin-bottom: var(--gap);
+      }
+      :root { --card-size: 50px; }
+      .title-container h1 { font-size: 1.6rem; }
+      .title-container .player-turn { font-size: 1rem; }
+    }
+    @media (max-width: 480px) {
+      .nav-buttons {
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      .nav-buttons a {
+        flex: 1 1 45%;
+        text-align: center;
+      }
+      :root { --card-size: 40px; }
+      .title-container h1 { font-size: 1.4rem; }
+      .title-container .player-turn { font-size: 0.9rem; }
     }
   </style>
 </head>
 <body>
-  <a href="./index.html" class="menu-button game-buttons">Menu</a>
-  <a href="./help.html" class="help-button game-buttons">Info</a>
-  <div class="container">
-    <!-- Sección del juego -->
-    <div class="game-section">
-      <h1>Juego de Memoria 10x6</h1>
+  <header class="header">
+    <nav class="nav-buttons">
+      <a href="./index.html">Menú</a>
+      <a href="./help.html">Info</a>
+    </nav>
+    <div class="title-container">
+      <h1>Juego de Memoria 10×6</h1>
       <div class="player-turn" id="playerTurn">Turno: Jugador 1 (Rojo)</div>
-      <div class="game-board" id="gameBoard"></div>
-      <div id="message"></div>
-      <div id="matchMessage" class="match-message"></div>
     </div>
+  </header>
 
-    <!-- Marcador de puntos -->
-    <div class="scoreboard">
+  <section class="main">
+    <!-- Tablero -->
+    <div class="game-board" id="gameBoard"></div>
+    <!-- Marcador -->
+    <aside class="scoreboard">
       <h2>Puntuación</h2>
       <p>Jugador 1 (Rojo): <span id="scorePlayer1">0</span> parejas</p>
       <p>Jugador 2 (Azul): <span id="scorePlayer2">0</span> parejas</p>
-    </div>
-  </div>
+      <div id="message"></div>
+      <div class="match-message" id="matchMessage"></div>
+    </aside>
+  </section>
 
   <script>
     const cardsArray = [
-      '💩', '💩', '🐱', '🐱', '🚗', '🚗', '🎸', '🎸', '🍕', '🍕',
-      '🌟', '🌟', '🎮', '🎮', '⚽', '⚽', '🍔', '🍔', '🍓', '🍓',
-      '🎩', '🎩', '🦄', '🦄', '🐶', '🐶', '🎤', '🎤', '🍍', '🍍',  /* Cambié dos cohetes por 🍍 */
-      '💎', '💎', '🎬', '🎬', '🏀', '🏀', '🍿', '🍿', '🌙', '🌙',
-      '🌍', '🌍', '🎭', '🎭', '🍇', '🍇', '🦋', '🦋', '🏖️', '🏖️', /* Cambié dos mandos por 🎭 */
-      '🎻', '🎻', '🐒', '🐒', '🌈', '🌈', '🍉', '🍉', '⚡', '⚡'  /* Cambié 2 cohetes por 🎻 */
+      '💩','💩','🐱','🐱','🚗','🚗','🎸','🎸','🍕','🍕',
+      '🌟','🌟','🎮','🎮','⚽','⚽','🍔','🍔','🍓','🍓',
+      '🎩','🎩','🦄','🦄','🐶','🐶','🎤','🎤','🍍','🍍',
+      '💎','💎','🎬','🎬','🏀','🏀','🍿','🍿','🌙','🌙',
+      '🌍','🌍','🎭','🎭','🍇','🍇','🦋','🦋','🏖️','🏖️',
+      '🎻','🎻','🐒','🐒','🌈','🌈','🍉','🍉','⚡','⚡'
     ];
 
-    let flippedCards = [];
-    let matchedCards = [];
-    let isBoardLocked = false;
-    let currentPlayer = 1;
-    let player1Moves = 0;
-    let player2Moves = 0;
+    let flipped = [], matched = [];
+    let lock = false, current = 1, score1 = 0, score2 = 0;
+    const board = document.getElementById('gameBoard');
+    const turnEl = document.getElementById('playerTurn');
+    const s1 = document.getElementById('scorePlayer1');
+    const s2 = document.getElementById('scorePlayer2');
+    const msg = document.getElementById('message');
+    const matchMsg = document.getElementById('matchMessage');
 
-    // Mezclar cartas
-    function shuffle(array) {
-      for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
-      }
-      return array;
+    function shuffle(a) {
+      return a.sort(() => Math.random() - 0.5);
     }
 
-    // Crear el tablero
     function createBoard() {
-      const shuffledCards = shuffle(cardsArray);
-      const gameBoard = document.getElementById('gameBoard');
-      gameBoard.innerHTML = ''; // Limpiar por si se reinicia
-
-      shuffledCards.forEach((cardValue) => {
+      shuffle(cardsArray).forEach(val => {
         const card = document.createElement('div');
-        card.classList.add('card');
-        card.dataset.cardValue = cardValue;
-
-        // Evento de flip
+        card.className = 'card';
+        card.dataset.val = val;
+        card.innerHTML = `<span>${val}</span>`;
         card.addEventListener('click', flipCard);
-
-        const cardContent = document.createElement('span');
-        cardContent.textContent = cardValue;
-        cardContent.classList.add('hidden');
-        card.appendChild(cardContent);
-
-        gameBoard.appendChild(card);
+        board.append(card);
       });
     }
 
-    // Voltear la carta
     function flipCard(e) {
-      // Si el tablero está bloqueado, no hacer nada
-      if (isBoardLocked) return;
-
-      // Asegurar que 'card' sea el DIV (y no el span interno)
-      const card = e.target.classList.contains('card') ? e.target : e.target.parentElement;
-
-      // Si la carta ya está volteada o es "matched", no hacer nada
-      if (card.classList.contains('flipped') || card.classList.contains('matched')) return;
-
-      // Volteamos la carta
-      card.classList.add('flipped');
-      card.querySelector('span').classList.remove('hidden');
-      flippedCards.push(card);
-
-      // Si es la segunda carta volteada...
-      if (flippedCards.length === 2) {
-        // Bloquear inmediatamente para no voltear más
-        isBoardLocked = true;
-        checkForMatch();
+      if (lock) return;
+      const c = e.currentTarget;
+      if (c.classList.contains('flipped') || c.classList.contains('matched')) return;
+      c.classList.add('flipped');
+      flipped.push(c);
+      if (flipped.length === 2) {
+        lock = true;
+        checkMatch();
       }
     }
 
-    // Verificar coincidencia
-    function checkForMatch() {
-      const [firstCard, secondCard] = flippedCards;
-
-      // Si coinciden
-      if (firstCard.dataset.cardValue === secondCard.dataset.cardValue) {
-        firstCard.classList.add('matched');
-        secondCard.classList.add('matched');
-        matchedCards.push(firstCard, secondCard);
-
-        showMessage("¡Coincidencia!"); // Mostramos mensaje de coincidencia
-
-        // Actualizamos el marcador
-        if (currentPlayer === 1) {
-          player1Moves++;
-          document.getElementById('scorePlayer1').textContent = player1Moves;
-        } else {
-          player2Moves++;
-          document.getElementById('scorePlayer2').textContent = player2Moves;
-        }
-
-        // Desbloquear el tablero
-        isBoardLocked = false;
+    function checkMatch() {
+      const [a,b] = flipped;
+      if (a.dataset.val === b.dataset.val) {
+        a.classList.add('matched');
+        b.classList.add('matched');
+        matched.push(a,b);
+        showTemp(matchMsg, '¡Coincidencia!');
+        if (current === 1) { score1++; s1.textContent = score1; }
+        else           { score2++; s2.textContent = score2; }
+        lock = false;
       } else {
-        // No coinciden: tras 1 segundo, se dan vuelta de nuevo
         setTimeout(() => {
-          firstCard.classList.remove('flipped');
-          secondCard.classList.remove('flipped');
-          firstCard.querySelector('span').classList.add('hidden');
-          secondCard.querySelector('span').classList.add('hidden');
-          showMessage("¡Intenta de nuevo!");
-
-          // Cambiamos de jugador
+          [a,b].forEach(c => c.classList.remove('flipped'));
+          showTemp(msg, '¡Intenta de nuevo!');
           switchPlayer();
-          // Desbloqueamos el tablero después de girar las cartas
-          isBoardLocked = false;
-        }, 1000);
+          lock = false;
+        }, 800);
       }
-
-      // Limpiamos el array de cartas volteadas
-      flippedCards = [];
-
-      // Verificar si el juego terminó (todas las cartas encontradas)
-      if (matchedCards.length === cardsArray.length) {
+      flipped = [];
+      if (matched.length === cardsArray.length) {
         setTimeout(() => {
-          const winner = player1Moves > player2Moves ? "1" : "2";
-          alert(`¡Juego terminado! Ganó el Jugador ${winner}`);
-        }, 500);
+          alert(`¡Juego terminado! Ganó el Jugador ${score1>score2?1:2}`);
+        }, 400);
       }
     }
 
-    // Cambiar de jugador
     function switchPlayer() {
-      currentPlayer = currentPlayer === 1 ? 2 : 1;
-      document.getElementById('playerTurn').textContent =
-        `Turno: Jugador ${currentPlayer} (${currentPlayer === 1 ? 'Rojo' : 'Azul'})`;
-
-      // Cambiar color de fondo con animación
-      document.body.style.backgroundColor = currentPlayer === 1 ? '#e74c3c' : '#3498db';
+      current = current === 1 ? 2 : 1;
+      turnEl.textContent = `Turno: Jugador ${current} (${current===1?'Rojo':'Azul'})`;
+      document.body.style.backgroundColor =
+        current===1 ? 'var(--color-bg-1)' : 'var(--color-bg-2)';
     }
 
-    // Mostrar mensajes temporales
-    function showMessage(message) {
-      const messageDiv = document.getElementById('message');
-      messageDiv.textContent = message;
-      setTimeout(() => {
-        messageDiv.textContent = '';
-      }, 1000);
+    function showTemp(el, txt) {
+      el.textContent = txt;
+      setTimeout(() => el.textContent = '', 600);
     }
 
-    // Inicializar el juego
     createBoard();
   </script>
 </body>
 </html>
-
-
-
