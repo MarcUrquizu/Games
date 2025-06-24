@@ -18,8 +18,7 @@
     /* Reset global */
     *, *::before, *::after {
       box-sizing: border-box;
-      margin: 0;
-      padding: 0;
+      margin: 0; padding: 0;
     }
     body {
       font-family: Arial, sans-serif;
@@ -36,19 +35,15 @@
 
     /* HEADER */
     .header {
-      width: 100%;
-      max-width: 1200px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+      width: 100%; max-width: 1200px;
+      display: flex; justify-content: space-between; align-items: center;
       margin-bottom: var(--gap);
     }
     .nav-buttons {
-      display: flex;
-      gap: var(--gap);
+      display: flex; gap: var(--gap);
     }
     .nav-buttons a {
-      padding: 0.5em 1em;
+      padding: .5em 1em;
       background: #fff;
       color: var(--color-bg-1);
       text-decoration: none;
@@ -57,14 +52,10 @@
     }
 
     /* TÍTULO Y TURNO */
-    .title-container {
-      text-align: center;
-    }
-    .title-container h1 {
-      font-size: 2rem;
-    }
+    .title-container { text-align: center; }
+    .title-container h1 { font-size: 2rem; }
     .title-container .player-turn {
-      margin-top: 0.25em;
+      margin-top: .25em;
       font-size: 1.2rem;
     }
 
@@ -73,21 +64,20 @@
       display: grid;
       grid-template-columns: 2fr 1fr;
       gap: var(--gap);
-      width: 100%;
-      max-width: 1200px;
+      width: 100%; max-width: 1200px;
     }
 
-    /* TABLERO: añadimos perspective */
+    /* TABLERO SIN FONDO: para que se vean bien las fichas blancas */
     .game-board {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(var(--card-size), 1fr));
-      gap: calc(var(--gap) / 2);
+      gap: calc(var(--gap)/2);
       justify-items: center;
       width: 100%;
       perspective: 800px;
     }
 
-    /* CARTA con animación 3D */
+    /* CARTA 3D */
     .card {
       width: var(--card-size);
       height: var(--card-size);
@@ -96,43 +86,45 @@
       transition: transform var(--flip-duration) ease;
       cursor: pointer;
     }
-    /* cara “trasera” (antes oculto fondo negro) */
+    /* reverso: fondo blanco con borde */
     .card::before {
       content: '';
       position: absolute;
       width: 100%; height: 100%;
-      background: #000;
+      background: #000000;
+      border: 1px solid #000000;
       border-radius: 6px;
       backface-visibility: hidden;
     }
-    /* cara “frontal” con el emoji */
+    /* frontal: emoji sobre blanco */
     .card span {
       position: absolute;
       width: 100%; height: 100%;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+      display: flex; justify-content: center; align-items: center;
       font-size: 2rem;
-      background: #ecf0f1;
+      background: #fff;
       color: #3498db;
       border-radius: 6px;
       backface-visibility: hidden;
       transform: rotateY(180deg);
     }
-
-    /* cuando está volteada */
+    /* al hacer flip */
     .card.flipped {
       transform: rotateY(180deg);
     }
 
-    /* matched sigue igual */
-    .card.matched {
+    /* MATCHED: verde en ambas caras */
+    .card.matched { cursor: default; }
+    .card.matched::before {
+      background: #2ecc71 !important;
+      border-color: #27ae60 !important;
+    }
+    .card.matched span {
       background: #2ecc71 !important;
       color: #fff !important;
-      cursor: default;
     }
 
-    /* Marcador */
+    /* MARCADOR */
     .scoreboard {
       background: var(--color-white-transparent);
       border-radius: 8px;
@@ -140,17 +132,17 @@
       font-size: 1rem;
       display: flex;
       flex-direction: column;
-      gap: 0.5em;
+      gap: .5em;
     }
     .scoreboard h2 {
       font-size: 1.4rem;
       text-align: center;
     }
 
-    /* Mensajes */
+    /* MENSAJES */
     #message, .match-message {
       height: 1.2em;
-      margin-top: 0.5em;
+      margin-top: .5em;
       font-size: 1rem;
       color: #fff;
       text-shadow: 0 0 3px rgba(0,0,0,0.5);
@@ -162,32 +154,22 @@
       .title-container h1 { font-size: 1.8rem; }
     }
     @media (max-width: 768px) {
-      .main {
-        grid-template-columns: 1fr;
-      }
-      .scoreboard {
-        order: -1;
-        margin-bottom: var(--gap);
-      }
+      .main { grid-template-columns: 1fr; }
+      .scoreboard { order: -1; margin-bottom: var(--gap); }
       :root { --card-size: 50px; }
       .title-container h1 { font-size: 1.6rem; }
       .title-container .player-turn { font-size: 1rem; }
     }
     @media (max-width: 480px) {
-      .nav-buttons {
-        flex-wrap: wrap;
-        justify-content: center;
-      }
-      .nav-buttons a {
-        flex: 1 1 45%;
-        text-align: center;
-      }
+      .nav-buttons { flex-wrap: wrap; justify-content: center; }
+      .nav-buttons a { flex: 1 1 45%; text-align: center; }
       :root { --card-size: 40px; }
       .title-container h1 { font-size: 1.4rem; }
       .title-container .player-turn { font-size: 0.9rem; }
     }
   </style>
 </head>
+
 <body>
   <header class="header">
     <nav class="nav-buttons">
@@ -201,9 +183,7 @@
   </header>
 
   <section class="main">
-    <!-- Tablero -->
     <div class="game-board" id="gameBoard"></div>
-    <!-- Marcador -->
     <aside class="scoreboard">
       <h2>Puntuación</h2>
       <p>Jugador 1 (Rojo): <span id="scorePlayer1">0</span> parejas</p>
@@ -225,25 +205,24 @@
 
     let flipped = [], matched = [];
     let lock = false, current = 1, score1 = 0, score2 = 0;
-    const board = document.getElementById('gameBoard');
-    const turnEl = document.getElementById('playerTurn');
-    const s1 = document.getElementById('scorePlayer1');
-    const s2 = document.getElementById('scorePlayer2');
-    const msg = document.getElementById('message');
-    const matchMsg = document.getElementById('matchMessage');
+    const board    = document.getElementById('gameBoard'),
+          turnEl   = document.getElementById('playerTurn'),
+          s1       = document.getElementById('scorePlayer1'),
+          s2       = document.getElementById('scorePlayer2'),
+          msg      = document.getElementById('message'),
+          matchMsg = document.getElementById('matchMessage');
 
-    function shuffle(a) {
-      return a.sort(() => Math.random() - 0.5);
-    }
+    function shuffle(a) { return a.sort(() => Math.random() - 0.5); }
 
     function createBoard() {
+      board.innerHTML = '';
       shuffle(cardsArray).forEach(val => {
-        const card = document.createElement('div');
-        card.className = 'card';
-        card.dataset.val = val;
-        card.innerHTML = `<span>${val}</span>`;
-        card.addEventListener('click', flipCard);
-        board.append(card);
+        const c = document.createElement('div');
+        c.className = 'card';
+        c.dataset.val = val;
+        c.innerHTML = `<span>${val}</span>`;
+        c.addEventListener('click', flipCard);
+        board.append(c);
       });
     }
 
@@ -264,14 +243,14 @@
       if (a.dataset.val === b.dataset.val) {
         a.classList.add('matched');
         b.classList.add('matched');
-        matched.push(a,b);
         showTemp(matchMsg, '¡Coincidencia!');
         if (current === 1) { score1++; s1.textContent = score1; }
-        else           { score2++; s2.textContent = score2; }
+        else              { score2++; s2.textContent = score2; }
         lock = false;
       } else {
         setTimeout(() => {
-          [a,b].forEach(c => c.classList.remove('flipped'));
+          a.classList.remove('flipped');
+          b.classList.remove('flipped');
           showTemp(msg, '¡Intenta de nuevo!');
           switchPlayer();
           lock = false;
