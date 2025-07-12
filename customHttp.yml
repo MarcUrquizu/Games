@@ -1,0 +1,19 @@
+customHeaders:
+  - pattern: '**/Build/*.br'
+    headers:
+      - key: Content-Encoding
+        value: br
+      - key: Content-Type
+        value: application/javascript
+  - pattern: '**/Build/*.data.br'
+    headers:
+      - key: Content-Encoding
+        value: br
+      - key: Content-Type
+        value: application/octet-stream
+  - pattern: '**/Build/*.wasm.br'
+    headers:
+      - key: Content-Encoding
+        value: br
+      - key: Content-Type
+        value: application/wasm
