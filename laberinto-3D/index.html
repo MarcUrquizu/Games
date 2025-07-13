@@ -7,11 +7,31 @@
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
     <link rel="stylesheet" href="TemplateData/style.css">
   </head>
+  <style>
+     .game-buttons {
+      background-color: #000000;
+      color: #ededed;
+      font-weight: bold;
+      text-decoration: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      position: absolute;
+      top: 10px;
+      z-index: 10;
+    }
+
+    .menu-button {
+      right: 10px;
+    }
+
+    .help-button {
+      left: 10px;
+    }
+  </style>
   <body>
 
-
- <a href="./index.html" class="menu-button game-buttons">Menu</a>
-  <a href="./help.html" class="help-button game-buttons">Info</a>
+ <a href="../index.html" class="menu-button game-buttons">Menu</a>
+  <a href="../help.html" class="help-button game-buttons">Info</a>
 
     <div id="unity-container" class="unity-desktop">
       <canvas id="unity-canvas" width=960 height=600 tabindex="-1"></canvas>
