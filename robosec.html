@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RoboSec</title>
+  <style>
+    body {
+      margin: 0;
+      background-color: #0d1117;
+      color: white;
+      font-family: Arial, sans-serif;
+      text-align: center;
+    }
+    h1 {
+      margin-top: 20px;
+    }
+    #game {
+      margin: 0 auto;
+      margin-top: 20px;
+      width: 450px;
+      height: 280px;
+      border: 2px solid #007bff;
+      position: relative;
+      background-color: #1c2333;
+    }
+    #server {
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      height: 50px;
+      background-color: #2ecc71;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-weight: bold;
+      font-size: 20px;
+    }
+    .indicator {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin: 0 3px;
+    }
+    .virus {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background-color: red;
+      cursor: pointer;
+    }
+    .light {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      animation: blink 1s infinite;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+    #riddle-box {
+      position: absolute;
+      top: 40%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: #2c3e50;
+      padding: 20px;
+      border-radius: 10px;
+      border: 2px solid #ecf0f1;
+      display: none;
+    }
+    #riddle-box input {
+      padding: 5px;
+      margin-right: 10px;
+    }
+    #hint-button {
+      margin-top: 10px;
+      background-color: #3498db;
+      border: none;
+      color: white;
+      padding: 5px 10px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>RoboSec</h1>
+  <div id="game">
+    <div id="server">
+      <div class="indicator" style="background-color: red;"></div>
+      <div class="indicator" style="background-color: yellow;"></div>
+      <div class="indicator" style="background-color: cyan;"></div>
+      <div class="indicator" style="background-color: purple;"></div>
+      Servidor
+    </div>
+  </div>
+
+  <div id="riddle-box">
+    <p id="riddle"></p>
+    <input id="answer-input" placeholder="Tu respuesta..." autocomplete="off" autocomplete="false">
+    <button onclick="checkAnswer()">Enviar</button><br>
+    <button id="hint-button" onclick="showHint()">Pista</button>
+    <p id="result"></p>
+  </div>
+
+  <script>
+    const game = document.getElementById("game");
+    const riddles = [
+      { question: '¿Qué número de una cifra si lo pones al revés vale lo mismo?', answer: ['8', '0'] },
+      { question: '¿Qué tiene un ojo pero no puede ver?', answer: ['aguja'] },
+      { question: '¿Me encuentras en el cielo de día, pero no de noche. ¿Qué soy?', answer: ['sol'] },
+      { question: 'Cuanto más me quitas, más grande soy. ¿Qué soy?', answer: ['agujero'] },
+      { question: '¿Qué se moja mientras seca?', answer: ['toalla'] },
+      { question: '¿Qué tiene ciudades pero no casas, ríos pero no agua?', answer: ['mapa'] },
+      { question: '¿Qué puedes atrapar pero no lanzar?', answer: ['resfriado'] },
+      { question: '¿Qué sube pero nunca baja?', answer: ['edad'] },
+      { question: '¿Qué siempre está delante de ti pero no puedes ver?', answer: ['futuro'] },
+      { question: '¿Qué tiene un cuello pero no cabeza?', answer: ['botella'] },
+      { question: '¿Qué se rompe si lo nombras?', answer: ['silencio'] },
+      { question: '¿Qué corre sin moverse?', answer: ['agua'] },
+      { question: '¿Qué va hacia arriba y nunca baja?', answer: ['humo'] },
+      { question: '¿Qué empieza con P y termina con A y está llena de letras?', answer: ['palabra'] },
+      { question: '¿Qué puedes llenar pero siempre está vacío?', answer: ['hueco'] },
+      { question: '¿Qué se vuelve más húmedo cuanto más seca?', answer: ['esponja'] },
+    ];
+
+    let usedRiddles = [];
+    let activeRiddle = null;
+    let activeVirus = null;
+    let virusCount = 0;
+    let allViruses = [];
+    let isPaused = false;
+    let virusInterval = null;
+
+    function createVirus() {
+      if (riddles.length === 0 || virusCount >= 3 || isPaused) return;
+
+      const virus = document.createElement("div");
+      virus.className = "virus";
+      const x = Math.random() * (game.clientWidth - 30);
+      virus.style.left = x + "px";
+      virus.style.top = "0px";
+
+      let speed = Math.random() * 1.5 + 0.5;
+      const interval = setInterval(() => {
+        if (!virus.dataset.paused) {
+          let top = parseFloat(virus.style.top);
+          virus.style.top = top + speed + "px";
+
+          if (top + 30 >= game.clientHeight - 50) {
+            clearInterval(interval);
+            virus.remove();
+            allViruses = allViruses.filter(v => v !== virus);
+            virusCount++;
+            if (virusCount >= 3) {
+              alert("¡Has perdido! 3 virus llegaron al servidor.");
+              location.reload();
+            }
+          }
+        }
+      }, 20);
+
+      virus.dataset.interval = interval;
+      virus.onclick = () => {
+        if (activeRiddle) return;
+        isPaused = true;
+        allViruses.forEach(v => {
+          if (v !== virus) v.dataset.paused = true;
+        });
+        activeVirus = virus;
+        showRiddle();
+      };
+
+      game.appendChild(virus);
+      allViruses.push(virus);
+    }
+
+    function showRiddle() {
+      const index = Math.floor(Math.random() * riddles.length);
+      activeRiddle = riddles.splice(index, 1)[0];
+      usedRiddles.push(activeRiddle);
+      document.getElementById("riddle").innerText = "Acertijo: " + activeRiddle.question;
+      document.getElementById("answer-input").value = "";
+      document.getElementById("result").innerText = "";
+      document.getElementById("riddle-box").style.display = "block";
+    }
+
+    function showHint() {
+      const hint = activeRiddle.answer[0].slice(0, 2);
+      document.getElementById("result").innerText = `Pista: ${hint}...`;
+    }
+
+    function checkAnswer() {
+      const input = document.getElementById("answer-input").value.toLowerCase().trim();
+      const correct = activeRiddle.answer.includes(input);
+      if (correct) {
+        document.getElementById("result").innerText = "✅ ¡Correcto!";
+        if (activeVirus) {
+          clearInterval(activeVirus.dataset.interval);
+          game.removeChild(activeVirus);
+          allViruses = allViruses.filter(v => v !== activeVirus);
+        }
+      } else {
+        document.getElementById("result").innerText = "❌ Incorrecto.";
+        if (activeVirus) activeVirus.dataset.paused = false;
+      }
+
+      setTimeout(() => {
+        document.getElementById("riddle-box").style.display = "none";
+        isPaused = false;
+        allViruses.forEach(v => v.dataset.paused = false);
+        activeRiddle = null;
+        activeVirus = null;
+      }, 1500);
+    }
+
+    virusInterval = setInterval(() => {
+      if (!isPaused) createVirus();
+    }, 2000);
+  </script>
+</body>
+</html>
