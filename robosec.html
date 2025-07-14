@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>RoboSec</title>
+  <title>RoboSec: Seguridad Cibernética</title>
   <style>
     body {
       margin: 0;
@@ -18,11 +18,12 @@
     #game {
       margin: 0 auto;
       margin-top: 20px;
-      width: 450px;
-      height: 280px;
+      width: 360px;
+      height: 300px;
       border: 2px solid #007bff;
       position: relative;
       background-color: #1c2333;
+      overflow: hidden;
     }
     #server {
       position: absolute;
@@ -35,12 +36,21 @@
       align-items: center;
       font-weight: bold;
       font-size: 20px;
+      z-index: 2;
     }
-    .indicator {
+    .light {
+      position: absolute;
       width: 10px;
       height: 10px;
       border-radius: 50%;
-      margin: 0 3px;
+      z-index: 1;
+    }
+    .blink {
+      animation: blink 1s infinite;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
     }
     .virus {
       position: absolute;
@@ -49,17 +59,6 @@
       border-radius: 50%;
       background-color: red;
       cursor: pointer;
-    }
-    .light {
-      position: absolute;
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      animation: blink 1s infinite;
-    }
-    @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0; }
     }
     #riddle-box {
       position: absolute;
@@ -71,6 +70,7 @@
       border-radius: 10px;
       border: 2px solid #ecf0f1;
       display: none;
+      z-index: 3;
     }
     #riddle-box input {
       padding: 5px;
@@ -84,142 +84,222 @@
       padding: 5px 10px;
       cursor: pointer;
     }
+    #overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      z-index: 4;
+      color: white;
+      font-size: 24px;
+    }
+    #overlay button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 18px;
+      cursor: pointer;
+    }
+    #win-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      z-index: 4;
+      color: white;
+      font-size: 24px;
+    }
+    #win-overlay button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 18px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
-  <h1>RoboSec</h1>
+  <h1>RoboSec: Seguridad Cibernética</h1>
   <div id="game">
-    <div id="server">
-      <div class="indicator" style="background-color: red;"></div>
-      <div class="indicator" style="background-color: yellow;"></div>
-      <div class="indicator" style="background-color: cyan;"></div>
-      <div class="indicator" style="background-color: purple;"></div>
-      Servidor
-    </div>
+    <div id="server">Servidor</div>
   </div>
 
   <div id="riddle-box">
     <p id="riddle"></p>
-    <input id="answer-input" placeholder="Tu respuesta..." autocomplete="off" autocomplete="false">
+    <input id="answer-input" placeholder="Tu respuesta..." autocomplete="off">
     <button onclick="checkAnswer()">Enviar</button><br>
     <button id="hint-button" onclick="showHint()">Pista</button>
     <p id="result"></p>
   </div>
 
+  <div id="overlay">
+    <div>¡Has perdido! 3 virus llegaron al servidor.</div>
+    <button onclick="location.reload()">Volver a jugar</button>
+  </div>
+
+  <div id="win-overlay">
+    <div>🎉 ¡Has ganado! Respondiste todos los acertijos correctamente.</div>
+    <button onclick="location.reload()">Volver a jugar</button>
+  </div>
+
   <script>
     const game = document.getElementById("game");
+    const server = document.getElementById("server");
+    const overlay = document.getElementById("overlay");
+    const winOverlay = document.getElementById("win-overlay");
+    const riddleBox = document.getElementById("riddle-box");
+    const riddleText = document.getElementById("riddle");
+    const answerInput = document.getElementById("answer-input");
+    const result = document.getElementById("result");
+
     const riddles = [
-      { question: '¿Qué número de una cifra si lo pones al revés vale lo mismo?', answer: ['8', '0'] },
-      { question: '¿Qué tiene un ojo pero no puede ver?', answer: ['aguja'] },
-      { question: '¿Me encuentras en el cielo de día, pero no de noche. ¿Qué soy?', answer: ['sol'] },
-      { question: 'Cuanto más me quitas, más grande soy. ¿Qué soy?', answer: ['agujero'] },
-      { question: '¿Qué se moja mientras seca?', answer: ['toalla'] },
-      { question: '¿Qué tiene ciudades pero no casas, ríos pero no agua?', answer: ['mapa'] },
-      { question: '¿Qué puedes atrapar pero no lanzar?', answer: ['resfriado'] },
+      { question: 'Cálculo rápido: 2 + 2 * 2 = ?', answer: ['6'] },
+      { question: 'Tengo llaves pero no puertas. Tengo espacio pero no habitación. Puedes entrar pero no salir. ¿Qué soy?', answer: ['teclado'] },
       { question: '¿Qué sube pero nunca baja?', answer: ['edad'] },
-      { question: '¿Qué siempre está delante de ti pero no puedes ver?', answer: ['futuro'] },
-      { question: '¿Qué tiene un cuello pero no cabeza?', answer: ['botella'] },
-      { question: '¿Qué se rompe si lo nombras?', answer: ['silencio'] },
-      { question: '¿Qué corre sin moverse?', answer: ['agua'] },
-      { question: '¿Qué va hacia arriba y nunca baja?', answer: ['humo'] },
-      { question: '¿Qué empieza con P y termina con A y está llena de letras?', answer: ['palabra'] },
-      { question: '¿Qué puedes llenar pero siempre está vacío?', answer: ['hueco'] },
-      { question: '¿Qué se vuelve más húmedo cuanto más seca?', answer: ['esponja'] },
+      { question: 'Me encuentras en el cielo de noche y duermo todo el día. ¿Qué soy?', answer: ['estrella'] }
     ];
 
-    let usedRiddles = [];
-    let activeRiddle = null;
-    let activeVirus = null;
+    const colors = ['red', 'yellow', 'cyan', 'purple', 'white', 'orange'];
+    const placedLights = [];
+    for (let i = 0; i < 15; i++) {
+      const light = document.createElement("div");
+      light.className = "light";
+      light.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+
+      let x, y, overlaps;
+      do {
+        x = Math.random() * (game.clientWidth - 10);
+        y = game.clientHeight - 60 + Math.random() * 25;
+        overlaps = placedLights.some(l => Math.abs(l.x - x) < 12 && Math.abs(l.y - y) < 12);
+      } while (overlaps || (x > 130 && x < 240));
+
+      placedLights.push({ x, y });
+      light.style.left = x + "px";
+      light.style.top = y + "px";
+      light.style.animation = `blink ${Math.random() * 1.5 + 0.5}s infinite`;
+      game.appendChild(light);
+    }
+
     let virusCount = 0;
-    let allViruses = [];
-    let isPaused = false;
-    let virusInterval = null;
+    let activeVirus = null;
+    let paused = false;
+    let timeRemaining = 60;
+    let usedRiddles = new Set();
 
     function createVirus() {
-      if (riddles.length === 0 || virusCount >= 3 || isPaused) return;
-
+      if (paused || usedRiddles.size >= riddles.length) return;
       const virus = document.createElement("div");
       virus.className = "virus";
-      const x = Math.random() * (game.clientWidth - 30);
-      virus.style.left = x + "px";
-      virus.style.top = "0px";
+      virus.style.left = Math.random() * (game.clientWidth - 30) + "px";
+      virus.dataset.riddleId = [...Array(riddles.length).keys()].find(i => !usedRiddles.has(i));
 
-      let speed = Math.random() * 1.5 + 0.5;
-      const interval = setInterval(() => {
-        if (!virus.dataset.paused) {
-          let top = parseFloat(virus.style.top);
-          virus.style.top = top + speed + "px";
-
-          if (top + 30 >= game.clientHeight - 50) {
-            clearInterval(interval);
-            virus.remove();
-            allViruses = allViruses.filter(v => v !== virus);
-            virusCount++;
-            if (virusCount >= 3) {
-              alert("¡Has perdido! 3 virus llegaron al servidor.");
-              location.reload();
-            }
-          }
-        }
-      }, 20);
-
-      virus.dataset.interval = interval;
-      virus.onclick = () => {
-        if (activeRiddle) return;
-        isPaused = true;
-        allViruses.forEach(v => {
-          if (v !== virus) v.dataset.paused = true;
-        });
-        activeVirus = virus;
-        showRiddle();
-      };
-
+      let topPos = 0;
+      virus.style.top = topPos + "px";
       game.appendChild(virus);
-      allViruses.push(virus);
-    }
 
-    function showRiddle() {
-      const index = Math.floor(Math.random() * riddles.length);
-      activeRiddle = riddles.splice(index, 1)[0];
-      usedRiddles.push(activeRiddle);
-      document.getElementById("riddle").innerText = "Acertijo: " + activeRiddle.question;
-      document.getElementById("answer-input").value = "";
-      document.getElementById("result").innerText = "";
-      document.getElementById("riddle-box").style.display = "block";
-    }
+      function fall() {
+        if (paused && activeVirus !== virus) return;
+        if (topPos >= game.clientHeight - 50) {
+          virus.remove();
+          virusCount++;
+          if (virusCount >= 3) loseGame();
+          return;
+        }
+        topPos += 2;
+        virus.style.top = topPos + "px";
+        requestAnimationFrame(fall);
+      }
+      fall();
 
-    function showHint() {
-      const hint = activeRiddle.answer[0].slice(0, 2);
-      document.getElementById("result").innerText = `Pista: ${hint}...`;
+      virus.onclick = () => {
+        if (paused || activeVirus) return;
+        paused = true;
+        activeVirus = virus;
+        const riddleId = +virus.dataset.riddleId;
+        usedRiddles.add(riddleId);
+        const r = riddles[riddleId];
+        riddleText.textContent = r.question;
+        answerInput.value = '';
+        result.textContent = '';
+        riddleBox.style.display = 'block';
+        virus.style.backgroundColor = '#800000';
+      };
     }
 
     function checkAnswer() {
-      const input = document.getElementById("answer-input").value.toLowerCase().trim();
-      const correct = activeRiddle.answer.includes(input);
-      if (correct) {
-        document.getElementById("result").innerText = "✅ ¡Correcto!";
-        if (activeVirus) {
-          clearInterval(activeVirus.dataset.interval);
-          game.removeChild(activeVirus);
-          allViruses = allViruses.filter(v => v !== activeVirus);
-        }
+      const userAnswer = answerInput.value.trim().toLowerCase();
+      const riddleId = +activeVirus.dataset.riddleId;
+      if (riddles[riddleId].answer.includes(userAnswer)) {
+        result.textContent = "Correcto ✅";
+        setTimeout(() => {
+          activeVirus.remove();
+          activeVirus = null;
+          resetRiddle();
+          if (usedRiddles.size === riddles.length) winGame();
+        }, 1000);
       } else {
-        document.getElementById("result").innerText = "❌ Incorrecto.";
-        if (activeVirus) activeVirus.dataset.paused = false;
+        result.textContent = "Incorrecto ❌";
+        setTimeout(() => {
+          activeVirus.style.backgroundColor = 'red';
+          activeVirus = null;
+          resetRiddle();
+        }, 1000);
       }
-
-      setTimeout(() => {
-        document.getElementById("riddle-box").style.display = "none";
-        isPaused = false;
-        allViruses.forEach(v => v.dataset.paused = false);
-        activeRiddle = null;
-        activeVirus = null;
-      }, 1500);
     }
 
-    virusInterval = setInterval(() => {
-      if (!isPaused) createVirus();
-    }, 2000);
+    function resetRiddle() {
+      riddleBox.style.display = 'none';
+      paused = false;
+    }
+
+    function showHint() {
+      const riddleId = +activeVirus.dataset.riddleId;
+      const hint = riddles[riddleId].answer[0].substring(0, 2);
+      result.textContent = `Pista: empieza por "${hint}..."`;
+    }
+
+    function loseGame() {
+      overlay.style.display = 'flex';
+      paused = true;
+    }
+
+    function winGame() {
+      winOverlay.style.display = 'flex';
+      paused = true;
+    }
+
+    function updateTimer() {
+      if (paused) return;
+      if (timeRemaining <= 0) {
+        loseGame();
+        return;
+      }
+      timeRemaining--;
+      document.getElementById("timer").textContent = `⏱ Tiempo: ${timeRemaining}s`;
+    }
+
+    const timerDisplay = document.createElement("div");
+    timerDisplay.id = "timer";
+    timerDisplay.textContent = `⏱ Tiempo: ${timeRemaining}s`;
+    timerDisplay.style.position = "absolute";
+    timerDisplay.style.top = "5px";
+    timerDisplay.style.right = "10px";
+    timerDisplay.style.fontWeight = "bold";
+    timerDisplay.style.zIndex = 5;
+    game.appendChild(timerDisplay);
+
+    setInterval(updateTimer, 1000);
+    setInterval(createVirus, 1500);
   </script>
 </body>
 </html>
