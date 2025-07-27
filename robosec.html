@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RoboSec: Seguridad Cibernética</title>
+  <style>
+    body {
+      margin: 0;
+      background-color: #0d1117;
+      color: white;
+      font-family: Arial, sans-serif;
+      text-align: center;
+    }
+    h1 {
+      margin-top: 20px;
+    }
+    #game {
+      margin: 0 auto;
+      margin-top: 20px;
+      width: 360px;
+      height: 300px;
+      border: 2px solid #007bff;
+      position: relative;
+      background-color: #1c2333;
+      overflow: hidden;
+    }
+    #server {
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      height: 50px;
+      background-color: #2ecc71;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-weight: bold;
+      font-size: 20px;
+      z-index: 2;
+    }
+    .light {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      z-index: 1;
+    }
+    .blink {
+      animation: blink 1s infinite;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+    .virus {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background-color: red;
+      cursor: pointer;
+    }
+    #riddle-box {
+      position: absolute;
+      top: 40%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: #2c3e50;
+      padding: 20px;
+      border-radius: 10px;
+      border: 2px solid #ecf0f1;
+      display: none;
+      z-index: 3;
+    }
+    #riddle-box input {
+      padding: 5px;
+      margin-right: 10px;
+    }
+    #hint-button {
+      margin-top: 10px;
+      background-color: #3498db;
+      border: none;
+      color: white;
+      padding: 5px 10px;
+      cursor: pointer;
+    }
+    #overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      z-index: 4;
+      color: white;
+      font-size: 24px;
+    }
+    #overlay button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 18px;
+      cursor: pointer;
+    }
+    #win-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      z-index: 4;
+      color: white;
+      font-size: 24px;
+    }
+    #win-overlay button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 18px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>RoboSec: Seguridad Cibernética</h1>
+  <div id="game">
+    <div id="server">Servidor</div>
+  </div>
+
+  <div id="riddle-box">
+    <p id="riddle"></p>
+    <input id="answer-input" placeholder="Tu respuesta..." autocomplete="off">
+    <button onclick="checkAnswer()">Enviar</button><br>
+    <button id="hint-button" onclick="showHint()">Pista</button>
+    <p id="result"></p>
+  </div>
+
+  <div id="overlay">
+    <div>¡Has perdido! 3 virus llegaron al servidor.</div>
+    <button onclick="location.reload()">Volver a jugar</button>
+  </div>
+
+  <div id="win-overlay">
+    <div>🎉 ¡Has ganado! Respondiste todos los acertijos correctamente.</div>
+    <button onclick="location.reload()">Volver a jugar</button>
+  </div>
+
+  <script>
+    const game = document.getElementById("game");
+    const server = document.getElementById("server");
+    const overlay = document.getElementById("overlay");
+    const winOverlay = document.getElementById("win-overlay");
+    const riddleBox = document.getElementById("riddle-box");
+    const riddleText = document.getElementById("riddle");
+    const answerInput = document.getElementById("answer-input");
+    const result = document.getElementById("result");
+
+    const riddles = [
+      { question: 'Cálculo rápido: 2 + 2 * 2 = ?', answer: ['6'] },
+      { question: 'Tengo llaves pero no puertas. Tengo espacio pero no habitación. Puedes entrar pero no salir. ¿Qué soy?', answer: ['teclado'] },
+      { question: '¿Qué sube pero nunca baja?', answer: ['edad'] },
+      { question: 'Me encuentras en el cielo de noche y duermo todo el día. ¿Qué soy?', answer: ['estrella'] }
+    ];
+
+    const colors = ['red', 'yellow', 'cyan', 'purple', 'white', 'orange'];
+    const placedLights = [];
+    for (let i = 0; i < 15; i++) {
+      const light = document.createElement("div");
+      light.className = "light";
+      light.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+
+      let x, y, overlaps;
+      do {
+        x = Math.random() * (game.clientWidth - 10);
+        y = game.clientHeight - 60 + Math.random() * 25;
+        overlaps = placedLights.some(l => Math.abs(l.x - x) < 12 && Math.abs(l.y - y) < 12);
+      } while (overlaps || (x > 130 && x < 240));
+
+      placedLights.push({ x, y });
+      light.style.left = x + "px";
+      light.style.top = y + "px";
+      light.style.animation = `blink ${Math.random() * 1.5 + 0.5}s infinite`;
+      game.appendChild(light);
+    }
+
+    let virusCount = 0;
+    let activeVirus = null;
+    let paused = false;
+    let timeRemaining = 60;
+    let usedRiddles = new Set();
+
+    function createVirus() {
+      if (paused || usedRiddles.size >= riddles.length) return;
+      const virus = document.createElement("div");
+      virus.className = "virus";
+      virus.style.left = Math.random() * (game.clientWidth - 30) + "px";
+      virus.dataset.riddleId = [...Array(riddles.length).keys()].find(i => !usedRiddles.has(i));
+
+      let topPos = 0;
+      virus.style.top = topPos + "px";
+      game.appendChild(virus);
+
+      function fall() {
+        if (paused && activeVirus !== virus) return;
+        if (topPos >= game.clientHeight - 50) {
+          virus.remove();
+          virusCount++;
+          if (virusCount >= 3) loseGame();
+          return;
+        }
+        topPos += 2;
+        virus.style.top = topPos + "px";
+        requestAnimationFrame(fall);
+      }
+      fall();
+
+      virus.onclick = () => {
+        if (paused || activeVirus) return;
+        paused = true;
+        activeVirus = virus;
+        const riddleId = +virus.dataset.riddleId;
+        usedRiddles.add(riddleId);
+        const r = riddles[riddleId];
+        riddleText.textContent = r.question;
+        answerInput.value = '';
+        result.textContent = '';
+        riddleBox.style.display = 'block';
+        virus.style.backgroundColor = '#800000';
+      };
+    }
+
+    function checkAnswer() {
+      const userAnswer = answerInput.value.trim().toLowerCase();
+      const riddleId = +activeVirus.dataset.riddleId;
+      if (riddles[riddleId].answer.includes(userAnswer)) {
+        result.textContent = "Correcto ✅";
+        setTimeout(() => {
+          activeVirus.remove();
+          activeVirus = null;
+          resetRiddle();
+          if (usedRiddles.size === riddles.length) winGame();
+        }, 1000);
+      } else {
+        result.textContent = "Incorrecto ❌";
+        setTimeout(() => {
+          activeVirus.style.backgroundColor = 'red';
+          activeVirus = null;
+          resetRiddle();
+        }, 1000);
+      }
+    }
+
+    function resetRiddle() {
+      riddleBox.style.display = 'none';
+      paused = false;
+    }
+
+    function showHint() {
+      const riddleId = +activeVirus.dataset.riddleId;
+      const hint = riddles[riddleId].answer[0].substring(0, 2);
+      result.textContent = `Pista: empieza por "${hint}..."`;
+    }
+
+    function loseGame() {
+      overlay.style.display = 'flex';
+      paused = true;
+    }
+
+    function winGame() {
+      winOverlay.style.display = 'flex';
+      paused = true;
+    }
+
+    function updateTimer() {
+      if (paused) return;
+      if (timeRemaining <= 0) {
+        loseGame();
+        return;
+      }
+      timeRemaining--;
+      document.getElementById("timer").textContent = `⏱ Tiempo: ${timeRemaining}s`;
+    }
+
+    const timerDisplay = document.createElement("div");
+    timerDisplay.id = "timer";
+    timerDisplay.textContent = `⏱ Tiempo: ${timeRemaining}s`;
+    timerDisplay.style.position = "absolute";
+    timerDisplay.style.top = "5px";
+    timerDisplay.style.right = "10px";
+    timerDisplay.style.fontWeight = "bold";
+    timerDisplay.style.zIndex = 5;
+    game.appendChild(timerDisplay);
+
+    setInterval(updateTimer, 1000);
+    setInterval(createVirus, 1500);
+  </script>
+</body>
+</html>
