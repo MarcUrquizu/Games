@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>|@~¬€~¬!"$·%&$/&%</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0;
+      background: #f0f0f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: sans-serif;
+      position: relative;
+      min-height: 100vh;
+    }
+    .game-buttons {
+      background-color: #000;
+      color: #fff;
+      font-weight: bold;
+      text-decoration: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      position: absolute;
+      top: 10px;
+      z-index: 10;
+    }
+    .menu-button { right: 10px; }
+    .help-button { left: 10px; }
+
+    h1 { margin-top: 60px; }
+    #score, #ballCount {
+      font-size: 1.2em;
+      color: #333;
+      margin: 5px 0;
+    }
+
+    #gameWrapper {
+      width: 90vw;
+      max-width: 1000px;
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+      margin-top: 20px;
+    }
+    #mainArea {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    #controlPanel {
+      width: 200px;
+      background: #fff;
+      border: 2px solid #333;
+      border-radius: 5px;
+      padding: 10px;
+      font-size: 0.9em;
+      line-height: 1.4;
+    }
+    #controlPanel h2 {
+      margin-top: 0;
+      font-size: 1em;
+      text-align: center;
+    }
+    #controlPanel ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    #controlPanel li {
+      margin: 6px 0;
+    }
+    #gameCanvas {
+      width: 100%;
+      height: auto;
+      aspect-ratio: 16 / 10;
+      background: #111;
+      border: 2px solid #333;
+    }
+    #touchControls {
+      display: flex;
+      gap: 15px;
+      margin: 15px 0;
+      touch-action: none;
+    }
+    .tc-btn {
+      width: clamp(40px, 10vw, 60px);
+      height: clamp(40px, 10vw, 60px);
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+      font-size: 1.5rem;
+      border: none;
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      cursor: pointer;
+    }
+    @media (max-width: 600px) {
+      #gameWrapper { flex-direction: column; }
+      #controlPanel { width: 100%; margin-top: 20px; }
+    }
+    #controls { margin-bottom: 20px; }
+    button { padding: 8px 16px; font-size: 1em; cursor: pointer; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+  <a href="./index.html" class="menu-button game-buttons">Menu</a>
+  <a href="./help.html" class="help-button game-buttons">Info</a>
+
+  <h1>|@~¬€~¬!"$·%&$/&%</h1>
+  <div id="score">Puntuación: 0</div>
+  <div id="ballCount">Bolas: 0</div>
+
+  <div id="gameWrapper">
+    <div id="mainArea">
+      <canvas id="gameCanvas"></canvas>
+      <div id="touchControls">
+        <button id="btn-left" class="tc-btn">←</button>
+        <button id="btn-right" class="tc-btn">→</button>
+      </div>
+      <div id="controls">
+        <button id="startButton">Iniciar</button>
+      </div>
+    </div>
+    <div id="controlPanel">
+      <h2>Controles de teclado</h2>
+      <ul>
+        <li><strong>Espacio:</strong> Mostrar/ocultar la barra</li>
+        <li><strong>Numero 1:</strong> Queda solo 1 bola</li>
+        <li><strong>Numero 2:</strong> Añadir 100 bolas</li>
+        <li><strong>Numero 3:</strong> Mostrar/ocultar bloques</li>
+        <li><strong>Numero 4:</strong> Duplicar todas las bolas</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+    const ballCountEl = document.getElementById('ballCount');
+    const startBtn = document.getElementById('startButton');
+
+    let paddleX, paddleY, paddleWidth;
+    const paddleHeight = 20, paddleSpeed = 7, ballRadius = 10;
+
+    let leftPressed = false, rightPressed = false;
+    let paddleVisible = true;
+    let blocksVisible = true;
+    let animating = false, score = 0, wave = 0;
+    let blocks = [], balls = [], seqIndex = 0;
+
+    const blockRows = 5, blockCols = 10;
+    const blockW = 60, blockH = 20, pad = 10;
+    const offsetTop = 30, offsetLeft = 35;
+    const seqColors = ['#FF0','#FFA500','#F00','#FFC0CB','#0F0','#00F','#0FF','#FFF','#800080','rainbow'];
+
+    function resizeCanvas() {
+      const w = document.getElementById('mainArea').clientWidth;
+      canvas.width = w;
+      canvas.height = Math.floor(w * 10/16);
+      paddleWidth = canvas.width;
+      paddleY = canvas.height - paddleHeight - 10;
+      paddleX = 0;
+    }
+
+    function updateBallCount() {
+      ballCountEl.innerText = 'Bolas: ' + balls.length;
+    }
+
+    function nextWave() {
+      wave++;
+      const minL = wave === 1 ? 1 : (wave - 1) * 5;
+      const maxL = wave === 1 ? 3 : wave * 5;
+      blocks = [];
+      for (let r = 0; r < blockRows; r++) {
+        for (let c = 0; c < blockCols; c++) {
+          const x = c * (blockW + pad) + offsetLeft;
+          const y = r * (blockH + pad) + offsetTop;
+          const life = Math.floor(Math.random() * (maxL - minL + 1)) + minL;
+          let type = null;
+          const rnd = Math.random();
+          if (rnd < 0.02 && seqIndex < seqColors.length - 2) type = 'multi';
+          else if (rnd < 0.10) type = 'extra';
+          else if (rnd < 0.18) type = 'double';
+          else if (rnd < 0.25) type = 'clear';
+          blocks.push({ x, y, width: blockW, height: blockH, life, type, row: r });
+        }
+      }
+    }
+
+    function initBalls() {
+      balls = [{
+        x: canvas.width / 2,
+        y: paddleY - ballRadius,
+        vx: 4, vy: -6,
+        color: seqColors[0],
+        power: 1
+      }];
+      updateBallCount();
+    }
+
+    function drawBlocks() {
+      blocks.forEach(b => {
+        const r = 5;
+        ctx.beginPath();
+        ctx.moveTo(b.x + r, b.y);
+        ctx.lineTo(b.x + b.width - r, b.y);
+        ctx.quadraticCurveTo(b.x + b.width, b.y, b.x + b.width, b.y + r);
+        ctx.lineTo(b.x + b.width, b.y + b.height - r);
+        ctx.quadraticCurveTo(b.x + b.width, b.y + b.height, b.x + b.width - r, b.y + b.height);
+        ctx.lineTo(b.x + r, b.y + b.height);
+        ctx.quadraticCurveTo(b.x, b.y + b.height, b.x, b.y + b.height - r);
+        ctx.lineTo(b.x, b.y + r);
+        ctx.quadraticCurveTo(b.x, b.y, b.x + r, b.y);
+
+        if (b.type === 'multi') {
+          const grad = ctx.createLinearGradient(b.x, b.y, b.x + b.width, b.y + b.height);
+          ['red','orange','yellow','green','blue','indigo','violet']
+            .forEach((col,i) => grad.addColorStop(i/6, col));
+          ctx.fillStyle = grad;
+        } else if (b.type === 'extra') ctx.fillStyle = '#0f0';
+        else if (b.type === 'double') ctx.fillStyle = '#0ff';
+        else if (b.type === 'clear') ctx.fillStyle = '#f00';
+        else ctx.fillStyle = '#00f';
+        ctx.fill();
+        ctx.strokeStyle = '#000';
+        ctx.stroke();
+        if (b.life > 1) {
+          ctx.fillStyle = '#fff';
+          ctx.font = '12px sans-serif';
+          ctx.fillText(b.life, b.x + b.width/2 - 4, b.y + b.height/2 + 4);
+        }
+      });
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#555';
+      ctx.fillRect(0, 0, canvas.width, 5);
+
+      if (blocksVisible) drawBlocks();
+
+      if (paddleVisible) {
+        ctx.fillStyle = '#0ff';
+        ctx.fillRect(paddleX, paddleY, paddleWidth, paddleHeight);
+      }
+
+      balls.forEach(b => {
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, ballRadius, 0, Math.PI*2);
+        if (b.color === 'rainbow') {
+          const grad = ctx.createLinearGradient(
+            b.x-ballRadius, b.y-ballRadius,
+            b.x+ballRadius, b.y+ballRadius
+          );
+          ['red','orange','yellow','green','blue','indigo','violet']
+            .forEach((col,i) => grad.addColorStop(i/6, col));
+          ctx.fillStyle = grad;
+        } else {
+          ctx.fillStyle = b.color;
+        }
+        ctx.fill();
+      });
+    }
+
+    function update() {
+      if (!animating) return;
+
+      balls.forEach((b, i) => {
+        b.x += b.vx; b.y += b.vy;
+        if (b.x + ballRadius > canvas.width || b.x - ballRadius < 0) b.vx = -b.vx;
+        if (b.y - ballRadius < 5) { b.y = 5 + ballRadius; b.vy = -b.vy; }
+
+        if (paddleVisible &&
+            b.y + ballRadius >= paddleY &&
+            b.x > paddleX &&
+            b.x < paddleX + paddleWidth) {
+          b.y = paddleY - ballRadius;
+          const speed = Math.hypot(b.vx, b.vy);
+          const ang = (Math.random() * Math.PI/2) - Math.PI/4;
+          b.vx = speed * Math.sin(ang);
+          b.vy = -speed * Math.cos(ang);
+        }
+
+        if (blocksVisible) {
+          for (let j = 0; j < blocks.length; j++) {
+            const blk = blocks[j];
+            if (b.x > blk.x && b.x < blk.x + blk.width &&
+                b.y - ballRadius < blk.y + blk.height &&
+                b.y + ballRadius > blk.y) {
+              blk.life -= b.power;
+              if (blk.life <= 0) {
+                if (blk.type === 'multi' && seqIndex < seqColors.length - 1) {
+                  seqIndex++;
+                  balls.forEach(x => {
+                    x.color = seqColors[seqIndex];
+                    x.power = seqIndex + 1;
+                  });
+                } else if (blk.type === 'extra') {
+                  for (let k = 0; k < 10; k++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    balls.push({
+                      x: blk.x + blk.width/2,
+                      y: blk.y + blk.height/2,
+                      vx: 4 * Math.cos(angle),
+                      vy: 4 * Math.sin(angle),
+                      color: b.color,
+                      power: b.power
+                    });
+                  }
+                } else if (blk.type === 'double') {
+                  balls.push({
+                    x: blk.x + blk.width/2,
+                    y: blk.y + blk.height/2,
+                    vx: 4, vy: -6,
+                    color: b.color,
+                    power: b.power
+                  });
+                } else if (blk.type === 'clear') {
+                  blocks = blocks.filter(x => x.row !== blk.row);
+                }
+                blocks.splice(j, 1);
+                score++;
+                scoreEl.innerText = 'Puntuación: ' + score;
+              }
+              b.vy = -b.vy;
+              break;
+            }
+          }
+        }
+
+        if (b.y - ballRadius > canvas.height) balls.splice(i, 1);
+      });
+
+      updateBallCount();
+
+      if (balls.length === 0) {
+        animating = false;
+        startBtn.disabled = false;
+        startBtn.innerText = 'Reiniciar';
+        return;
+      }
+      if (blocks.length === 0) nextWave();
+
+      draw();
+      if (animating) requestAnimationFrame(update);
+    }
+
+    function startGame() {
+      if (animating) return;
+      score = 0; wave = 0; seqIndex = 0;
+      scoreEl.innerText = 'Puntuación: 0';
+      initBalls(); nextWave();
+      animating = true;
+      startBtn.disabled = true;
+      startBtn.innerText = 'Jugando...';
+      resizeCanvas();
+      requestAnimationFrame(update);
+    }
+
+    document.addEventListener('keydown', e => {
+      if (['ArrowLeft','a'].includes(e.key)) leftPressed = true;
+      if (['ArrowRight','d'].includes(e.key)) rightPressed = true;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        paddleVisible = !paddleVisible;
+      }
+      if (e.key === '1') {
+        balls = balls.slice(0, 1);
+        updateBallCount();
+      }
+      if (e.key === '2') {
+        for (let k = 0; k < 100; k++) {
+          const angle = Math.random() * Math.PI * 2;
+          balls.push({
+            x: canvas.width / 2,
+            y: paddleY - ballRadius,
+            vx: 4 * Math.cos(angle),
+            vy: 4 * Math.sin(angle),
+            color: seqColors[seqIndex],
+            power: seqIndex + 1
+          });
+        }
+        updateBallCount();
+      }
+      if (e.key === '3') {
+        blocksVisible = !blocksVisible;
+      }
+      if (e.key === '4') {
+        const originals = balls.slice();
+        originals.forEach(b => {
+          const speed = Math.hypot(b.vx, b.vy);
+          const angle = Math.random() * Math.PI * 2;
+          balls.push({
+            x: b.x,
+            y: b.y,
+            vx: speed * Math.cos(angle),
+            vy: speed * Math.sin(angle),
+            color: b.color,
+            power: b.power
+          });
+        });
+        updateBallCount();
+      }
+    });
+    document.addEventListener('keyup', e => {
+      if (['ArrowLeft','a'].includes(e.key)) leftPressed = false;
+      if (['ArrowRight','d'].includes(e.key)) rightPressed = false;
+    });
+
+    ['touchstart','mousedown'].forEach(ev => {
+      document.getElementById('btn-left').addEventListener(ev, e => { e.preventDefault(); leftPressed = true; });
+      document.getElementById('btn-right').addEventListener(ev, e => { e.preventDefault(); rightPressed = true; });
+    });
+    ['touchend','mouseup','mouseout'].forEach(ev => {
+      document.getElementById('btn-left').addEventListener(ev, e => { e.preventDefault(); leftPressed = false; });
+      document.getElementById('btn-right').addEventListener(ev, e => { e.preventDefault(); rightPressed = false; });
+    });
+
+    window.addEventListener('resize', resizeCanvas);
+    startBtn.addEventListener('click', startGame);
+
+    // Init
+    resizeCanvas();
+    draw();
+  </script>
+</body>
+</html>

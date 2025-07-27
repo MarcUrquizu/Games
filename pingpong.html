@@ -2,12 +2,24 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Breakout</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Breakout - Responsive + LR Controls</title>
   <style>
-
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0;
+      background: #f0f0f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: sans-serif;
+      position: relative;
+      min-height: 100vh;
+    }
     .game-buttons {
-      background-color: #000000;
-      color: #ffffff;
+      background-color: #000;
+      color: #fff;
       font-weight: bold;
       text-decoration: none;
       padding: 10px 20px;
@@ -16,56 +28,102 @@
       top: 10px;
       z-index: 10;
     }
+    .menu-button { right: 10px; }
+    .help-button { left: 10px; }
 
-    .menu-button {
-      right: 10px;
+    h1 { margin-top: 60px; }
+    #score { font-size: 1.2em; color: #333; margin: 10px 0; }
+
+    /* Wrapper para lienzo y controles */
+    #gameWrapper {
+      width: 90vw;
+      max-width: 800px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
-
-    .help-button {
-      left: 10px;
+    /* Canvas responsive */
+    #gameCanvas {
+      width: 100%;
+      height: auto;
+      aspect-ratio: 16 / 10;
+      background: #111;
+      border: 2px solid #333;
+      margin-top: 20px;
     }
-
-
-    body { margin: 0; padding: 0; background: #f0f0f0; display: flex; flex-direction: column; align-items: center; font-family: sans-serif; }
-    canvas { background: #111; margin-top: 20px; border: 2px solid #333; }
-    #controls { margin-top: 10px; }
-    #score { font-size: 1.2em; color: #333; }
+    /* Botones LR */
+    #touchControls {
+      display: flex;
+      gap: 15px;
+      margin: 15px 0;
+      touch-action: none;
+    }
+    .tc-btn {
+      width: clamp(40px, 10vw, 60px);
+      height: clamp(40px, 10vw, 60px);
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+      font-size: 1.5rem;
+      border: none;
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      cursor: pointer;
+    }
+    @media (max-width: 400px) {
+      .tc-btn { width: 35px; height: 35px; font-size: 1.2rem; }
+    }
+    #controls { margin-bottom: 20px; }
     button { padding: 8px 16px; font-size: 1em; cursor: pointer; }
     button:disabled { opacity: 0.6; cursor: not-allowed; }
   </style>
 </head>
 <body>
-
-<a href="./index.html" class="menu-button game-buttons">Menu</a>
+  <a href="./index.html" class="menu-button game-buttons">Menu</a>
   <a href="./help.html" class="help-button game-buttons">Info</a>
-
 
   <h1>Breakout</h1>
   <div id="score">Puntuación: 0</div>
-  <canvas id="gameCanvas" width="800" height="500"></canvas>
-  <div id="controls">
-    <button id="startButton">Iniciar</button>
+
+  <div id="gameWrapper">
+    <canvas id="gameCanvas"></canvas>
+    <div id="touchControls">
+      <button id="btn-left" class="tc-btn">←</button>
+      <button id="btn-right" class="tc-btn">→</button>
+    </div>
+    <div id="controls">
+      <button id="startButton">Iniciar</button>
+    </div>
   </div>
+
   <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+    const startBtn = document.getElementById('startButton');
+    let paddleX, paddleY;
     const paddleWidth = 100, paddleHeight = 20, paddleSpeed = 7;
-    let paddleX;
-    const paddleY = canvas.height - paddleHeight - 10;
     const ballRadius = 10;
-    let score = 0, animating = false, wave = 0;
     let leftPressed = false, rightPressed = false;
+    let animating = false, score = 0, wave = 0;
+    let blocks = [], balls = [], seqIndex = 0;
 
-    // Bloques configuración
+    // Bloques config
     const blockRows = 5, blockCols = 10;
     const blockW = 60, blockH = 20, pad = 10;
     const offsetTop = 30, offsetLeft = 35;
-    let blocks = [];
-    let balls = [];
-
-    // Secuencia de colores para multicolor
     const seqColors = ['#FF0','#FFA500','#F00','#FFC0CB','#0F0','#00F','#0FF','#FFF','#800080','rainbow'];
-    let seqIndex = 0;
+
+    function resizeCanvas() {
+      const wrapper = document.getElementById('gameWrapper');
+      const w = wrapper.clientWidth;
+      canvas.width = w;
+      canvas.height = Math.floor(w * 10/16);
+      paddleY = canvas.height - paddleHeight - 10;
+      paddleX = (canvas.width - paddleWidth) / 2;
+    }
 
     function nextWave() {
       wave++;
@@ -94,8 +152,8 @@
 
     function drawBlocks() {
       blocks.forEach(b => {
-        ctx.beginPath();
         const r = 5;
+        ctx.beginPath();
         ctx.moveTo(b.x + r, b.y);
         ctx.lineTo(b.x + b.width - r, b.y);
         ctx.quadraticCurveTo(b.x + b.width, b.y, b.x + b.width, b.y + r);
@@ -107,7 +165,7 @@
         ctx.quadraticCurveTo(b.x, b.y, b.x + r, b.y);
         if (b.type === 'multi') {
           const grad = ctx.createLinearGradient(b.x, b.y, b.x + b.width, b.y + b.height);
-          ['red','orange','yellow','green','blue','indigo','violet'].forEach((col,i) => grad.addColorStop(i/6, col));
+          ['red','orange','yellow','green','blue','indigo','violet'].forEach((col,i)=>grad.addColorStop(i/6,col));
           ctx.fillStyle = grad;
         } else if (b.type === 'extra') ctx.fillStyle = '#0f0';
         else if (b.type === 'double') ctx.fillStyle = '#0ff';
@@ -115,7 +173,10 @@
         else ctx.fillStyle = '#00f';
         ctx.fill();
         ctx.strokeStyle = '#000'; ctx.stroke();
-        if (b.life > 1) { ctx.fillStyle = '#fff'; ctx.font = '12px sans-serif'; ctx.fillText(b.life, b.x + b.width/2 - 4, b.y + b.height/2 + 4); }
+        if (b.life > 1) {
+          ctx.fillStyle = '#fff'; ctx.font = '12px sans-serif';
+          ctx.fillText(b.life, b.x + b.width/2 - 4, b.y + b.height/2 + 4);
+        }
       });
     }
 
@@ -127,8 +188,8 @@
       balls.forEach(b => {
         ctx.beginPath(); ctx.arc(b.x,b.y,ballRadius,0,Math.PI*2);
         if (b.color === 'rainbow') {
-          const grad = ctx.createLinearGradient(b.x-ballRadius,b.y-ballRadius,b.x+ballRadius,b.y+ballRadius);
-          ['red','orange','yellow','green','blue','indigo','violet'].forEach((col,i) => grad.addColorStop(i/6, col));
+          const grad = ctx.createLinearGradient(b.x-ballRadius, b.y-ballRadius, b.x+ballRadius, b.y+ballRadius);
+          ['red','orange','yellow','green','blue','indigo','violet'].forEach((col,i)=>grad.addColorStop(i/6,col));
           ctx.fillStyle = grad;
         } else ctx.fillStyle = b.color;
         ctx.fill();
@@ -150,40 +211,58 @@
           b.vx=speed*Math.sin(ang);
           b.vy=-speed*Math.cos(ang);
         }
-        for (let j=0;j<blocks.length;j++){
-          const blk=blocks[j];
-          if (b.x>blk.x&&b.x<blk.x+blk.width&&b.y-ballRadius<blk.y+blk.height&&b.y+ballRadius>blk.y) {
-            blk.life-=b.power;
-            if (blk.life<=0) {
+        for (let j=0;j<blocks.length;j++) {
+          const blk = blocks[j];
+          if (b.x>blk.x && b.x<blk.x+blk.width && b.y-ballRadius<blk.y+blk.height && b.y+ballRadius>blk.y) {
+            blk.life -= b.power;
+            if (blk.life <= 0) {
               if (blk.type==='multi' && seqIndex<seqColors.length-1) {
                 seqIndex++; balls.forEach(x=>{ x.color=seqColors[seqIndex]; x.power=seqIndex+1; });
-              } else if (blk.type==='extra') balls.push({x:blk.x+blk.width/2,y:blk.y+blk.height/2,vx:4,vy:-6,color:b.color,power:b.power});
-              else if (blk.type==='double') balls.push({x:blk.x+blk.width/2,y:blk.y+blk.height/2,vx:4,vy:-6,color:b.color,power:b.power});
-              else if (blk.type==='clear') blocks=blocks.filter(x=>x.row!==blk.row);
-              blocks.splice(j,1); score++; document.getElementById('score').innerText='Puntuación: '+score;
+              } else if (blk.type==='extra' || blk.type==='double') {
+                balls.push({ x:blk.x+blk.width/2, y:blk.y+blk.height/2, vx:4, vy:-6, color:b.color, power:b.power });
+              } else if (blk.type==='clear') {
+                blocks = blocks.filter(x=>x.row!==blk.row);
+              }
+              blocks.splice(j,1);
+              score++;
+              scoreEl.innerText = 'Puntuación: ' + score;
             }
-            b.vy=-b.vy; break;
+            b.vy = -b.vy;
+            break;
           }
         }
         if (b.y-ballRadius>canvas.height) balls.splice(i,1);
       });
-      if (balls.length===0) { animating=false; let btn=document.getElementById('startButton'); btn.disabled=false; btn.innerText='Reiniciar'; return; }
-      if (blocks.length===0) nextWave(); draw(); if(animating) requestAnimationFrame(update);
+      if (balls.length===0) { animating=false; startBtn.disabled=false; startBtn.innerText='Reiniciar'; return; }
+      if (blocks.length===0) nextWave();
+      draw(); if(animating) requestAnimationFrame(update);
     }
 
-    function startGame(){
-      if(animating) return;
-      paddleX=(canvas.width-paddleWidth)/2; score=0; wave=0; seqIndex=0;
-      document.getElementById('score').innerText='Puntuación: 0';
+    function startGame() {
+      if (animating) return;
+      score=0; wave=0; seqIndex=0;
+      scoreEl.innerText='Puntuación: 0';
       initBalls(); nextWave(); animating=true;
-      let btn=document.getElementById('startButton'); btn.disabled=true; btn.innerText='Jugando...';
-      requestAnimationFrame(update);
+      startBtn.disabled=true; startBtn.innerText='Jugando...';
+      resizeCanvas(); requestAnimationFrame(update);
     }
 
-    document.addEventListener('keydown',e=>{ if(['ArrowLeft','a'].includes(e.key)) leftPressed=true; if(['ArrowRight','d'].includes(e.key)) rightPressed=true; });
-    document.addEventListener('keyup',e=>{ if(['ArrowLeft','a'].includes(e.key)) leftPressed=false; if(['ArrowRight','d'].includes(e.key)) rightPressed=false; });
-    document.getElementById('startButton').addEventListener('click',startGame);
-    draw();
+    document.addEventListener('keydown', e=>{ if(['ArrowLeft','a'].includes(e.key)) leftPressed=true; if(['ArrowRight','d'].includes(e.key)) rightPressed=true; });
+    document.addEventListener('keyup', e=>{ if(['ArrowLeft','a'].includes(e.key)) leftPressed=false; if(['ArrowRight','d'].includes(e.key)) rightPressed=false; });
+    
+    ['touchstart','mousedown'].forEach(ev=>{
+      document.getElementById('btn-left').addEventListener(ev,e=>{e.preventDefault();leftPressed=true;});
+      document.getElementById('btn-right').addEventListener(ev,e=>{e.preventDefault();rightPressed=true;});
+    });
+    ['touchend','mouseup','mouseout'].forEach(ev=>{
+      document.getElementById('btn-left').addEventListener(ev,e=>{e.preventDefault();leftPressed=false;});
+      document.getElementById('btn-right').addEventListener(ev,e=>{e.preventDefault();rightPressed=false;});
+    });
+
+    window.addEventListener('resize', resizeCanvas);
+    startBtn.addEventListener('click', startGame);
+    // init
+    resizeCanvas(); draw();
   </script>
 </body>
 </html>
