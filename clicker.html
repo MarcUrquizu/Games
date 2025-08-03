@@ -1,556 +1,475 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Luciérnaga clicker</title>
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Press+Start+2P&display=swap" rel="stylesheet" />
-  <style>
-    html, body {
-      touch-action: manipulation;
-      height: 100%;
-      margin: 0;
-      overflow: hidden;
-      background: #1f1f27;
-      color: #fff;
-      font-family: 'Montserrat', sans-serif;
-    }
-
-    /* contenedor de botones INFO / MENU apilados */
-    .top-left-buttons {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      display: flex;
-      flex-direction: column;
-      gap: 14px; /* más separación para que no se toquen */
-      z-index: 50;
-    }
-    .game-buttons {
-      background-color: rgba(0,0,0,0.8);
-      color: #ffffff;
-      font-weight: bold;
-      text-decoration: none;
-      padding: 8px 14px;
-      border-radius: 6px;
-      font-family: 'Press Start 2P', cursive;
-      font-size: 0.65rem;
-      letter-spacing: 1px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.5);
-      transition: background .2s;
-      display: inline-block;
-      white-space: nowrap;
-    }
-    .game-buttons:hover {
-      background-color: rgba(255,255,255,0.1);
-    }
-
-    #game-container {
-      display: flex;
-      height: 100%;
-    }
-    /* --- Área de juego --- */
-    #farm {
-      flex: 1;
-      position: relative;
-      background: #282c34;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-    }
-    #stats-overlay {
-      position: absolute;
-      top: 5rem; /* un poco más abajo para evitar cercanía con botones */
-      left: 1rem;
-      background: rgba(0,0,0,.7);
-      padding: .5rem 1rem;
-      border-radius: 6px;
-      font-family: 'Press Start 2P', cursive;
-      text-shadow: 1px 1px 2px #000;
-      z-index: 10;
-      font-size: 0.9rem;
-    }
-    #stats-overlay p {
-      margin: 4px 0;
-      line-height: 1.2;
-    }
-    #firefly-btn {
-      background: none;
-      border: none;
-      cursor: pointer;
-      position: relative;
-      z-index: 5;
-    }
-    #firefly-btn img {
-      width: 40vw;
-      max-width: 500px;
-      image-rendering: pixelated;
-      filter: drop-shadow(0 0 5px #ffdc6b);
-      transition: transform .1s;
-    }
-    #firefly-btn img:active {
-      transform: scale(.9);
-    }
-    /* --- Barra de poder --- */
-    #power-bar-container {
-      position: absolute;
-      bottom: 1rem;
-      left: 1rem;
-      width: 6vw;
-      max-width: 30px;
-      height: 25vh;
-      max-height: 200px;
-      background: rgba(255,255,255,.1);
-      border: 2px solid #aaa;
-      border-radius: 15px;
-      overflow: visible;
-      z-index: 5;
-    }
-    #power-bar-fill {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-      height: 0%;
-      background: #e74c3c;
-      transition: height .1s linear;
-      border-bottom-left-radius: 13px;
-      border-bottom-right-radius: 13px;
-    }
-    #power-bar-circle {
-      position: absolute;
-      top: -20%;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 10vw;
-      max-width: 50px;
-      height: 10vw;
-      max-height: 50px;
-      background: #555;
-      border: 3px solid #777;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-family: 'Press Start 2P', cursive;
-      font-size: 1rem;
-      color: #fff;
-      opacity: .25;
-      transition: opacity .3s, box-shadow .3s, background .3s;
-      z-index: 6;
-    }
-    #power-bar-circle.active {
-      opacity: 1;
-      background: #ffeb3b;
-      color: #000;
-      box-shadow: 0 0 8px rgba(255,235,59,.8);
-    }
-    /* Texto flotante */
-    .float-text {
-      position: absolute;
-      font-family:'Press Start 2P', cursive;
-      font-size: 1.2rem;
-      color: #ffeb3b;
-      text-shadow: 1px 1px 2px #000;
-      pointer-events: none;
-      animation: floatUp 1.2s ease-out forwards;
-      z-index: 10;
-    }
-    @keyframes floatUp {
-      to {
-        opacity: 0;
-        transform: translateY(-80px);
-      }
-    }
-    /* --- Sidebar mejoras --- */
-    #upgrades {
-      width: 30vw;
-      max-width: 450px;
-      flex-shrink: 0;
-      background: #fff;
-      padding: 1rem;
-      box-sizing: border-box;
-      overflow-y: auto;
-      color: #000;
-    }
-    #upgrades h2 {
-      font-family: 'Press Start 2P', cursive;
-      margin: 0 0 1rem;
-    }
-    .upgrade {
-      background: #fff;
-      padding: 1rem;
-      margin-bottom: 1rem;
-      border-radius: 6px;
-      box-shadow: 0 1px 3px rgba(0,0,0,.2);
-    }
-    .upgrade p {
-      margin: .3rem 0;
-      font-family: 'Press Start 2P', cursive;
-    }
-    .upgrade button {
-      padding: .5rem 1rem;
-      background: #61dafb;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: bold;
-      transition: background .2s;
-      box-shadow: 0 2px 5px rgba(0,0,0,.2);
-      color: #000;
-    }
-    .upgrade button:hover:not(:disabled) {
-      background: #21a1f1;
-    }
-    .upgrade button:disabled {
-      background: #bbb;
-      cursor: not-allowed;
-    }
-
-    /* --- Responsive --- */
-    @media (max-width: 900px) {
-      #game-container {
-        flex-direction: column;
-      }
-      #upgrades {
-        width: 100%;
-        max-height: 40vh;
-      }
-      #farm {
-        height: 60vh;
-      }
-    }
-    @media (max-width: 500px) {
-      #stats-overlay {
-        font-size: 0.7rem;
-        padding: .4rem .8rem;
-      }
-      .upgrade p {
-        font-size: 0.7rem;
-      }
-      .upgrade button {
-        padding: .4rem .8rem;
-        font-size: 0.8rem;
-      }
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Clicker de Puntos</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Press+Start+2P&display=swap" rel="stylesheet" />
+<style>
+  html, body {
+    touch-action: manipulation;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: #1f1f27;
+    color: #fff;
+    font-family: 'Montserrat', sans-serif;
+  }
+  .top-left-buttons {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    z-index: 50;
+  }
+  .game-buttons {
+    background-color: rgba(0,0,0,0.8);
+    color: #ffffff;
+    font-weight: bold;
+    text-decoration: none;
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 0.65rem;
+    letter-spacing: 1px;
+    box-shadow: 0 2px 6px rgba(0,0,0,.5);
+    transition: background .2s;
+    display: inline-block;
+    white-space: nowrap;
+  }
+  .game-buttons:hover { background-color: rgba(255,255,255,0.1); }
+  #game-container { display: flex; height: 100%; }
+  #farm {
+    flex: 1;
+    position: relative;
+    background: #282c34;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  #stats-overlay {
+    position: absolute;
+    top: 5rem;
+    left: 1rem;
+    background: rgba(0,0,0,.7);
+    padding: .5rem 1rem;
+    border-radius: 6px;
+    font-family: 'Press Start 2P', cursive;
+    text-shadow: 1px 1px 2px #000;
+    z-index: 10;
+    font-size: 0.9rem;
+    min-width: 160px;
+  }
+  #stats-overlay p { margin: 4px 0; line-height: 1.2; }
+  #firefly-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    z-index: 5;
+  }
+  #firefly-btn img {
+    width: 40vw;
+    max-width: 500px;
+    transition: transform .1s;
+  }
+  #firefly-btn img:active { transform: scale(.9); }
+  #power-bar-container {
+    position: absolute;
+    bottom: 1rem;
+    left: 1rem;
+    width: 6vw;
+    max-width: 30px;
+    height: 25vh;
+    max-height: 200px;
+    background: rgba(255,255,255,.1);
+    border: 2px solid #aaa;
+    border-radius: 15px;
+    overflow: visible;
+    z-index: 5;
+  }
+  #power-bar-fill {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 0%;
+    background: #e74c3c;
+    transition: height .1s linear;
+    border-bottom-left-radius: 13px;
+    border-bottom-right-radius: 13px;
+  }
+  #power-bar-circle {
+    position: absolute;
+    top: -20%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 10vw;
+    max-width: 50px;
+    height: 10vw;
+    max-height: 50px;
+    background: #555;
+    border: 3px solid #777;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 1rem;
+    color: #fff;
+    opacity: .25;
+    transition: opacity .3s, box-shadow .3s, background .3s;
+    z-index: 6;
+  }
+  #power-bar-circle.active {
+    opacity: 1;
+    background: #ffeb3b;
+    color: #000;
+    box-shadow: 0 0 8px rgba(255,235,59,.8);
+  }
+  .float-text {
+    position: absolute;
+    font-family:'Press Start 2P', cursive;
+    font-size: 1.2rem;
+    color: #00eaff;
+    text-shadow: 1px 1px 2px #000;
+    pointer-events: none;
+    animation: floatUp 1.2s ease-out forwards;
+    z-index: 10;
+  }
+  @keyframes floatUp {
+    to { opacity: 0; transform: translateY(-80px); }
+  }
+  #upgrades {
+    width: 30vw;
+    max-width: 450px;
+    flex-shrink: 0;
+    background: #fff;
+    padding: 1rem;
+    box-sizing: border-box;
+    overflow-y: auto;
+    color: #000;
+  }
+  #upgrades h2 { font-family: 'Press Start 2P', cursive; margin: 0 0 1rem; }
+  .upgrade {
+    background: #fff;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.2);
+  }
+  .upgrade p { margin: .3rem 0; font-family: 'Press Start 2P', cursive; }
+  .upgrade button {
+    padding: .5rem 1rem;
+    background: #61dafb;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background .2s;
+    box-shadow: 0 2px 5px rgba(0,0,0,.2);
+    color: #000;
+  }
+  .upgrade button:hover:not(:disabled) { background: #21a1f1; }
+  .upgrade button:disabled { background: #bbb; cursor: not-allowed; }
+  @media (max-width: 900px) {
+    #game-container { flex-direction: column; }
+    #upgrades { width: 100%; max-height: 40vh; overflow-y: scroll; }
+    #farm { height: 60vh; }
+  }
+</style>
 </head>
 <body>
 
-  <div class="top-left-buttons">
-    <a href="./help.html" class="game-buttons">INFO</a>
-    <a href="./index.html" class="game-buttons">MENU</a>
-  </div>
+<div class="top-left-buttons">
+  <a href="./help.html" class="game-buttons">INFO</a>
+  <a href="./index.html" class="game-buttons">MENU</a>
+</div>
 
-  <div id="game-container">
-    <div id="farm">
-      <div id="stats-overlay">
-        <p>Monedas: <span id="polvo">0</span></p>
-        <p>Por clic: <span id="porClic">1</span></p>
-        <p>Por segundo: <span id="pps">0</span></p>
-      </div>
-      <button id="firefly-btn"><img src="firefly.png" alt="Luciérnaga" /></button>
-      <div id="power-bar-container">
-        <div id="power-bar-fill"></div>
-        <div id="power-bar-circle"><span id="power-bar-icon">×1</span></div>
-      </div>
+<div id="game-container">
+  <div id="farm">
+    <div id="stats-overlay">
+      <p>Puntos: <span id="puntos">0.00</span></p>
+      <p>Por clic: <span id="porClic">1.00</span></p>
+      <p>Por segundo: <span id="pps">0.00</span></p>
+      <p id="prestige-mult">Multiplicador: ×1.00</p>
+      <p id="prestige-points">Prestige points: 0</p>
+      <button id="btn-prestige-inline" disabled>Prestige</button>
     </div>
-    <div id="upgrades">
-      <h2>Mejoras</h2>
-      <div class="upgrade" id="upgrade-mini-luci">
-        <p>Mini-luciérnaga: <span id="mini-count">0</span></p>
-        <p>Coste: <span id="mini-cost">10</span></p>
-        <p>+1 por segundo</p>
-        <button id="btn-mini">Comprar</button>
-      </div>
-      <div class="upgrade" id="upgrade-hongos">
-        <p>Colmena de hongos: <span id="hongo-count">0</span></p>
-        <p>Coste: <span id="hongo-cost">100</span></p>
-        <p>+5 por segundo</p>
-        <button id="btn-hongo">Comprar</button>
-      </div>
-      <div class="upgrade" id="upgrade-cristal">
-        <p>Cristal mágico: <span id="cristal-count">0</span></p>
-        <p>Coste: <span id="cristal-cost">500</span></p>
-        <p>+10 por clic</p>
-        <button id="btn-cristal">Comprar</button>
-      </div>
-      <!-- Extras inyectados por JS -->
+    <button id="firefly-btn">
+      <img id="main-image" src="./img/clicker/nivel0.png" alt="Nivel 0" />
+    </button>
+    <div id="power-bar-container">
+      <div id="power-bar-fill"></div>
+      <div id="power-bar-circle"><span id="power-bar-icon">×1</span></div>
     </div>
   </div>
+  <div id="upgrades">
+    <h2>Mejoras</h2>
+    <div class="upgrade" id="upgrade-mini">
+      <p>Mini generador: <span id="mini-count">0</span></p>
+      <p>Coste: <span id="mini-cost">10</span></p>
+      <p>+1 por segundo</p>
+      <button id="btn-mini">Comprar</button>
+    </div>
+    <div class="upgrade" id="upgrade-hongos">
+      <p>Colmena de hongos: <span id="hongo-count">0</span></p>
+      <p>Coste: <span id="hongo-cost">100</span></p>
+      <p>+5 por segundo</p>
+      <button id="btn-hongo">Comprar</button>
+    </div>
+    <div class="upgrade" id="upgrade-cristal">
+      <p>Cristal mágico: <span id="cristal-count">0</span></p>
+      <p>Coste: <span id="cristal-cost">500</span></p>
+      <p>+10 por clic</p>
+      <button id="btn-cristal">Comprar</button>
+    </div>
+    <div id="prestige-container" style="display:none;">
+      <p><strong>Prestige</strong>: reinicia todo y obtienes puntos extra.</p>
+      <button id="btn-prestige" disabled>Prestige</button>
+    </div>
+  </div>
+</div>
 
-  <script>
-    /**** Función de coste ajustado (crecimiento suave a partir de compra 5) ****/
-    function computeCost(baseCost, count) {
-      if (count <= 4) {
-        return Math.floor(baseCost * Math.pow(1.15, count));
-      } else {
-        return Math.floor(baseCost * Math.pow(1.15, 4) * Math.pow(1.08, count - 4));
-      }
-    }
+<script>
+// datos extras
+const rawExtrasInfo = [
+  ['Luz de aurora', 5000, 'pps', 20],
+  ['Néctar ancestral', 10000, 'click', 50],
+  ['Eco estelar', 20000, 'pps', 200],
+  ['Aura mística', 50000, 'click', 500],
+  ['Corazón de eclipse', 100000, 'pps', 1000],
+  ['Aura solar', 200000, 'click', 100],
+  ['Polvo cósmico', 500000, 'pps', 200],
+  ['Gema eterna', 1000000, 'click', 500],
+  ['Esencia lúgubre', 2000000, 'pps', 1000],
+  ['Corazón galáctico', 5000000, 'click', 5000],
+  ['Núcleo de tiempo', 10000000, 'pps', 2000],
+  ['Sombra viviente', 20000000, 'click', 10000],
+  ['Aliento de cometa', 50000000, 'pps', 5000],
+  ['Esfera de vacío', 100000000, 'click', 20000],
+  ['Luz infinita', 200000000, 'pps', 10000],
+  ['Vórtice de sueños', 500000000, 'click', 50000],
+  ['Fragmento de aurora', 1000000000, 'pps', 25000],
+  ['Pulso ancestral', 2000000000, 'click', 100000],
+  ['Cúpula estelar', 5000000000, 'pps', 50000],
+  ['Eco del vacío', 10000000000, 'click', 250000],
+  ['Rayo de mañana', 20000000000, 'pps', 100000],
+  ['Corazón de nebulosa', 50000000000, 'click', 500000],
+  ['Alma de la selva', 100000000000, 'pps', 250000],
+  ['Torrente de luz', 200000000000, 'click', 1000000],
+  ['Resonancia eterna', 500000000000, 'pps', 500000],
+  ['Nexus de almas', 1000000000000, 'click', 2000000],
+  ['Horizonte fractal', 5000000000000, 'both', {click: 10000000, pps: 10000000}]
+];
 
-    /**** Datos de mejoras con compresión de costes grandes ****/
-    const rawExtrasInfo = [
-      ['Luz de aurora',        5000,        'pps',   20],
-      ['Néctar ancestral',    10000,       'click',   50],
-      ['Eco estelar',         20000,       'pps', 200],
-      ['Aura mística',        50000,       'click', 500],
-      ['Corazón de eclipse',  100000,      'pps',1000],
-      ['Aura solar',          200000,      'click',   100],
-      ['Polvo cósmico',       500000,      'pps',   200],
-      ['Gema eterna',         1000000,     'click', 500],
-      ['Esencia lúgubre',     2000000,     'pps',1000],
-      ['Corazón galáctico',   5000000,     'click',5000],
-      ['Núcleo de tiempo',    10000000,    'pps',   2000],
-      ['Sombra viviente',     20000000,    'click',10000],
-      ['Aliento de cometa',   50000000,    'pps',   5000],
-      ['Esfera de vacío',     100000000,   'click',20000],
-      ['Luz infinita',        200000000,   'pps',   10000],
-      ['Vórtice de sueños',   500000000,   'click',50000],
-      ['Fragmento de aurora', 1000000000,  'pps',   25000],
-      ['Pulso ancestral',     2000000000,  'click',100000],
-      ['Cúpula estelar',      5000000000,  'pps',   50000],
-      ['Eco del vacío',       10000000000, 'click',250000],
-      ['Rayo de mañana',      20000000000, 'pps',   100000],
-      ['Corazón de nebulosa', 50000000000, 'click',500000],
-      ['Alma de la selva',    100000000000,'pps',   250000],
-      ['Torrente de luz',     200000000000,'click',1000000],
-      ['Resonancia eterna',   500000000000,'pps',   500000],
-      ['Nexus de almas',      1000000000000,'click',2000000],
-      // Último extra da ambos: por clic y por segundo
-      ['Horizonte fractal',   5000000000000,'both', { click: 1000000, pps: 1000000 }]
-    ];
-    const compressFactor = 1; // si lo reduces (<1) aplanas más los costes grandes
-    const extrasInfo = rawExtrasInfo.map(([label, baseCost, type, bonus]) => {
-      const compressedBase = Math.max(1, Math.floor(Math.pow(baseCost, compressFactor)));
-      return [label, compressedBase, type, bonus];
-    });
+// estado
+let puntos = 0, puntosPorClic = 1, pps = 0;
+let barValue = 0, buffActive = false, buffTimeout;
+let prestigePoints = 0, prestigeExplained = false;
 
-    /**** Estado del juego ****/
-    let polvo = 0, polvoPorClic = 1, pps = 0;
-    let barValue = 0, buffActive = false, buffTimeout;
+const barIncrease = 6, barDecayPerSec = 10, buffDuration = 2000, activationThreshold = 95;
 
-    /**** Parámetros de la barra ****/
-    const barIncrease = 6, barDecayPerSec = 10, buffDuration = 2000, activationThreshold = 95;
+const mini = { count: 0, baseCost: 10, cost: 10, pps: 1 };
+const hongos = { count: 0, baseCost: 100, cost: 100, pps: 5 };
+const cristal = { count: 0, baseCost: 500, cost: 500, bonusClic: 10 };
 
-    /**** Mejoras básicas ****/
-    const miniLuci = { count: 0, baseCost: 10, cost: 10, pps: 1 };
-    const hongos   = { count: 0, baseCost: 100, cost: 100, pps: 5 };
-    const cristal  = { count: 0, baseCost: 500, cost: 500, bonusClic: 10 };
+const extras = rawExtrasInfo.map(([label, baseCost, type, bonus]) => ({
+  label, count: 0, baseCost, cost: baseCost, type, bonus
+}));
 
-    /**** Extras dinámicos ****/
-    const extras = extrasInfo.map(e => ({
-      label: e[0],
-      count: 0,
-      baseCost: e[1],
-      cost: e[1],
-      type: e[2],
-      bonus: e[3]
-    }));
+// preload imágenes niveles 0..30
+const imageCache = [];
+for (let i = 0; i <= 30; i++) {
+  const img = new Image();
+  img.src = `./img/clicker/nivel${i}.png`;
+  img.onerror = () => console.warn(`Fallo cargando nivel${i}.png`); 
+  imageCache.push(img);
+}
+let currentImageLevel = 0;
 
-    /**** Guardar/Cargar ****/
-    function saveGame() {
-      const save = {
-        polvo,
-        miniCount: miniLuci.count,
-        hongoCount: hongos.count,
-        cristalCount: cristal.count,
-        extrasCounts: extras.map(u => u.count)
-      };
-      localStorage.setItem('fireflySave', JSON.stringify(save));
-    }
+function changeImageLevel() {
+  const level = Math.min(mini.count, 30);
+  if (level === currentImageLevel) return;
+  currentImageLevel = level;
+  const imgEl = document.getElementById('main-image');
+  // añadir query string para evitar cache si quieres: ?v=timestamp
+  imgEl.src = `./img/clicker/nivel${level}.png`;
+  console.log('Cambio imagen a nivel', level);
+  imgEl.onerror = () => console.warn('No se pudo cargar imagen nivel', level);
+}
 
-    function loadGame() {
-      const saveStr = localStorage.getItem('fireflySave');
-      if (!saveStr) return;
-      try {
-        const save = JSON.parse(saveStr);
-        polvo = save.polvo || 0;
-        miniLuci.count    = save.miniCount    || 0;
-        hongos.count      = save.hongoCount   || 0;
-        cristal.count     = save.cristalCount || 0;
-        extras.forEach((u, i) => { u.count = save.extrasCounts?.[i] || 0; });
+function computeCost(baseCost, count) {
+  if (count <= 4) return Math.floor(baseCost * Math.pow(1.15, count));
+  return Math.floor(baseCost * Math.pow(1.15, 4) * Math.pow(1.08, count - 4));
+}
 
-        miniLuci.cost   = computeCost(miniLuci.baseCost, miniLuci.count);
-        hongos.cost     = computeCost(hongos.baseCost, hongos.count);
-        cristal.cost    = computeCost(cristal.baseCost, cristal.count);
-        extras.forEach(u => u.cost = computeCost(u.baseCost, u.count));
+function recalcPPS() {
+  pps = mini.count * mini.pps + hongos.count * hongos.pps +
+    extras.reduce((s, x) => s + ((x.type === 'pps' || x.type === 'both') ?
+      x.count * (x.type === 'pps' ? x.bonus : x.bonus.pps) : 0), 0);
+}
 
-        polvoPorClic = 1 + cristal.count * cristal.bonusClic;
-        extras.forEach(u => {
-          if (u.type === 'click') polvoPorClic += u.count * u.bonus;
-          if (u.type === 'both') polvoPorClic += u.count * u.bonus.click;
-        });
-        recalcPPS();
-      } catch (e) {
-        console.error('Error cargando partida:', e);
-      }
-    }
+function prestigeMultiplier() { return 1 + prestigePoints * 0.1; }
 
-    /**** UI Extras ****/
-    const upgContainer = document.getElementById('upgrades');
-    extras.forEach((u, i) => {
-      const div = document.createElement('div');
-      div.className = 'upgrade';
-      div.id = `upgrade-extra${i+1}`;
+function updateUI() {
+  const buffMult = buffActive ? 2 : 1;
+  const totalMult = buffMult * prestigeMultiplier();
+  document.getElementById('puntos').textContent = puntos.toFixed(2);
+  document.getElementById('porClic').textContent = (puntosPorClic * totalMult).toFixed(2);
+  document.getElementById('pps').textContent = (pps * totalMult).toFixed(2);
+  document.getElementById('prestige-mult').textContent = `Multiplicador: ×${prestigeMultiplier().toFixed(2)}`;
+  document.getElementById('prestige-points').textContent = `Prestige points: ${prestigePoints}`;
+  document.getElementById('mini-count').textContent = mini.count;
+  document.getElementById('mini-cost').textContent = mini.cost;
+  document.getElementById('hongo-count').textContent = hongos.count;
+  document.getElementById('hongo-cost').textContent = hongos.cost;
+  document.getElementById('cristal-count').textContent = cristal.count;
+  document.getElementById('cristal-cost').textContent = cristal.cost;
+  document.getElementById('btn-mini').disabled = puntos < mini.cost;
+  document.getElementById('btn-hongo').disabled = puntos < hongos.cost;
+  document.getElementById('btn-cristal').disabled = puntos < cristal.cost;
+  extras.forEach((u, i) => {
+    document.getElementById(`extra${i+1}-count`).textContent = u.count;
+    document.getElementById(`extra${i+1}-cost`).textContent = u.cost;
+    document.getElementById(`btn-extra${i+1}`).disabled = puntos < u.cost;
+  });
+}
 
-      let efectoTexto;
-      if (u.type === 'pps') {
-        efectoTexto = `+${u.bonus} por segundo`;
-      } else if (u.type === 'click') {
-        efectoTexto = `+${u.bonus} por clic`;
-      } else if (u.type === 'both') {
-        efectoTexto = `+${u.bonus.click} por clic y +${u.bonus.pps} por segundo`;
-      }
+function updateBar() {
+  if (!buffActive) {
+    barValue = Math.max(0, barValue - barDecayPerSec / 10);
+    document.getElementById('power-bar-fill').style.height = barValue + '%';
+  }
+}
 
-      div.innerHTML = `
-        <p>${u.label}: <span id="extra${i+1}-count">0</span></p>
-        <p>Coste: <span id="extra${i+1}-cost">${u.cost}</span></p>
-        <p>${efectoTexto}</p>
-        <button id="btn-extra${i+1}">Comprar</button>
-      `;
-      upgContainer.appendChild(div);
-    });
+function startBuff() {
+  buffActive = true;
+  document.getElementById('power-bar-circle').classList.add('active');
+  document.getElementById('power-bar-icon').textContent = '×2';
+  clearTimeout(buffTimeout);
+  buffTimeout = setTimeout(() => {
+    buffActive = false;
+    document.getElementById('power-bar-circle').classList.remove('active');
+    document.getElementById('power-bar-icon').textContent = '×1';
+  }, buffDuration);
+}
 
-    /**** Recalcular PPS ****/
-    function recalcPPS() {
-      pps = miniLuci.count * miniLuci.pps
-          + hongos.count   * hongos.pps
-          + extras.reduce((s, x) => {
-              if (x.type === 'pps') return s + x.count * x.bonus;
-              if (x.type === 'both') return s + x.count * x.bonus.pps;
-              return s;
-            }, 0);
-    }
+function calculatePointsFromPuntos(c) {
+  if (c >= 100_000_000) return 4 + Math.floor((c - 100_000_000) / 50_000_000);
+  else if (c >= 50_000_000) return 2;
+  else if (c >= 1_000_000) return 1;
+  return 0;
+}
 
-    /**** Actualizar UI ****/
-    function updateUI() {
-      const mult = buffActive ? 2 : 1;
-      document.getElementById('polvo').textContent   = polvo;
-      document.getElementById('porClic').textContent = polvoPorClic * mult;
-      document.getElementById('pps').textContent     = pps * mult;
+// insertar mejoras extra dinámicas
+const upgContainer = document.getElementById('upgrades');
+extras.forEach((u, i) => {
+  const div = document.createElement('div');
+  div.className = 'upgrade';
+  div.id = `upgrade-extra${i+1}`;
+  let efectoTexto = u.type === 'pps' ? `+${u.bonus} por segundo` :
+    (u.type === 'click' ? `+${u.bonus} por clic` :
+      `+${u.bonus.click} por clic y +${u.bonus.pps} por segundo`);
+  div.innerHTML = `
+    <p>${u.label}: <span id="extra${i+1}-count">0</span></p>
+    <p>Coste: <span id="extra${i+1}-cost">${u.cost}</span></p>
+    <p>${efectoTexto}</p>
+    <button id="btn-extra${i+1}">Comprar</button>
+  `;
+  upgContainer.appendChild(div);
+});
 
-      [['mini', miniLuci], ['hongo', hongos], ['cristal', cristal]]
-        .forEach(([id, obj]) => {
-          document.getElementById(`${id}-count`).textContent = obj.count;
-          document.getElementById(`${id}-cost`).textContent  = obj.cost;
-          document.getElementById(`btn-${id}`).disabled      = polvo < obj.cost;
-        });
+// eventos
+document.getElementById('firefly-btn').addEventListener('pointerdown', e => {
+  e.preventDefault();
+  if (barValue >= activationThreshold && !buffActive) startBuff();
+  const gain = puntosPorClic * (buffActive ? 2 : 1) * prestigeMultiplier();
+  puntos += gain;
+  barValue = Math.min(barValue + barIncrease, 100);
+  document.getElementById('power-bar-fill').style.height = barValue + '%';
+  const rect = document.getElementById('farm').getBoundingClientRect();
+  const span = document.createElement('span');
+  span.className = 'float-text';
+  span.textContent = '+' + gain.toFixed(2);
+  span.style.left = (e.clientX - rect.left) + 'px';
+  span.style.top = (e.clientY - rect.top) + 'px';
+  document.getElementById('farm').appendChild(span);
+  span.addEventListener('animationend', () => span.remove());
+  updateUI();
+});
 
-      extras.forEach((u, i) => {
-        const id = `extra${i+1}`;
-        document.getElementById(`${id}-count`).textContent = u.count;
-        document.getElementById(`${id}-cost`).textContent  = u.cost;
-        document.getElementById(`btn-${id}`).disabled      = polvo < u.cost;
-      });
-    }
-
-    /**** Barra de poder ****/
-    function updateBar() {
-      if (!buffActive) {
-        barValue = Math.max(0, barValue - barDecayPerSec / 10);
-        document.getElementById('power-bar-fill').style.height = barValue + '%';
-      }
-    }
-    function startBuff() {
-      buffActive = true;
-      document.getElementById('power-bar-circle').classList.add('active');
-      document.getElementById('power-bar-icon').textContent = '×2';
-      clearTimeout(buffTimeout);
-      buffTimeout = setTimeout(() => {
-        buffActive = false;
-        document.getElementById('power-bar-circle').classList.remove('active');
-        document.getElementById('power-bar-icon').textContent = '×1';
-      }, buffDuration);
-    }
-
-    /**** Inicialización ****/
-    loadGame();
+document.getElementById('btn-mini').onclick = () => {
+  if (puntos >= mini.cost) {
+    puntos -= mini.cost;
+    mini.count++;
+    mini.cost = computeCost(mini.baseCost, mini.count);
     recalcPPS();
     updateUI();
-
-    /**** Eventos de interacción en la luciérnaga (respuesta inmediata) ****/
-    const fireflyBtn = document.getElementById('firefly-btn');
-    fireflyBtn.addEventListener('pointerdown', e => {
-      e.preventDefault();
-      if (barValue >= activationThreshold && !buffActive) startBuff();
-      const mult = buffActive ? 2 : 1;
-      const gain = polvoPorClic * mult;
-      polvo += gain;
-      barValue = Math.min(barValue + barIncrease, 100);
-      document.getElementById('power-bar-fill').style.height = barValue + '%';
-
-      // Texto flotante
-      const rect = document.getElementById('farm').getBoundingClientRect();
-      const span = document.createElement('span');
-      span.className = 'float-text';
-      span.textContent = '+' + gain;
-      span.style.left = (e.clientX - rect.left) + 'px';
-      span.style.top  = (e.clientY - rect.top) + 'px';
-      document.getElementById('farm').appendChild(span);
-      span.addEventListener('animationend', () => span.remove());
-
+    changeImageLevel(); // actualizar imagen nivel según mini.count
+  }
+};
+document.getElementById('btn-hongo').onclick = () => {
+  if (puntos >= hongos.cost) {
+    puntos -= hongos.cost;
+    hongos.count++;
+    hongos.cost = computeCost(hongos.baseCost, hongos.count);
+    recalcPPS();
+    updateUI();
+  }
+};
+document.getElementById('btn-cristal').onclick = () => {
+  if (puntos >= cristal.cost) {
+    puntos -= cristal.cost;
+    cristal.count++;
+    puntosPorClic += cristal.bonusClic;
+    cristal.cost = computeCost(cristal.baseCost, cristal.count);
+    updateUI();
+  }
+};
+extras.forEach((u, i) => {
+  document.getElementById(`btn-extra${i+1}`).onclick = () => {
+    if (puntos >= u.cost) {
+      puntos -= u.cost;
+      u.count++;
+      if (u.type === 'click') puntosPorClic += u.bonus;
+      else if (u.type === 'both') puntosPorClic += u.bonus.click;
+      if (u.type !== 'click') recalcPPS();
+      u.cost = computeCost(u.baseCost, u.count);
       updateUI();
-      saveGame();
-    });
+    }
+  };
+});
 
-    document.getElementById('btn-mini').onclick = () => {
-      if (polvo >= miniLuci.cost) {
-        polvo -= miniLuci.cost;
-        miniLuci.count++;
-        miniLuci.cost = computeCost(miniLuci.baseCost, miniLuci.count);
-        recalcPPS();
-        updateUI();
-        saveGame();
-      }
-    };
-    document.getElementById('btn-hongo').onclick = () => {
-      if (polvo >= hongos.cost) {
-        polvo -= hongos.cost;
-        hongos.count++;
-        hongos.cost = computeCost(hongos.baseCost, hongos.count);
-        recalcPPS();
-        updateUI();
-        saveGame();
-      }
-    };
-    document.getElementById('btn-cristal').onclick = () => {
-      if (polvo >= cristal.cost) {
-        polvo -= cristal.cost;
-        cristal.count++;
-        polvoPorClic += cristal.bonusClic;
-        cristal.cost = computeCost(cristal.baseCost, cristal.count);
-        updateUI();
-        saveGame();
-      }
-    };
-    extras.forEach((u, i) => {
-      document.getElementById(`btn-extra${i+1}`).onclick = () => {
-        if (polvo >= u.cost) {
-          polvo -= u.cost;
-          u.count++;
-          if (u.type === 'click') {
-            polvoPorClic += u.bonus;
-          } else if (u.type === 'both') {
-            polvoPorClic += u.bonus.click;
-          }
-          if (u.type !== 'click') recalcPPS();
-          u.cost = computeCost(u.baseCost, u.count);
-          updateUI();
-          saveGame();
-        }
-      };
-    });
+function attemptPrestige() {
+  if (puntos < 1_000_000) return;
+  if (!prestigeExplained) { alert('Prestige: reinicia todo a cambio de prestige points.'); prestigeExplained = true; }
+  const gained = calculatePointsFromPuntos(puntos);
+  if (gained < 1) return;
+  if (!confirm(`¿Activar Prestige y ganar ${gained} puntos?`)) return;
+  prestigePoints += gained;
+  puntos = 0; puntosPorClic = 1;
+  mini.count = 0; hongos.count = 0; cristal.count = 0;
+  mini.cost = computeCost(mini.baseCost, mini.count);
+  hongos.cost = computeCost(hongos.baseCost, hongos.count);
+  cristal.cost = computeCost(cristal.baseCost, cristal.count);
+  extras.forEach(u => { u.count = 0; u.cost = computeCost(u.baseCost, 0); });
+  recalcPPS();
+  updateUI();
+  changeImageLevel(); // reset imagen a nivel0
+}
+document.getElementById('btn-prestige').onclick = attemptPrestige;
+document.getElementById('btn-prestige-inline').onclick = attemptPrestige;
 
-    /**** Bucles principales ****/
-    setInterval(updateBar, 100);
-    setInterval(() => {
-      const mult = buffActive ? 2 : 1;
-      polvo += pps * mult;
-      updateUI();
-      saveGame();
-    }, 1000);
-  </script>
+setInterval(updateBar, 100);
+setInterval(() => { puntos += pps * (buffActive ? 2 : 1) * prestigeMultiplier(); updateUI(); }, 1000);
+
+// inicial
+updateUI();
+changeImageLevel();
+</script>
 </body>
 </html>
