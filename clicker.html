@@ -261,16 +261,19 @@
       <div class="upgrade" id="upgrade-mini-luci">
         <p>Mini-luciérnaga: <span id="mini-count">0</span></p>
         <p>Coste: <span id="mini-cost">10</span></p>
+        <p>+1 por segundo</p>
         <button id="btn-mini">Comprar</button>
       </div>
       <div class="upgrade" id="upgrade-hongos">
         <p>Colmena de hongos: <span id="hongo-count">0</span></p>
         <p>Coste: <span id="hongo-cost">100</span></p>
+        <p>+5 por segundo</p>
         <button id="btn-hongo">Comprar</button>
       </div>
       <div class="upgrade" id="upgrade-cristal">
         <p>Cristal mágico: <span id="cristal-count">0</span></p>
         <p>Coste: <span id="cristal-cost">500</span></p>
+        <p>+10 por clic</p>
         <button id="btn-cristal">Comprar</button>
       </div>
       <!-- Extras inyectados por JS -->
@@ -289,16 +292,34 @@
 
     /**** Datos de mejoras con compresión de costes grandes ****/
     const rawExtrasInfo = [
-      ['Luz de aurora',     5000,    'pps',   20],
-      ['Néctar ancestral',  10000,   'pps',   50],
-      ['Eco estelar',       20000,   'click', 200],
-      ['Aura mística',      50000,   'click', 500],
-      ['Corazón de eclipse',100000,  'click',1000],
-      ['Aura solar',        200000,  'pps',   100],
-      ['Polvo cósmico',     500000,  'pps',   200],
-      ['Gema eterna',       1000000, 'click', 500],
-      ['Esencia lúgubre',   2000000, 'click',1000],
-      ['Corazón galáctico', 5000000, 'click',5000]
+      ['Luz de aurora',        5000,        'pps',   20],
+      ['Néctar ancestral',    10000,       'click',   50],
+      ['Eco estelar',         20000,       'pps', 200],
+      ['Aura mística',        50000,       'click', 500],
+      ['Corazón de eclipse',  100000,      'pps',1000],
+      ['Aura solar',          200000,      'click',   100],
+      ['Polvo cósmico',       500000,      'pps',   200],
+      ['Gema eterna',         1000000,     'click', 500],
+      ['Esencia lúgubre',     2000000,     'pps',1000],
+      ['Corazón galáctico',   5000000,     'click',5000],
+      ['Núcleo de tiempo',    10000000,    'pps',   2000],
+      ['Sombra viviente',     20000000,    'click',10000],
+      ['Aliento de cometa',   50000000,    'pps',   5000],
+      ['Esfera de vacío',     100000000,   'click',20000],
+      ['Luz infinita',        200000000,   'pps',   10000],
+      ['Vórtice de sueños',   500000000,   'click',50000],
+      ['Fragmento de aurora', 1000000000,  'pps',   25000],
+      ['Pulso ancestral',     2000000000,  'click',100000],
+      ['Cúpula estelar',      5000000000,  'pps',   50000],
+      ['Eco del vacío',       10000000000, 'click',250000],
+      ['Rayo de mañana',      20000000000, 'pps',   100000],
+      ['Corazón de nebulosa', 50000000000, 'click',500000],
+      ['Alma de la selva',    100000000000,'pps',   250000],
+      ['Torrente de luz',     200000000000,'click',1000000],
+      ['Resonancia eterna',   500000000000,'pps',   500000],
+      ['Nexus de almas',      1000000000000,'click',2000000],
+      // Último extra da ambos: por clic y por segundo
+      ['Horizonte fractal',   5000000000000,'both', { click: 1000000, pps: 1000000 }]
     ];
     const compressFactor = 1; // si lo reduces (<1) aplanas más los costes grandes
     const extrasInfo = rawExtrasInfo.map(([label, baseCost, type, bonus]) => {
@@ -359,6 +380,7 @@
         polvoPorClic = 1 + cristal.count * cristal.bonusClic;
         extras.forEach(u => {
           if (u.type === 'click') polvoPorClic += u.count * u.bonus;
+          if (u.type === 'both') polvoPorClic += u.count * u.bonus.click;
         });
         recalcPPS();
       } catch (e) {
@@ -372,9 +394,20 @@
       const div = document.createElement('div');
       div.className = 'upgrade';
       div.id = `upgrade-extra${i+1}`;
+
+      let efectoTexto;
+      if (u.type === 'pps') {
+        efectoTexto = `+${u.bonus} por segundo`;
+      } else if (u.type === 'click') {
+        efectoTexto = `+${u.bonus} por clic`;
+      } else if (u.type === 'both') {
+        efectoTexto = `+${u.bonus.click} por clic y +${u.bonus.pps} por segundo`;
+      }
+
       div.innerHTML = `
         <p>${u.label}: <span id="extra${i+1}-count">0</span></p>
         <p>Coste: <span id="extra${i+1}-cost">${u.cost}</span></p>
+        <p>${efectoTexto}</p>
         <button id="btn-extra${i+1}">Comprar</button>
       `;
       upgContainer.appendChild(div);
@@ -384,8 +417,11 @@
     function recalcPPS() {
       pps = miniLuci.count * miniLuci.pps
           + hongos.count   * hongos.pps
-          + extras.filter(x => x.type === 'pps')
-                  .reduce((s, x) => s + x.count * x.bonus, 0);
+          + extras.reduce((s, x) => {
+              if (x.type === 'pps') return s + x.count * x.bonus;
+              if (x.type === 'both') return s + x.count * x.bonus.pps;
+              return s;
+            }, 0);
     }
 
     /**** Actualizar UI ****/
@@ -494,8 +530,12 @@
         if (polvo >= u.cost) {
           polvo -= u.cost;
           u.count++;
-          if (u.type === 'click') polvoPorClic += u.bonus;
-          else recalcPPS();
+          if (u.type === 'click') {
+            polvoPorClic += u.bonus;
+          } else if (u.type === 'both') {
+            polvoPorClic += u.bonus.click;
+          }
+          if (u.type !== 'click') recalcPPS();
           u.cost = computeCost(u.baseCost, u.count);
           updateUI();
           saveGame();
