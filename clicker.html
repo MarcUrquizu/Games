@@ -281,24 +281,22 @@ const extras = rawExtrasInfo.map(([label, baseCost, type, bonus]) => ({
   label, count: 0, baseCost, cost: baseCost, type, bonus
 }));
 
-// preload imágenes niveles 0..30
+// precarga imágenes de nivel 0..3
 const imageCache = [];
-for (let i = 0; i <= 30; i++) {
+for (let i = 0; i <= 3; i++) {
   const img = new Image();
   img.src = `./img/clicker/nivel${i}.png`;
-  img.onerror = () => console.warn(`Fallo cargando nivel${i}.png`); 
+  img.onerror = () => console.warn(`Error cargando imagen nivel${i}.png`); 
   imageCache.push(img);
 }
 let currentImageLevel = 0;
-
-function changeImageLevel() {
-  const level = Math.min(mini.count, 30);
+function setImageLevel(level) {
+  level = Math.min(Math.max(0, level), 3);
   if (level === currentImageLevel) return;
   currentImageLevel = level;
   const imgEl = document.getElementById('main-image');
-  // añadir query string para evitar cache si quieres: ?v=timestamp
   imgEl.src = `./img/clicker/nivel${level}.png`;
-  console.log('Cambio imagen a nivel', level);
+  console.log('Imagen cambiada a nivel', level);
   imgEl.onerror = () => console.warn('No se pudo cargar imagen nivel', level);
 }
 
@@ -409,7 +407,7 @@ document.getElementById('btn-mini').onclick = () => {
     mini.cost = computeCost(mini.baseCost, mini.count);
     recalcPPS();
     updateUI();
-    changeImageLevel(); // actualizar imagen nivel según mini.count
+    if (mini.count === 1) setImageLevel(1); // sólo al primer mini
   }
 };
 document.getElementById('btn-hongo').onclick = () => {
@@ -419,6 +417,7 @@ document.getElementById('btn-hongo').onclick = () => {
     hongos.cost = computeCost(hongos.baseCost, hongos.count);
     recalcPPS();
     updateUI();
+    if (hongos.count === 1) setImageLevel(2); // sólo al primer hongo
   }
 };
 document.getElementById('btn-cristal').onclick = () => {
@@ -428,6 +427,7 @@ document.getElementById('btn-cristal').onclick = () => {
     puntosPorClic += cristal.bonusClic;
     cristal.cost = computeCost(cristal.baseCost, cristal.count);
     updateUI();
+    if (cristal.count === 1) setImageLevel(3); // sólo al primer cristal
   }
 };
 extras.forEach((u, i) => {
@@ -459,17 +459,18 @@ function attemptPrestige() {
   extras.forEach(u => { u.count = 0; u.cost = computeCost(u.baseCost, 0); });
   recalcPPS();
   updateUI();
-  changeImageLevel(); // reset imagen a nivel0
+  setImageLevel(0); // reset imagen
 }
 document.getElementById('btn-prestige').onclick = attemptPrestige;
 document.getElementById('btn-prestige-inline').onclick = attemptPrestige;
 
+// loops
 setInterval(updateBar, 100);
 setInterval(() => { puntos += pps * (buffActive ? 2 : 1) * prestigeMultiplier(); updateUI(); }, 1000);
 
 // inicial
 updateUI();
-changeImageLevel();
+setImageLevel(0);
 </script>
 </body>
 </html>
