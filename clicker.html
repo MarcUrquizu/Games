@@ -7,6 +7,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Press+Start+2P&display=swap" rel="stylesheet" />
   <style>
     html, body {
+      touch-action: manipulation;
       height: 100%;
       margin: 0;
       overflow: hidden;
@@ -14,6 +15,36 @@
       color: #fff;
       font-family: 'Montserrat', sans-serif;
     }
+
+    /* --- Botones de menú/info --- */
+    .game-buttons {
+      background-color: rgba(0,0,0,0.8);
+      color: #ffffff;
+      font-weight: bold;
+      text-decoration: none;
+      padding: 8px 14px;
+      border-radius: 6px;
+      position: absolute;
+      z-index: 50;
+      font-family: 'Press Start 2P', cursive;
+      font-size: 0.65rem;
+      letter-spacing: 1px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+      transition: background .2s;
+      display: inline-block;
+    }
+    .game-buttons:hover {
+      background-color: rgba(255,255,255,0.1);
+    }
+    .help-button {
+      top: 10px;
+      left: 10px;
+    }
+    .menu-button {
+      top: 50px; /* debajo del de info */
+      left: 10px;
+    }
+
     #game-container {
       display: flex;
       height: 100%;
@@ -30,7 +61,7 @@
     }
     #stats-overlay {
       position: absolute;
-      top: 1rem;
+      top: 4rem;
       left: 1rem;
       background: rgba(0,0,0,.7);
       padding: .5rem 1rem;
@@ -39,6 +70,10 @@
       text-shadow: 1px 1px 2px #000;
       z-index: 10;
       font-size: 0.9rem;
+    }
+    #stats-overlay p {
+      margin: 4px 0;
+      line-height: 1.2;
     }
     #firefly-btn {
       background: none;
@@ -189,7 +224,7 @@
     @media (max-width: 500px) {
       #stats-overlay {
         font-size: 0.7rem;
-        padding: .3rem .6rem;
+        padding: .4rem .8rem;
       }
       .upgrade p {
         font-size: 0.7rem;
@@ -202,12 +237,16 @@
   </style>
 </head>
 <body>
+
+  <a href="./help.html" class="help-button game-buttons">INFO</a>
+  <a href="./index.html" class="menu-button game-buttons">MENU</a>
+
   <div id="game-container">
     <div id="farm">
       <div id="stats-overlay">
         <p>Monedas: <span id="polvo">0</span></p>
         <p>Por clic: <span id="porClic">1</span></p>
-        <p>PPS: <span id="pps">0</span></p>
+        <p>Por segundo: <span id="pps">0</span></p>
       </div>
       <button id="firefly-btn"><img src="firefly.png" alt="Luciérnaga" /></button>
       <div id="power-bar-container">
@@ -237,19 +276,43 @@
   </div>
 
   <script>
-    /**** Datos de mejoras ****/
-    const extrasInfo = [
-      ['Luz de aurora',     50000,    'pps',   20],
-      ['Néctar ancestral',  100000,   'pps',   50],
-      ['Eco estelar',       200000,   'click', 200],
-      ['Aura mística',      500000,   'click', 500],
-      ['Corazón de eclipse',1000000,  'click',1000],
-      ['Aura solar',        2000000,  'pps',   100],
-      ['Polvo cósmico',     5000000,  'pps',   200],
-      ['Gema eterna',       10000000, 'click', 500],
-      ['Esencia lúgubre',   20000000, 'click',1000],
-      ['Corazón galáctico', 50000000, 'click',5000]
+    /**** Evita el zoom por doble toque en móviles ****/
+    let lastTouchEnd = 0;
+    document.addEventListener('touchend', function (e) {
+      const now = Date.now();
+      if (now - lastTouchEnd <= 300) {
+        e.preventDefault();
+      }
+      lastTouchEnd = now;
+    }, { passive: false });
+
+    /**** Función de coste ajustado (crecimiento suave a partir de compra 5) ****/
+    function computeCost(baseCost, count) {
+      if (count <= 4) {
+        return Math.floor(baseCost * Math.pow(1.15, count));
+      } else {
+        return Math.floor(baseCost * Math.pow(1.15, 4) * Math.pow(1.08, count - 4));
+      }
+    }
+
+    /**** Datos de mejoras con compresión de costes grandes ****/
+    const rawExtrasInfo = [
+      ['Luz de aurora',     5000,    'pps',   20],
+      ['Néctar ancestral',  10000,   'pps',   50],
+      ['Eco estelar',       20000,   'click', 200],
+      ['Aura mística',      50000,   'click', 500],
+      ['Corazón de eclipse',100000,  'click',1000],
+      ['Aura solar',        200000,  'pps',   100],
+      ['Polvo cósmico',     500000,  'pps',   200],
+      ['Gema eterna',       1000000, 'click', 500],
+      ['Esencia lúgubre',   2000000, 'click',1000],
+      ['Corazón galáctico', 5000000, 'click',5000]
     ];
+    const compressFactor = 1; // si lo reduces (<1) aplanas más los costes grandes
+    const extrasInfo = rawExtrasInfo.map(([label, baseCost, type, bonus]) => {
+      const compressedBase = Math.max(1, Math.floor(Math.pow(baseCost, compressFactor)));
+      return [label, compressedBase, type, bonus];
+    });
 
     /**** Estado del juego ****/
     let polvo = 0, polvoPorClic = 1, pps = 0;
@@ -296,11 +359,11 @@
         cristal.count     = save.cristalCount || 0;
         extras.forEach((u, i) => { u.count = save.extrasCounts?.[i] || 0; });
 
-        // Recalcular costes
-        miniLuci.cost   = Math.floor(miniLuci.baseCost * Math.pow(1.15, miniLuci.count));
-        hongos.cost     = Math.floor(hongos.baseCost   * Math.pow(1.15, hongos.count));
-        cristal.cost    = Math.floor(cristal.baseCost  * Math.pow(1.15, cristal.count));
-        extras.forEach(u => u.cost = Math.floor(u.baseCost * Math.pow(1.15, u.count)));
+        // Recalcular costes con la nueva lógica
+        miniLuci.cost   = computeCost(miniLuci.baseCost, miniLuci.count);
+        hongos.cost     = computeCost(hongos.baseCost, hongos.count);
+        cristal.cost    = computeCost(cristal.baseCost, cristal.count);
+        extras.forEach(u => u.cost = computeCost(u.baseCost, u.count));
 
         // Recalcular valores
         polvoPorClic = 1 + cristal.count * cristal.bonusClic;
@@ -408,7 +471,7 @@
       if (polvo >= miniLuci.cost) {
         polvo -= miniLuci.cost;
         miniLuci.count++;
-        miniLuci.cost = Math.floor(miniLuci.baseCost * Math.pow(1.15, miniLuci.count));
+        miniLuci.cost = computeCost(miniLuci.baseCost, miniLuci.count);
         recalcPPS();
         updateUI();
         saveGame();
@@ -418,7 +481,7 @@
       if (polvo >= hongos.cost) {
         polvo -= hongos.cost;
         hongos.count++;
-        hongos.cost = Math.floor(hongos.baseCost * Math.pow(1.15, hongos.count));
+        hongos.cost = computeCost(hongos.baseCost, hongos.count);
         recalcPPS();
         updateUI();
         saveGame();
@@ -429,7 +492,7 @@
         polvo -= cristal.cost;
         cristal.count++;
         polvoPorClic += cristal.bonusClic;
-        cristal.cost = Math.floor(cristal.baseCost * Math.pow(1.15, cristal.count));
+        cristal.cost = computeCost(cristal.baseCost, cristal.count);
         updateUI();
         saveGame();
       }
@@ -441,7 +504,7 @@
           u.count++;
           if (u.type === 'click') polvoPorClic += u.bonus;
           else recalcPPS();
-          u.cost = Math.floor(u.baseCost * Math.pow(1.15, u.count));
+          u.cost = computeCost(u.baseCost, u.count);
           updateUI();
           saveGame();
         }
