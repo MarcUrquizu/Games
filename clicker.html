@@ -16,7 +16,16 @@
       font-family: 'Montserrat', sans-serif;
     }
 
-    /* --- Botones de menú/info --- */
+    /* contenedor de botones INFO / MENU apilados */
+    .top-left-buttons {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px; /* más separación para que no se toquen */
+      z-index: 50;
+    }
     .game-buttons {
       background-color: rgba(0,0,0,0.8);
       color: #ffffff;
@@ -24,25 +33,16 @@
       text-decoration: none;
       padding: 8px 14px;
       border-radius: 6px;
-      position: absolute;
-      z-index: 50;
       font-family: 'Press Start 2P', cursive;
       font-size: 0.65rem;
       letter-spacing: 1px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.5);
       transition: background .2s;
       display: inline-block;
+      white-space: nowrap;
     }
     .game-buttons:hover {
       background-color: rgba(255,255,255,0.1);
-    }
-    .help-button {
-      top: 10px;
-      left: 10px;
-    }
-    .menu-button {
-      top: 50px; /* debajo del de info */
-      left: 10px;
     }
 
     #game-container {
@@ -61,7 +61,7 @@
     }
     #stats-overlay {
       position: absolute;
-      top: 4rem;
+      top: 5rem; /* un poco más abajo para evitar cercanía con botones */
       left: 1rem;
       background: rgba(0,0,0,.7);
       padding: .5rem 1rem;
@@ -238,8 +238,10 @@
 </head>
 <body>
 
-  <a href="./help.html" class="help-button game-buttons">INFO</a>
-  <a href="./index.html" class="menu-button game-buttons">MENU</a>
+  <div class="top-left-buttons">
+    <a href="./help.html" class="game-buttons">INFO</a>
+    <a href="./index.html" class="game-buttons">MENU</a>
+  </div>
 
   <div id="game-container">
     <div id="farm">
@@ -276,16 +278,6 @@
   </div>
 
   <script>
-    /**** Evita el zoom por doble toque en móviles ****/
-    let lastTouchEnd = 0;
-    document.addEventListener('touchend', function (e) {
-      const now = Date.now();
-      if (now - lastTouchEnd <= 300) {
-        e.preventDefault();
-      }
-      lastTouchEnd = now;
-    }, { passive: false });
-
     /**** Función de coste ajustado (crecimiento suave a partir de compra 5) ****/
     function computeCost(baseCost, count) {
       if (count <= 4) {
@@ -359,13 +351,11 @@
         cristal.count     = save.cristalCount || 0;
         extras.forEach((u, i) => { u.count = save.extrasCounts?.[i] || 0; });
 
-        // Recalcular costes con la nueva lógica
         miniLuci.cost   = computeCost(miniLuci.baseCost, miniLuci.count);
         hongos.cost     = computeCost(hongos.baseCost, hongos.count);
         cristal.cost    = computeCost(cristal.baseCost, cristal.count);
         extras.forEach(u => u.cost = computeCost(u.baseCost, u.count));
 
-        // Recalcular valores
         polvoPorClic = 1 + cristal.count * cristal.bonusClic;
         extras.forEach(u => {
           if (u.type === 'click') polvoPorClic += u.count * u.bonus;
@@ -444,8 +434,10 @@
     recalcPPS();
     updateUI();
 
-    /**** Eventos ****/
-    document.getElementById('firefly-btn').addEventListener('click', e => {
+    /**** Eventos de interacción en la luciérnaga (respuesta inmediata) ****/
+    const fireflyBtn = document.getElementById('firefly-btn');
+    fireflyBtn.addEventListener('pointerdown', e => {
+      e.preventDefault();
       if (barValue >= activationThreshold && !buffActive) startBuff();
       const mult = buffActive ? 2 : 1;
       const gain = polvoPorClic * mult;
