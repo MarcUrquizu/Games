@@ -52,8 +52,8 @@
   }
   #stats-overlay {
     position: absolute;
-    top: 5rem;
-    left: 1rem;
+    top: 10px;
+    left: 100px;
     background: rgba(0,0,0,.7);
     padding: .5rem 1rem;
     border-radius: 6px;
@@ -62,21 +62,32 @@
     z-index: 10;
     font-size: 0.9rem;
     min-width: 160px;
+    cursor: grab;
   }
+  #stats-overlay:active { cursor: grabbing; }
   #stats-overlay p { margin: 4px 0; line-height: 1.2; }
+  /* Botón de clic ocupa todo el área oscura */
   #firefly-btn {
+    position: absolute;
+    inset: 0;
     background: none;
     border: none;
     cursor: pointer;
-    position: relative;
-    z-index: 5;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
   }
+  /* Punto intermedio: 90% tamaño, centrado */
   #firefly-btn img {
-    width: 40vw;
-    max-width: 500px;
+    width: 110%;
+    height: 110%;
+    object-fit: contain;
     transition: transform .1s;
+    display: block;
   }
-  #firefly-btn img:active { transform: scale(.9); }
+  #firefly-btn img:active { transform: scale(.98); }
   #power-bar-container {
     position: absolute;
     bottom: 1rem;
@@ -196,7 +207,7 @@
       <p>Por clic: <span id="porClic">1.00</span></p>
       <p>Por segundo: <span id="pps">0.00</span></p>
       <p id="prestige-mult">Multiplicador: ×1.00</p>
-      <p id="prestige-points">Prestige points: 0</p>
+      <p id="prestige-points">Prestige points: 0</span></p>
       <button id="btn-prestige-inline" disabled>Prestige</button>
     </div>
     <button id="firefly-btn">
@@ -235,7 +246,13 @@
 </div>
 
 <script>
-// datos extras
+// ---------- constantes y datos base ----------
+const STORAGE_KEY = "clickerState";
+const barIncrease = 6;
+const barDecayPerSec = 10;
+const buffDuration = 2000; // ms
+const activationThreshold = 95;
+
 const rawExtrasInfo = [
   ['Luz de aurora', 5000, 'pps', 20],
   ['Néctar ancestral', 10000, 'click', 50],
@@ -266,40 +283,35 @@ const rawExtrasInfo = [
   ['Horizonte fractal', 5000000000000, 'both', {click: 10000000, pps: 10000000}]
 ];
 
-// estado
-let puntos = 0, puntosPorClic = 1, pps = 0;
-let barValue = 0, buffActive = false, buffTimeout;
-let prestigePoints = 0, prestigeExplained = false;
-
-const barIncrease = 6, barDecayPerSec = 10, buffDuration = 2000, activationThreshold = 95;
+// ---------- estado en memoria ----------
+let puntos = 0;
+let puntosPorClic = 1;
+let pps = 0;
+let barValue = 0;
+let buffActive = false;
+let buffTimeout = null;
+let buffExpiresAt = 0;
+let prestigePoints = 0;
+let prestigeExplained = false;
+let currentImageLevel = 0;
+let overlayPosition = null; // {left, top}
+let lastSavedTimestamp = Date.now();
 
 const mini = { count: 0, baseCost: 10, cost: 10, pps: 1 };
 const hongos = { count: 0, baseCost: 100, cost: 100, pps: 5 };
 const cristal = { count: 0, baseCost: 500, cost: 500, bonusClic: 10 };
-
 const extras = rawExtrasInfo.map(([label, baseCost, type, bonus]) => ({
   label, count: 0, baseCost, cost: baseCost, type, bonus
 }));
 
-// precarga imágenes de nivel 0..3
-const imageCache = [];
+// precarga imágenes 0..3
 for (let i = 0; i <= 3; i++) {
   const img = new Image();
   img.src = `./img/clicker/nivel${i}.png`;
-  img.onerror = () => console.warn(`Error cargando imagen nivel${i}.png`); 
-  imageCache.push(img);
-}
-let currentImageLevel = 0;
-function setImageLevel(level) {
-  level = Math.min(Math.max(0, level), 3);
-  if (level === currentImageLevel) return;
-  currentImageLevel = level;
-  const imgEl = document.getElementById('main-image');
-  imgEl.src = `./img/clicker/nivel${level}.png`;
-  console.log('Imagen cambiada a nivel', level);
-  imgEl.onerror = () => console.warn('No se pudo cargar imagen nivel', level);
+  img.onerror = () => console.warn(`Error cargando nivel${i}.png`);
 }
 
+// ---------- utilidades ----------
 function computeCost(baseCost, count) {
   if (count <= 4) return Math.floor(baseCost * Math.pow(1.15, count));
   return Math.floor(baseCost * Math.pow(1.15, 4) * Math.pow(1.08, count - 4));
@@ -313,6 +325,139 @@ function recalcPPS() {
 
 function prestigeMultiplier() { return 1 + prestigePoints * 0.1; }
 
+function applyOfflineGain() {
+  const now = Date.now();
+  const deltaSec = Math.max(0, (now - lastSavedTimestamp) / 1000);
+  if (deltaSec > 0) {
+    const buffMult = buffActive ? 2 : 1;
+    const gain = pps * buffMult * prestigeMultiplier() * deltaSec;
+    puntos += gain;
+  }
+}
+
+// ---------- guardado y carga ----------
+function getSaveObject() {
+  return {
+    puntos,
+    puntosPorClic,
+    barValue,
+    buffActive,
+    buffExpiresAt: buffActive ? buffExpiresAt : 0,
+    prestigePoints,
+    prestigeExplained,
+    currentImageLevel,
+    overlayPosition,
+    mini: { count: mini.count },
+    hongos: { count: hongos.count },
+    cristal: { count: cristal.count },
+    extras: extras.map(e => ({ count: e.count })),
+    lastSavedTimestamp: Date.now()
+  };
+}
+
+function saveState() {
+  try {
+    const toSave = getSaveObject();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+    lastSavedTimestamp = toSave.lastSavedTimestamp;
+  } catch (e) {
+    console.warn("Error guardando estado:", e);
+  }
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+
+    if (typeof saved.puntos === "number") puntos = saved.puntos;
+    if (typeof saved.puntosPorClic === "number") puntosPorClic = saved.puntosPorClic;
+    if (typeof saved.barValue === "number") barValue = saved.barValue;
+    if (saved.prestigePoints) prestigePoints = saved.prestigePoints;
+    if (typeof saved.prestigeExplained === "boolean") prestigeExplained = saved.prestigeExplained;
+    if (typeof saved.currentImageLevel === "number") currentImageLevel = saved.currentImageLevel;
+    if (saved.overlayPosition && typeof saved.overlayPosition === "object") overlayPosition = saved.overlayPosition;
+    if (saved.lastSavedTimestamp) lastSavedTimestamp = saved.lastSavedTimestamp;
+
+    if (saved.mini && typeof saved.mini.count === "number") {
+      mini.count = saved.mini.count;
+      mini.cost = computeCost(mini.baseCost, mini.count);
+    }
+    if (saved.hongos && typeof saved.hongos.count === "number") {
+      hongos.count = saved.hongos.count;
+      hongos.cost = computeCost(hongos.baseCost, hongos.count);
+    }
+    if (saved.cristal && typeof saved.cristal.count === "number") {
+      cristal.count = saved.cristal.count;
+      cristal.cost = computeCost(cristal.baseCost, cristal.count);
+    }
+
+    // reconstruir puntosPorClic a partir de base + cristal + extras click/both
+    puntosPorClic = 1;
+    if (cristal.count > 0) {
+      puntosPorClic += cristal.count * cristal.bonusClic;
+    }
+
+    if (Array.isArray(saved.extras)) {
+      saved.extras.forEach((se, i) => {
+        if (typeof se.count === "number" && extras[i]) {
+          extras[i].count = se.count;
+          extras[i].cost = computeCost(extras[i].baseCost, extras[i].count);
+          if (extras[i].type === 'click') puntosPorClic += extras[i].count * extras[i].bonus;
+          else if (extras[i].type === 'both') puntosPorClic += extras[i].count * extras[i].bonus.click;
+        }
+      });
+    }
+
+    recalcPPS();
+
+    if (saved.buffActive && saved.buffExpiresAt && saved.buffExpiresAt > Date.now()) {
+      buffActive = true;
+      buffExpiresAt = saved.buffExpiresAt;
+      const remaining = Math.max(0, buffExpiresAt - Date.now());
+      document.getElementById('power-bar-circle').classList.add('active');
+      document.getElementById('power-bar-icon').textContent = '×2';
+      clearTimeout(buffTimeout);
+      buffTimeout = setTimeout(() => {
+        buffActive = false;
+        document.getElementById('power-bar-circle').classList.remove('active');
+        document.getElementById('power-bar-icon').textContent = '×1';
+        buffExpiresAt = 0;
+        saveState();
+      }, remaining);
+    } else {
+      buffActive = false;
+      buffExpiresAt = 0;
+    }
+
+    // aplicar ganancia offline
+    applyOfflineGain();
+
+  } catch (e) {
+    console.warn("Error cargando estado, se usará el estado por defecto:", e);
+  }
+}
+
+// ---------- interfaz dinámica de extras ----------
+const upgContainer = document.getElementById('upgrades');
+extras.forEach((u, i) => {
+  const div = document.createElement('div');
+  div.className = 'upgrade';
+  div.id = `upgrade-extra${i+1}`;
+  let efectoTexto = u.type === 'pps' ? `+${u.bonus} por segundo` :
+    (u.type === 'click' ? `+${u.bonus} por clic` :
+      `+${u.bonus.click} por clic y +${u.bonus.pps} por segundo`);
+  div.innerHTML = `
+    <p>${u.label}: <span id="extra${i+1}-count">0</span></p>
+    <p>Coste: <span id="extra${i+1}-cost">${u.cost}</span></p>
+    <p>${efectoTexto}</p>
+    <button id="btn-extra${i+1}">Comprar</button>
+  `;
+  upgContainer.appendChild(div);
+});
+
+// ---------- actualización visual ----------
 function updateUI() {
   const buffMult = buffActive ? 2 : 1;
   const totalMult = buffMult * prestigeMultiplier();
@@ -331,12 +476,20 @@ function updateUI() {
   document.getElementById('btn-hongo').disabled = puntos < hongos.cost;
   document.getElementById('btn-cristal').disabled = puntos < cristal.cost;
   extras.forEach((u, i) => {
-    document.getElementById(`extra${i+1}-count`).textContent = u.count;
-    document.getElementById(`extra${i+1}-cost`).textContent = u.cost;
-    document.getElementById(`btn-extra${i+1}`).disabled = puntos < u.cost;
+    const countEl = document.getElementById(`extra${i+1}-count`);
+    const costEl = document.getElementById(`extra${i+1}-cost`);
+    const btn = document.getElementById(`btn-extra${i+1}`);
+    if (countEl) countEl.textContent = u.count;
+    if (costEl) costEl.textContent = u.cost;
+    if (btn) btn.disabled = puntos < u.cost;
   });
+  // prestige button inline habilitado si puede
+  document.getElementById('btn-prestige-inline').disabled = puntos < 1_000_000;
+  const prestigeBtn = document.getElementById('btn-prestige');
+  if (prestigeBtn) prestigeBtn.disabled = puntos < 1_000_000;
 }
 
+// ---------- barra de poder ----------
 function updateBar() {
   if (!buffActive) {
     barValue = Math.max(0, barValue - barDecayPerSec / 10);
@@ -344,8 +497,10 @@ function updateBar() {
   }
 }
 
+// ---------- buff ----------
 function startBuff() {
   buffActive = true;
+  buffExpiresAt = Date.now() + buffDuration;
   document.getElementById('power-bar-circle').classList.add('active');
   document.getElementById('power-bar-icon').textContent = '×2';
   clearTimeout(buffTimeout);
@@ -353,7 +508,10 @@ function startBuff() {
     buffActive = false;
     document.getElementById('power-bar-circle').classList.remove('active');
     document.getElementById('power-bar-icon').textContent = '×1';
+    buffExpiresAt = 0;
+    saveState();
   }, buffDuration);
+  saveState();
 }
 
 function calculatePointsFromPuntos(c) {
@@ -363,25 +521,34 @@ function calculatePointsFromPuntos(c) {
   return 0;
 }
 
-// insertar mejoras extra dinámicas
-const upgContainer = document.getElementById('upgrades');
-extras.forEach((u, i) => {
-  const div = document.createElement('div');
-  div.className = 'upgrade';
-  div.id = `upgrade-extra${i+1}`;
-  let efectoTexto = u.type === 'pps' ? `+${u.bonus} por segundo` :
-    (u.type === 'click' ? `+${u.bonus} por clic` :
-      `+${u.bonus.click} por clic y +${u.bonus.pps} por segundo`);
-  div.innerHTML = `
-    <p>${u.label}: <span id="extra${i+1}-count">0</span></p>
-    <p>Coste: <span id="extra${i+1}-cost">${u.cost}</span></p>
-    <p>${efectoTexto}</p>
-    <button id="btn-extra${i+1}">Comprar</button>
-  `;
-  upgContainer.appendChild(div);
-});
+// ---------- imagen ----------
+function setImageLevel(level) {
+  level = Math.min(Math.max(0, level), 3);
+  if (level === currentImageLevel) return;
+  currentImageLevel = level;
+  const imgEl = document.getElementById('main-image');
+  imgEl.src = `./img/clicker/nivel${level}.png`;
+  imgEl.onerror = () => console.warn('No se pudo cargar imagen nivel', level);
+  saveState();
+}
 
-// eventos
+// ---------- carga inicial ----------
+loadState();
+recalcPPS();
+updateUI();
+setImageLevel(currentImageLevel);
+document.getElementById('power-bar-fill').style.height = barValue + '%';
+if (overlayPosition) {
+  const overlay = document.getElementById('stats-overlay');
+  overlay.style.left = (overlayPosition.left) + 'px';
+  overlay.style.top = (overlayPosition.top) + 'px';
+}
+if (buffActive) {
+  document.getElementById('power-bar-circle').classList.add('active');
+  document.getElementById('power-bar-icon').textContent = '×2';
+}
+
+// ---------- manejadores de eventos ----------
 document.getElementById('firefly-btn').addEventListener('pointerdown', e => {
   e.preventDefault();
   if (barValue >= activationThreshold && !buffActive) startBuff();
@@ -398,6 +565,7 @@ document.getElementById('firefly-btn').addEventListener('pointerdown', e => {
   document.getElementById('farm').appendChild(span);
   span.addEventListener('animationend', () => span.remove());
   updateUI();
+  saveState();
 });
 
 document.getElementById('btn-mini').onclick = () => {
@@ -407,7 +575,8 @@ document.getElementById('btn-mini').onclick = () => {
     mini.cost = computeCost(mini.baseCost, mini.count);
     recalcPPS();
     updateUI();
-    if (mini.count === 1) setImageLevel(1); // sólo al primer mini
+    if (mini.count === 1) setImageLevel(1);
+    saveState();
   }
 };
 document.getElementById('btn-hongo').onclick = () => {
@@ -417,17 +586,24 @@ document.getElementById('btn-hongo').onclick = () => {
     hongos.cost = computeCost(hongos.baseCost, hongos.count);
     recalcPPS();
     updateUI();
-    if (hongos.count === 1) setImageLevel(2); // sólo al primer hongo
+    if (hongos.count === 1) setImageLevel(2);
+    saveState();
   }
 };
 document.getElementById('btn-cristal').onclick = () => {
   if (puntos >= cristal.cost) {
     puntos -= cristal.cost;
     cristal.count++;
-    puntosPorClic += cristal.bonusClic;
+    puntosPorClic = 1 + cristal.count * cristal.bonusClic; // reconstruye base
+    // también sumar extras click/both
+    extras.forEach(u => {
+      if (u.type === 'click') puntosPorClic += u.count * u.bonus;
+      else if (u.type === 'both') puntosPorClic += u.count * u.bonus.click;
+    });
     cristal.cost = computeCost(cristal.baseCost, cristal.count);
     updateUI();
-    if (cristal.count === 1) setImageLevel(3); // sólo al primer cristal
+    if (cristal.count === 1) setImageLevel(3);
+    saveState();
   }
 };
 extras.forEach((u, i) => {
@@ -440,6 +616,7 @@ extras.forEach((u, i) => {
       if (u.type !== 'click') recalcPPS();
       u.cost = computeCost(u.baseCost, u.count);
       updateUI();
+      saveState();
     }
   };
 });
@@ -451,26 +628,81 @@ function attemptPrestige() {
   if (gained < 1) return;
   if (!confirm(`¿Activar Prestige y ganar ${gained} puntos?`)) return;
   prestigePoints += gained;
-  puntos = 0; puntosPorClic = 1;
+  puntos = 0;
+  puntosPorClic = 1;
   mini.count = 0; hongos.count = 0; cristal.count = 0;
   mini.cost = computeCost(mini.baseCost, mini.count);
   hongos.cost = computeCost(hongos.baseCost, hongos.count);
   cristal.cost = computeCost(cristal.baseCost, cristal.count);
-  extras.forEach(u => { u.count = 0; u.cost = computeCost(u.baseCost, 0); });
+  extras.forEach(u => {
+    u.count = 0;
+    u.cost = computeCost(u.baseCost, 0);
+  });
   recalcPPS();
   updateUI();
-  setImageLevel(0); // reset imagen
+  setImageLevel(0);
+  saveState();
 }
 document.getElementById('btn-prestige').onclick = attemptPrestige;
 document.getElementById('btn-prestige-inline').onclick = attemptPrestige;
 
-// loops
-setInterval(updateBar, 100);
-setInterval(() => { puntos += pps * (buffActive ? 2 : 1) * prestigeMultiplier(); updateUI(); }, 1000);
+// arrastrar el overlay de stats y guardar posición
+(() => {
+  const overlay = document.getElementById('stats-overlay');
+  let dragging = false;
+  let offsetX = 0, offsetY = 0;
 
-// inicial
-updateUI();
-setImageLevel(0);
+  overlay.addEventListener('pointerdown', e => {
+    dragging = true;
+    overlay.setPointerCapture(e.pointerId);
+    const rect = overlay.getBoundingClientRect();
+    offsetX = e.clientX - rect.left;
+    offsetY = e.clientY - rect.top;
+    e.preventDefault();
+  });
+
+  overlay.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    let x = e.clientX - offsetX;
+    let y = e.clientY - offsetY;
+    x = Math.max(0, Math.min(window.innerWidth - overlay.offsetWidth, x));
+    y = Math.max(0, Math.min(window.innerHeight - overlay.offsetHeight, y));
+    overlay.style.left = x + 'px';
+    overlay.style.top = y + 'px';
+  });
+
+  overlay.addEventListener('pointerup', e => {
+    dragging = false;
+    try { overlay.releasePointerCapture(e.pointerId); } catch {}
+    // guardamos posición
+    const rect = overlay.getBoundingClientRect();
+    overlayPosition = { left: rect.left, top: rect.top };
+    saveState();
+  });
+})();
+
+// ---------- bucles ----------
+// decaimiento de barra
+setInterval(() => {
+  updateBar();
+  saveState(); // guardar decay/valor de barra
+}, 100);
+// ganancia pasiva por segundo
+setInterval(() => {
+  puntos += pps * (buffActive ? 2 : 1) * prestigeMultiplier();
+  updateUI();
+  saveState();
+}, 1000);
+
+// guardar periódico de seguridad (cada 5s)
+setInterval(() => {
+  saveState();
+}, 5000);
+
+// guardar antes de cerrar
+window.addEventListener("beforeunload", () => {
+  saveState();
+});
 </script>
 </body>
 </html>
