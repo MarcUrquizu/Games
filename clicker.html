@@ -12,7 +12,7 @@
   .game-buttons:hover { background-color: rgba(255,255,255,0.1); }
   #game-container { display: flex; height: 100%; }
   #farm { flex: 1; position: relative; background: #282c34; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-  #stats-overlay { position: absolute; top: 5rem; left: 1rem; background: rgba(0,0,0,.7); padding: .5rem 1rem; border-radius: 6px; font-family: 'Press Start 2P', cursive; text-shadow: 1px 1px 2px #000; z-index: 10; font-size: 0.9rem; min-width: 160px; }
+  #stats-overlay { position: absolute; top: 1rem; left: 7rem; background: rgba(0,0,0,.7); padding: .5rem 1rem; border-radius: 6px; font-family: 'Press Start 2P', cursive; text-shadow: 1px 1px 2px #000; z-index: 10; font-size: 0.9rem; min-width: 160px; }
   #stats-overlay p { margin: 4px 0; line-height: 1.2; }
   #btn-prestige {
     margin-top: 8px;
@@ -99,13 +99,13 @@
 
 <script>
 const rawExtrasInfo=[
-['Luz de aurora',5000,'pps',20],['Néctar ancestral',10000,'click',50],['Eco estelar',20000,'pps',200],['Aura mística',50000,'click',500],
-['Corazón de eclipse',100000,'pps',1000],['Aura solar',200000,'click',100],['Polvo cósmico',500000,'pps',200],['Gema eterna',1000000,'click',500],
-['Esencia lúgubre',2000000,'pps',1000],['Corazón galáctico',5000000,'click',5000],['Núcleo de tiempo',10000000,'pps',2000],['Sombra viviente',20000000,'click',10000],
-['Aliento de cometa',50000000,'pps',5000],['Esfera de vacío',100000000,'click',20000],['Luz infinita',200000000,'pps',10000],['Vórtice de sueños',500000000,'click',50000],
-['Fragmento de aurora',1000000000,'pps',25000],['Pulso ancestral',2000000000,'click',100000],['Cúpula estelar',5000000000,'pps',50000],['Eco del vacío',10000000000,'click',250000],
-['Rayo de mañana',20000000000,'pps',100000],['Corazón de nebulosa',50000000000,'click',500000],['Alma de la selva',100000000000,'pps',250000],['Torrente de luz',200000000000,'click',1000000],
-['Resonancia eterna',500000000000,'pps',500000],['Nexus de almas',1000000000000,'click',2000000],['Horizonte fractal',5000000000000,'both',{click:10000000,pps:10000000}]
+['Luz de aurora',500,'pps',10],['Néctar ancestral',1000,'click',10],['Eco estelar',2000,'pps',20],['Aura mística',5000,'click',50],
+['Corazón de eclipse',10000,'pps',100],['Aura solar',20000,'click',100],['Polvo cósmico',50000,'pps',200],['Gema eterna',100000,'click',500],
+['Esencia lúgubre',200000,'pps',1000],['Corazón galáctico',500000,'click',1000],['Núcleo de tiempo',1000000,'pps',2000],['Sombra viviente',2000000,'click',2000],
+['Aliento de cometa',5000000,'pps',5000],['Esfera de vacío',10000000,'click',5000],['Luz infinita',20000000,'pps',10000],['Vórtice de sueños',50000000,'click',10000],
+['Fragmento de aurora',100000000,'pps',25000],['Pulso ancestral',200000000,'click',25000],['Cúpula estelar',500000000,'pps',50000],['Eco del vacío',1000000000,'click',50000],
+['Rayo de mañana',2000000000,'pps',100000],['Corazón de nebulosa',5000000000,'click',100000],['Alma de la selva',10000000000,'pps',250000],['Torrente de luz',20000000000,'click',250000],
+['Resonancia eterna',50000000000,'pps',500000],['Nexus de almas',100000000000,'click',500000],['Horizonte fractal',500000000000,'both',{click:1000000,pps:1000000}]
 ];
 
 let puntos=0,puntosPorClic=1,pps=0,barValue=0,buffActive=false,buffTimeout,prestigePoints=0;
