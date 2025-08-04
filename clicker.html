@@ -43,9 +43,20 @@
   #upgrades h2 { font-family: 'Press Start 2P', cursive; margin: 0 0 1rem; }
   .upgrade { background: #fff; padding: 1rem; margin-bottom: 1rem; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
   .upgrade p { margin: .3rem 0; font-family: 'Press Start 2P', cursive; }
-  .upgrade button { padding: .5rem 1rem; background: #61dafb; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: background .2s; box-shadow: 0 2px 5px rgba(0,0,0,.2); color: #000; }
-  .upgrade button:hover:not(:disabled) { background: #21a1f1; }
-  .upgrade button:disabled { background: #bbb; cursor: not-allowed; }
+  .upgrade button {
+    padding: .5rem 1rem;
+    background: #444;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background .2s;
+    box-shadow: 0 2px 5px rgba(0,0,0,.2);
+    color: #fff;
+  }
+  .upgrade button:not(:disabled) { background: #61dafb; color: #000; }
+  .upgrade button:not(:disabled):hover { background: #21a1f1; }
+  .upgrade button:disabled { background: #bbb; cursor: not-allowed; color: #666; }
   @media (max-width: 900px) { #game-container { flex-direction: column; } #upgrades { width: 100%; max-height: 40vh; overflow-y: scroll; } #farm { height: 60vh; } }
 </style>
 </head>
@@ -76,97 +87,265 @@
   </div>
   <div id="upgrades">
     <h2>Mejoras</h2>
-    <div class="upgrade" id="upgrade-mini">
-      <p>Mini generador: <span id="mini-count">0</span></p>
-      <p>Coste: <span id="mini-cost">10</span></p>
-      <p>+1 por segundo</p>
-      <button id="btn-mini">Comprar</button>
-    </div>
-    <div class="upgrade" id="upgrade-hongos">
-      <p>Colmena de hongos: <span id="hongo-count">0</span></p>
-      <p>Coste: <span id="hongo-cost">100</span></p>
-      <p>+5 por segundo</p>
-      <button id="btn-hongo">Comprar</button>
-    </div>
-    <div class="upgrade" id="upgrade-cristal">
-      <p>Cristal mágico: <span id="cristal-count">0</span></p>
-      <p>Coste: <span id="cristal-cost">500</span></p>
-      <p>+10 por clic</p>
-      <button id="btn-cristal">Comprar</button>
-    </div>
+    <!-- todas las mejoras, incluyendo las base, se inyectan dinámicamente -->
   </div>
 </div>
 
 <script>
-const rawExtrasInfo=[
-['Luz de aurora',500,'pps',10],['Néctar ancestral',1000,'click',10],['Eco estelar',2000,'pps',20],['Aura mística',5000,'click',50],
-['Corazón de eclipse',10000,'pps',100],['Aura solar',20000,'click',100],['Polvo cósmico',50000,'pps',200],['Gema eterna',100000,'click',500],
-['Esencia lúgubre',200000,'pps',1000],['Corazón galáctico',500000,'click',1000],['Núcleo de tiempo',1000000,'pps',2000],['Sombra viviente',2000000,'click',2000],
-['Aliento de cometa',5000000,'pps',5000],['Esfera de vacío',10000000,'click',5000],['Luz infinita',20000000,'pps',10000],['Vórtice de sueños',50000000,'click',10000],
-['Fragmento de aurora',100000000,'pps',25000],['Pulso ancestral',200000000,'click',25000],['Cúpula estelar',500000000,'pps',50000],['Eco del vacío',1000000000,'click',50000],
-['Rayo de mañana',2000000000,'pps',100000],['Corazón de nebulosa',5000000000,'click',100000],['Alma de la selva',10000000000,'pps',250000],['Torrente de luz',20000000000,'click',250000],
-['Resonancia eterna',50000000000,'pps',500000],['Nexus de almas',100000000000,'click',500000],['Horizonte fractal',500000000000,'both',{click:1000000,pps:1000000}]
+const rawBaseInfo = [
+  ['Mini generador', 10, 'Click', 1, 'mini'],
+  ['Colmena de hongos', 100, 'pps', 5, 'hongos'],
+  ['Cristal mágico', 500, 'click', 5, 'cristal']
+];
+const rawExtrasInfo = [
+  ['Luz de aurora',500,'pps',10],['Néctar ancestral',1000,'click',10],['Eco estelar',2000,'pps',20],['Aura mística',5000,'click',50],
+  ['Corazón de eclipse',10000,'pps',100],['Aura solar',20000,'click',100],['Polvo cósmico',50000,'pps',200],['Gema eterna',100000,'click',500],
+  ['Esencia lúgubre',200000,'pps',1000],['Corazón galáctico',500000,'click',1000],['Núcleo de tiempo',1000000,'pps',2000],['Sombra viviente',2000000,'click',2000],
+  ['Aliento de cometa',5000000,'pps',5000],['Esfera de vacío',10000000,'click',5000],['Luz infinita',20000000,'pps',10000],['Vórtice de sueños',50000000,'click',10000],
+  ['Fragmento de aurora',100000000,'pps',25000],['Pulso ancestral',200000000,'click',25000],['Cúpula estelar',500000000,'pps',50000],['Eco del vacío',1000000000,'click',50000],
+  ['Rayo de mañana',2000000000,'pps',100000],['Corazón de nebulosa',5000000000,'click',100000],['Alma de la selva',10000000000,'pps',250000],['Torrente de luz',20000000000,'click',250000],
+  ['Resonancia eterna',50000000000,'pps',500000],['Nexus de almas',100000000000,'click',500000],['Horizonte fractal',500000000000,'both',{click:1000000,pps:1000000}]
 ];
 
-let puntos=0,puntosPorClic=1,pps=0,barValue=0,buffActive=false,buffTimeout,prestigePoints=0;
-const barIncrease=6,barDecayPerSec=10,buffDuration=2000,activationThreshold=95;
-const mini={count:0,baseCost:10,cost:10,pps:1},hongos={count:0,baseCost:100,cost:100,pps:5},cristal={count:0,baseCost:500,cost:500,bonusClic:10};
-const extras=rawExtrasInfo.map(([label,baseCost,type,bonus])=>({label,count:0,baseCost,cost:baseCost,type,bonus}));
-let currentImageLevel=0;
-const MAX_IMAGE_LEVEL=30;
+// un solo array de mejoras
+const upgrades = [
+  ...rawBaseInfo.map(([label, baseCost, type, bonus, key]) => ({
+    label,
+    key,
+    baseCost,
+    cost: baseCost,
+    type,
+    bonus,
+    count: 0
+  })),
+  ...rawExtrasInfo.map(([label, baseCost, type, bonus], i) => ({
+    label,
+    key: `extra${i+1}`,
+    baseCost,
+    cost: baseCost,
+    type,
+    bonus,
+    count: 0
+  }))
+];
 
-// Imagen
-function setImageLevel(l){currentImageLevel=Math.min(Math.max(0,l),MAX_IMAGE_LEVEL);document.getElementById('main-image').src=`./img/clicker/nivel${currentImageLevel}.png`;}
+let puntos = 0;
+let puntosPorClic = 1;
+let pps = 0;
+let barValue = 0;
+let buffActive = false;
+let buffTimeout;
+let prestigePoints = 0;
+const barIncrease = 6;
+const barDecayPerSec = 10;
+const buffDuration = 2000;
+const activationThreshold = 95;
+let currentImageLevel = 0;
+const MAX_IMAGE_LEVEL = 30;
 
-// Calculos
-function computeCost(b,c){return Math.floor(b*Math.pow(1.15,c));}
-function recalcPPS(){pps=mini.count*mini.pps+hongos.count*hongos.pps+extras.reduce((s,x)=>s+((x.type==='pps'||x.type==='both')?x.count*(x.type==='pps'?x.bonus:x.bonus.pps):0),0);}
-function prestigeMultiplier(){return 1+prestigePoints*0.1;}
-
-// UI
-function updateUI(){
-const m=buffActive?2:1,t=m*prestigeMultiplier();
-document.getElementById('puntos').textContent=puntos.toFixed(2);
-document.getElementById('porClic').textContent=(puntosPorClic*t).toFixed(2);
-document.getElementById('pps').textContent=(pps*t).toFixed(2);
-document.getElementById('prestige-mult').textContent=`Multiplicador: ×${prestigeMultiplier().toFixed(2)}`;
-document.getElementById('prestige-points').textContent=`Prestige points: ${prestigePoints}`;
-document.getElementById('mini-count').textContent=mini.count;document.getElementById('mini-cost').textContent=mini.cost;
-document.getElementById('hongo-count').textContent=hongos.count;document.getElementById('hongo-cost').textContent=hongos.cost;
-document.getElementById('cristal-count').textContent=cristal.count;document.getElementById('cristal-cost').textContent=cristal.cost;
-const prestigeBtn=document.getElementById('btn-prestige');
-if(puntos>=1000000){prestigeBtn.classList.add('enabled');prestigeBtn.disabled=false;}else{prestigeBtn.classList.remove('enabled');prestigeBtn.disabled=true;}
-extras.forEach((u,i)=>{document.getElementById(`extra${i+1}-count`).textContent=u.count;document.getElementById(`extra${i+1}-cost`).textContent=u.cost;document.getElementById(`btn-extra${i+1}`).disabled=puntos<u.cost;});
+function setImageLevel(l){
+  currentImageLevel = Math.min(Math.max(0,l), MAX_IMAGE_LEVEL);
+  document.getElementById('main-image').src = `./img/clicker/nivel${currentImageLevel}.png`;
 }
 
-// Barra
-function updateBar(){if(!buffActive){barValue=Math.max(0,barValue-barDecayPerSec/10);document.getElementById('power-bar-fill').style.height=barValue+'%';}}
-function startBuff(){buffActive=true;document.getElementById('power-bar-circle').classList.add('active');document.getElementById('power-bar-icon').textContent='×2';clearTimeout(buffTimeout);buffTimeout=setTimeout(()=>{buffActive=false;document.getElementById('power-bar-circle').classList.remove('active');document.getElementById('power-bar-icon').textContent='×1';},buffDuration);}
+function computeCost(b,c){ return Math.floor(b * Math.pow(1.15, c)); }
 
-// Guardado
-function saveGame(){localStorage.setItem('clickerGame',JSON.stringify({puntos,puntosPorClic,mini,hongos,cristal,extras,prestigePoints,currentImageLevel}));}
-function loadGame(){const s=JSON.parse(localStorage.getItem('clickerGame'));if(!s)return;puntos=s.puntos;puntosPorClic=s.puntosPorClic;Object.assign(mini,s.mini);Object.assign(hongos,s.hongos);Object.assign(cristal,s.cristal);s.extras.forEach((e,i)=>Object.assign(extras[i],e));prestigePoints=s.prestigePoints;currentImageLevel=s.currentImageLevel||0;setImageLevel(currentImageLevel);recalcPPS();}
+function recalcPPS(){
+  pps = upgrades.reduce((sum, u) => {
+    if (u.type === 'pps') return sum + u.count * u.bonus;
+    if (u.type === 'both') return sum + u.count * u.bonus.pps;
+    return sum;
+  }, 0);
+}
 
-// Prestige
-function attemptPrestige(){if(puntos<1000000)return;const gained=Math.floor(puntos/1000000);if(!confirm(`¿Activar Prestige y ganar ${gained} puntos?`))return;prestigePoints+=gained;puntos=0;puntosPorClic=1;mini.count=0;hongos.count=0;cristal.count=0;mini.cost=computeCost(mini.baseCost,0);hongos.cost=computeCost(hongos.baseCost,0);cristal.cost=computeCost(cristal.baseCost,0);extras.forEach(u=>{u.count=0;u.cost=u.baseCost;});recalcPPS();currentImageLevel=0;setImageLevel(0);updateUI();saveGame();}
+function recalcPorClic(){
+  puntosPorClic = 1 + upgrades.reduce((sum, u) => {
+    if (u.type === 'click') return sum + u.count * u.bonus;
+    if (u.type === 'both') return sum + u.count * u.bonus.click;
+    return sum;
+  }, 0);
+}
 
-// Crear extras
-const upgContainer=document.getElementById('upgrades');
-extras.forEach((u,i)=>{const d=document.createElement('div');d.className='upgrade';d.innerHTML=`<p>${u.label}: <span id="extra${i+1}-count">0</span></p><p>Coste: <span id="extra${i+1}-cost">${u.cost}</span></p><p>${u.type==='pps'?`+${u.bonus} por segundo`:u.type==='click'?`+${u.bonus} por clic`:`+${u.bonus.click} por clic y +${u.bonus.pps} por segundo`}</p><button id="btn-extra${i+1}">Comprar</button>`;upgContainer.appendChild(d);document.getElementById(`btn-extra${i+1}`).onclick=()=>{if(puntos>=u.cost){puntos-=u.cost;u.count++;if(u.count===1)setImageLevel(currentImageLevel+1);if(u.type==='click')puntosPorClic+=u.bonus;if(u.type==='both')puntosPorClic+=u.bonus.click;if(u.type!=='click')recalcPPS();u.cost=computeCost(u.baseCost,u.count);updateUI();saveGame();}};});
+function prestigeMultiplier(){ return 1 + prestigePoints * 0.1; }
+
+function updateUI(){
+  const t = (buffActive ? 2 : 1) * prestigeMultiplier();
+  document.getElementById('puntos').textContent = puntos.toFixed(2);
+  document.getElementById('porClic').textContent = (puntosPorClic * t).toFixed(2);
+  document.getElementById('pps').textContent = (pps * t).toFixed(2);
+  document.getElementById('prestige-mult').textContent = `Multiplicador: ×${prestigeMultiplier().toFixed(2)}`;
+  document.getElementById('prestige-points').textContent = `Prestige points: ${prestigePoints}`;
+
+  upgrades.forEach(u => {
+    const countEl = document.getElementById(`${u.key}-count`);
+    const costEl = document.getElementById(`${u.key}-cost`);
+    const btn = document.getElementById(`btn-${u.key}`);
+    if (countEl) countEl.textContent = u.count;
+    if (costEl) costEl.textContent = u.cost;
+    if (btn) btn.disabled = puntos < u.cost;
+  });
+
+  const prestigeBtn = document.getElementById('btn-prestige');
+  if (puntos >= 1000000){
+    prestigeBtn.classList.add('enabled');
+    prestigeBtn.disabled = false;
+  } else {
+    prestigeBtn.classList.remove('enabled');
+    prestigeBtn.disabled = true;
+  }
+}
+
+function updateBar(){
+  if (!buffActive){
+    barValue = Math.max(0, barValue - barDecayPerSec / 10);
+    document.getElementById('power-bar-fill').style.height = barValue + '%';
+  }
+}
+function startBuff(){
+  buffActive = true;
+  document.getElementById('power-bar-circle').classList.add('active');
+  document.getElementById('power-bar-icon').textContent = '×2';
+  clearTimeout(buffTimeout);
+  buffTimeout = setTimeout(()=>{
+    buffActive = false;
+    document.getElementById('power-bar-circle').classList.remove('active');
+    document.getElementById('power-bar-icon').textContent = '×1';
+  }, buffDuration);
+}
+
+function getPrestigeGain(puntos){
+  const thresholds = [
+    50000000000, // 50,000M => 10
+    10000000000, // 10,000M => 9
+    5000000000,  // 5,000M  => 8
+    1000000000,  // 1,000M  => 7
+    500000000,   // 500M    => 6
+    100000000,   // 100M    => 5
+    50000000,    // 50M     => 4
+    10000000,    // 10M     => 3
+    5000000,     // 5M      => 2
+    1000000      // 1M      => 1
+  ];
+  const gains = [10,9,8,7,6,5,4,3,2,1];
+  for (let i = 0; i < thresholds.length; i++) {
+    if (puntos >= thresholds[i]) return gains[i];
+  }
+  return 0;
+}
+
+function attemptPrestige(){
+  const gained = getPrestigeGain(puntos);
+  if (gained === 0) return;
+  if(!confirm(`¿Activar Prestige y ganar ${gained} puntos?`)) return;
+  prestigePoints += gained;
+  puntos = 0;
+  puntosPorClic = 1;
+  upgrades.forEach(u => {
+    u.count = 0;
+    u.cost = u.baseCost;
+  });
+  recalcPPS();
+  recalcPorClic();
+  currentImageLevel = 0;
+  setImageLevel(0);
+  updateUI();
+  saveGame();
+}
+
+function saveGame(){
+  localStorage.setItem('clickerGame', JSON.stringify({
+    puntos,
+    puntosPorClic,
+    upgrades,
+    prestigePoints,
+    currentImageLevel
+  }));
+}
+function loadGame(){
+  const s = JSON.parse(localStorage.getItem('clickerGame'));
+  if (!s) return;
+  puntos = s.puntos;
+  puntosPorClic = s.puntosPorClic;
+  if (s.upgrades){
+    s.upgrades.forEach(saved => {
+      const u = upgrades.find(x => x.key === saved.key);
+      if (u){
+        Object.assign(u, saved);
+      }
+    });
+  }
+  prestigePoints = s.prestigePoints;
+  currentImageLevel = s.currentImageLevel || 0;
+  setImageLevel(currentImageLevel);
+  recalcPPS();
+  recalcPorClic();
+}
+
+// Construcción dinámica del DOM
+const upgContainer = document.getElementById('upgrades');
+upgrades.forEach(u => {
+  const d = document.createElement('div');
+  d.className = 'upgrade';
+  let bonusText;
+  if (u.type === 'pps') bonusText = `+${u.bonus} por segundo`;
+  else if (u.type === 'click') bonusText = `+${u.bonus} por clic`;
+  else if (u.type === 'both') bonusText = `+${u.bonus.click} por clic y +${u.bonus.pps} por segundo`;
+  d.innerHTML = `
+    <p>${u.label}: <span id="${u.key}-count">0</span></p>
+    <p>Coste: <span id="${u.key}-cost">${u.cost}</span></p>
+    <p>${bonusText}</p>
+    <button id="btn-${u.key}">Comprar</button>
+  `;
+  upgContainer.appendChild(d);
+  document.getElementById(`btn-${u.key}`).onclick = () => {
+    if (puntos >= u.cost){
+      puntos -= u.cost;
+      u.count++;
+      if (u.count === 1) setImageLevel(currentImageLevel + 1);
+      if (u.type === 'click' || u.type === 'both') recalcPorClic();
+      if (u.type === 'pps' || u.type === 'both') recalcPPS();
+      u.cost = computeCost(u.baseCost, u.count);
+      recalcPPS();
+      recalcPorClic();
+      updateUI();
+      saveGame();
+    }
+  };
+});
 
 // Eventos principales
-document.getElementById('firefly-btn').addEventListener('click',e=>{if(barValue>=activationThreshold&&!buffActive)startBuff();const g=puntosPorClic*(buffActive?2:1)*prestigeMultiplier();puntos+=g;barValue=Math.min(barValue+barIncrease,100);document.getElementById('power-bar-fill').style.height=barValue+'%';const r=document.getElementById('farm').getBoundingClientRect();const s=document.createElement('span');s.className='float-text';s.textContent='+'+g.toFixed(2);s.style.left=(e.clientX-r.left)+'px';s.style.top=(e.clientY-r.top)+'px';document.getElementById('farm').appendChild(s);s.addEventListener('animationend',()=>s.remove());updateUI();saveGame();});
-document.getElementById('btn-mini').onclick=()=>{if(puntos>=mini.cost){puntos-=mini.cost;mini.count++;mini.cost=computeCost(mini.baseCost,mini.count);recalcPPS();if(mini.count===1)setImageLevel(currentImageLevel+1);updateUI();saveGame();}};
-document.getElementById('btn-hongo').onclick=()=>{if(puntos>=hongos.cost){puntos-=hongos.cost;hongos.count++;hongos.cost=computeCost(hongos.baseCost,hongos.count);recalcPPS();if(hongos.count===1)setImageLevel(currentImageLevel+1);updateUI();saveGame();}};
-document.getElementById('btn-cristal').onclick=()=>{if(puntos>=cristal.cost){puntos-=cristal.cost;cristal.count++;puntosPorClic+=cristal.bonusClic;cristal.cost=computeCost(cristal.baseCost,cristal.count);if(cristal.count===1)setImageLevel(currentImageLevel+1);updateUI();saveGame();}};
-document.getElementById('btn-prestige').onclick=attemptPrestige;
+document.getElementById('firefly-btn').addEventListener('click', e => {
+  if (barValue >= activationThreshold && !buffActive) startBuff();
+  const g = puntosPorClic * (buffActive ? 2 : 1) * prestigeMultiplier();
+  puntos += g;
+  barValue = Math.min(barValue + barIncrease, 100);
+  document.getElementById('power-bar-fill').style.height = barValue + '%';
+  const r = document.getElementById('farm').getBoundingClientRect();
+  const s = document.createElement('span');
+  s.className = 'float-text';
+  s.textContent = '+' + g.toFixed(2);
+  s.style.left = (e.clientX - r.left) + 'px';
+  s.style.top = (e.clientY - r.top) + 'px';
+  document.getElementById('farm').appendChild(s);
+  s.addEventListener('animationend', ()=> s.remove());
+  updateUI();
+  saveGame();
+});
+
+document.getElementById('btn-prestige').onclick = attemptPrestige;
 
 // Loops
-setInterval(updateBar,100);
-setInterval(()=>{puntos+=pps*(buffActive?2:1)*prestigeMultiplier();updateUI();saveGame();},1000);
+setInterval(updateBar, 100);
+setInterval(()=>{
+  puntos += pps * (buffActive ? 2 : 1) * prestigeMultiplier();
+  updateUI();
+  saveGame();
+}, 1000);
 
-// Inicial
+// Inicialización
 loadGame();
+recalcPPS();
+recalcPorClic();
 updateUI();
 setImageLevel(currentImageLevel);
 </script>
