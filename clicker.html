@@ -6,191 +6,31 @@
 <title>Clicker de Puntos</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Press+Start+2P&display=swap" rel="stylesheet" />
 <style>
-  html, body {
-    touch-action: manipulation;
-    height: 100%;
-    margin: 0;
-    overflow: hidden;
-    background: #1f1f27;
-    color: #fff;
-    font-family: 'Montserrat', sans-serif;
-  }
-  .top-left-buttons {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    z-index: 50;
-  }
-  .game-buttons {
-    background-color: rgba(0,0,0,0.8);
-    color: #ffffff;
-    font-weight: bold;
-    text-decoration: none;
-    padding: 8px 14px;
-    border-radius: 6px;
-    font-family: 'Press Start 2P', cursive;
-    font-size: 0.65rem;
-    letter-spacing: 1px;
-    box-shadow: 0 2px 6px rgba(0,0,0,.5);
-    transition: background .2s;
-    display: inline-block;
-    white-space: nowrap;
-  }
+  html, body { touch-action: manipulation; height: 100%; margin: 0; overflow: hidden; background: #1f1f27; color: #fff; font-family: 'Montserrat', sans-serif; }
+  .top-left-buttons { position: absolute; top: 10px; left: 10px; display: flex; flex-direction: column; gap: 14px; z-index: 50; }
+  .game-buttons { background-color: rgba(0,0,0,0.8); color: #fff; font-weight: bold; text-decoration: none; padding: 8px 14px; border-radius: 6px; font-family: 'Press Start 2P', cursive; font-size: 0.65rem; letter-spacing: 1px; box-shadow: 0 2px 6px rgba(0,0,0,.5); transition: background .2s; display: inline-block; }
   .game-buttons:hover { background-color: rgba(255,255,255,0.1); }
   #game-container { display: flex; height: 100%; }
-  #farm {
-    flex: 1;
-    position: relative;
-    background: #282c34;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-  }
-  #stats-overlay {
-    position: absolute;
-    top: 10px;
-    left: 100px;
-    background: rgba(0,0,0,.7);
-    padding: .5rem 1rem;
-    border-radius: 6px;
-    font-family: 'Press Start 2P', cursive;
-    text-shadow: 1px 1px 2px #000;
-    z-index: 10;
-    font-size: 0.9rem;
-    min-width: 160px;
-    cursor: grab;
-  }
-  #stats-overlay:active { cursor: grabbing; }
+  #farm { flex: 1; position: relative; background: #282c34; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  #stats-overlay { position: absolute; top: 5rem; left: 1rem; background: rgba(0,0,0,.7); padding: .5rem 1rem; border-radius: 6px; font-family: 'Press Start 2P', cursive; text-shadow: 1px 1px 2px #000; z-index: 10; font-size: 0.9rem; min-width: 160px; }
   #stats-overlay p { margin: 4px 0; line-height: 1.2; }
-  /* Botón de clic ocupa todo el área oscura */
-  #firefly-btn {
-    position: absolute;
-    inset: 0;
-    background: none;
-    border: none;
-    cursor: pointer;
-    z-index: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-  }
-  /* Punto intermedio: 90% tamaño, centrado */
-  #firefly-btn img {
-    width: 110%;
-    height: 110%;
-    object-fit: contain;
-    transition: transform .1s;
-    display: block;
-  }
-  #firefly-btn img:active { transform: scale(.98); }
-  #power-bar-container {
-    position: absolute;
-    bottom: 1rem;
-    left: 1rem;
-    width: 6vw;
-    max-width: 30px;
-    height: 25vh;
-    max-height: 200px;
-    background: rgba(255,255,255,.1);
-    border: 2px solid #aaa;
-    border-radius: 15px;
-    overflow: visible;
-    z-index: 5;
-  }
-  #power-bar-fill {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 0%;
-    background: #e74c3c;
-    transition: height .1s linear;
-    border-bottom-left-radius: 13px;
-    border-bottom-right-radius: 13px;
-  }
-  #power-bar-circle {
-    position: absolute;
-    top: -20%;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 10vw;
-    max-width: 50px;
-    height: 10vw;
-    max-height: 50px;
-    background: #555;
-    border: 3px solid #777;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: 'Press Start 2P', cursive;
-    font-size: 1rem;
-    color: #fff;
-    opacity: .25;
-    transition: opacity .3s, box-shadow .3s, background .3s;
-    z-index: 6;
-  }
-  #power-bar-circle.active {
-    opacity: 1;
-    background: #ffeb3b;
-    color: #000;
-    box-shadow: 0 0 8px rgba(255,235,59,.8);
-  }
-  .float-text {
-    position: absolute;
-    font-family:'Press Start 2P', cursive;
-    font-size: 1.2rem;
-    color: #00eaff;
-    text-shadow: 1px 1px 2px #000;
-    pointer-events: none;
-    animation: floatUp 1.2s ease-out forwards;
-    z-index: 10;
-  }
-  @keyframes floatUp {
-    to { opacity: 0; transform: translateY(-80px); }
-  }
-  #upgrades {
-    width: 30vw;
-    max-width: 450px;
-    flex-shrink: 0;
-    background: #fff;
-    padding: 1rem;
-    box-sizing: border-box;
-    overflow-y: auto;
-    color: #000;
-  }
+  #firefly-btn { background: none; border: none; cursor: pointer; position: relative; z-index: 5; }
+  #firefly-btn img { width: 40vw; max-width: 500px; transition: transform .1s; }
+  #firefly-btn img:active { transform: scale(.9); }
+  #power-bar-container { position: absolute; bottom: 1rem; left: 1rem; width: 6vw; max-width: 30px; height: 25vh; max-height: 200px; background: rgba(255,255,255,.1); border: 2px solid #aaa; border-radius: 15px; overflow: visible; z-index: 5; }
+  #power-bar-fill { position: absolute; bottom: 0; left: 0; width: 100%; height: 0%; background: #e74c3c; transition: height .1s linear; border-bottom-left-radius: 13px; border-bottom-right-radius: 13px; }
+  #power-bar-circle { position: absolute; top: -20%; left: 50%; transform: translateX(-50%); width: 10vw; max-width: 50px; height: 10vw; max-height: 50px; background: #555; border: 3px solid #777; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Press Start 2P', cursive; font-size: 1rem; color: #fff; opacity: .25; transition: opacity .3s, box-shadow .3s, background .3s; z-index: 6; }
+  #power-bar-circle.active { opacity: 1; background: #ffeb3b; color: #000; box-shadow: 0 0 8px rgba(255,235,59,.8); }
+  .float-text { position: absolute; font-family:'Press Start 2P', cursive; font-size: 1.2rem; color: #00eaff; text-shadow: 1px 1px 2px #000; pointer-events: none; animation: floatUp 1.2s ease-out forwards; z-index: 10; }
+  @keyframes floatUp { to { opacity: 0; transform: translateY(-80px); } }
+  #upgrades { width: 30vw; max-width: 450px; flex-shrink: 0; background: #fff; padding: 1rem; box-sizing: border-box; overflow-y: auto; color: #000; }
   #upgrades h2 { font-family: 'Press Start 2P', cursive; margin: 0 0 1rem; }
-  .upgrade {
-    background: #fff;
-    padding: 1rem;
-    margin-bottom: 1rem;
-    border-radius: 6px;
-    box-shadow: 0 1px 3px rgba(0,0,0,.2);
-  }
+  .upgrade { background: #fff; padding: 1rem; margin-bottom: 1rem; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
   .upgrade p { margin: .3rem 0; font-family: 'Press Start 2P', cursive; }
-  .upgrade button {
-    padding: .5rem 1rem;
-    background: #61dafb;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-weight: bold;
-    transition: background .2s;
-    box-shadow: 0 2px 5px rgba(0,0,0,.2);
-    color: #000;
-  }
+  .upgrade button { padding: .5rem 1rem; background: #61dafb; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: background .2s; box-shadow: 0 2px 5px rgba(0,0,0,.2); color: #000; }
   .upgrade button:hover:not(:disabled) { background: #21a1f1; }
   .upgrade button:disabled { background: #bbb; cursor: not-allowed; }
-  @media (max-width: 900px) {
-    #game-container { flex-direction: column; }
-    #upgrades { width: 100%; max-height: 40vh; overflow-y: scroll; }
-    #farm { height: 60vh; }
-  }
+  @media (max-width: 900px) { #game-container { flex-direction: column; } #upgrades { width: 100%; max-height: 40vh; overflow-y: scroll; } #farm { height: 60vh; } }
 </style>
 </head>
 <body>
@@ -207,7 +47,7 @@
       <p>Por clic: <span id="porClic">1.00</span></p>
       <p>Por segundo: <span id="pps">0.00</span></p>
       <p id="prestige-mult">Multiplicador: ×1.00</p>
-      <p id="prestige-points">Prestige points: 0</span></p>
+      <p id="prestige-points">Prestige points: 0</p>
       <button id="btn-prestige-inline" disabled>Prestige</button>
     </div>
     <button id="firefly-btn">
@@ -246,13 +86,6 @@
 </div>
 
 <script>
-// ---------- constantes y datos base ----------
-const STORAGE_KEY = "clickerState";
-const barIncrease = 6;
-const barDecayPerSec = 10;
-const buffDuration = 2000; // ms
-const activationThreshold = 95;
-
 const rawExtrasInfo = [
   ['Luz de aurora', 5000, 'pps', 20],
   ['Néctar ancestral', 10000, 'click', 50],
@@ -283,181 +116,33 @@ const rawExtrasInfo = [
   ['Horizonte fractal', 5000000000000, 'both', {click: 10000000, pps: 10000000}]
 ];
 
-// ---------- estado en memoria ----------
-let puntos = 0;
-let puntosPorClic = 1;
-let pps = 0;
-let barValue = 0;
-let buffActive = false;
-let buffTimeout = null;
-let buffExpiresAt = 0;
-let prestigePoints = 0;
-let prestigeExplained = false;
-let currentImageLevel = 0;
-let overlayPosition = null; // {left, top}
-let lastSavedTimestamp = Date.now();
+let puntos = 0, puntosPorClic = 1, pps = 0;
+let barValue = 0, buffActive = false, buffTimeout;
+let prestigePoints = 0, prestigeExplained = false;
+
+const barIncrease = 6, barDecayPerSec = 10, buffDuration = 2000, activationThreshold = 95;
 
 const mini = { count: 0, baseCost: 10, cost: 10, pps: 1 };
 const hongos = { count: 0, baseCost: 100, cost: 100, pps: 5 };
 const cristal = { count: 0, baseCost: 500, cost: 500, bonusClic: 10 };
-const extras = rawExtrasInfo.map(([label, baseCost, type, bonus]) => ({
-  label, count: 0, baseCost, cost: baseCost, type, bonus
-}));
 
-// precarga imágenes 0..3
-for (let i = 0; i <= 3; i++) {
-  const img = new Image();
-  img.src = `./img/clicker/nivel${i}.png`;
-  img.onerror = () => console.warn(`Error cargando nivel${i}.png`);
+const extras = rawExtrasInfo.map(([label, baseCost, type, bonus]) => ({ label, count: 0, baseCost, cost: baseCost, type, bonus }));
+
+let currentImageLevel = 0;
+function setImageLevel(level) {
+  currentImageLevel = Math.min(Math.max(0, level), 3);
+  document.getElementById('main-image').src = `./img/clicker/nivel${currentImageLevel}.png`;
 }
 
-// ---------- utilidades ----------
-function computeCost(baseCost, count) {
-  if (count <= 4) return Math.floor(baseCost * Math.pow(1.15, count));
-  return Math.floor(baseCost * Math.pow(1.15, 4) * Math.pow(1.08, count - 4));
-}
-
+// Calculo de costos y PPS
+function computeCost(baseCost, count) { return Math.floor(baseCost * Math.pow(1.15, count)); }
 function recalcPPS() {
   pps = mini.count * mini.pps + hongos.count * hongos.pps +
-    extras.reduce((s, x) => s + ((x.type === 'pps' || x.type === 'both') ?
-      x.count * (x.type === 'pps' ? x.bonus : x.bonus.pps) : 0), 0);
+    extras.reduce((s, x) => s + ((x.type === 'pps' || x.type === 'both') ? x.count * (x.type === 'pps' ? x.bonus : x.bonus.pps) : 0), 0);
 }
-
 function prestigeMultiplier() { return 1 + prestigePoints * 0.1; }
 
-function applyOfflineGain() {
-  const now = Date.now();
-  const deltaSec = Math.max(0, (now - lastSavedTimestamp) / 1000);
-  if (deltaSec > 0) {
-    const buffMult = buffActive ? 2 : 1;
-    const gain = pps * buffMult * prestigeMultiplier() * deltaSec;
-    puntos += gain;
-  }
-}
-
-// ---------- guardado y carga ----------
-function getSaveObject() {
-  return {
-    puntos,
-    puntosPorClic,
-    barValue,
-    buffActive,
-    buffExpiresAt: buffActive ? buffExpiresAt : 0,
-    prestigePoints,
-    prestigeExplained,
-    currentImageLevel,
-    overlayPosition,
-    mini: { count: mini.count },
-    hongos: { count: hongos.count },
-    cristal: { count: cristal.count },
-    extras: extras.map(e => ({ count: e.count })),
-    lastSavedTimestamp: Date.now()
-  };
-}
-
-function saveState() {
-  try {
-    const toSave = getSaveObject();
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
-    lastSavedTimestamp = toSave.lastSavedTimestamp;
-  } catch (e) {
-    console.warn("Error guardando estado:", e);
-  }
-}
-
-function loadState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-    const saved = JSON.parse(raw);
-
-    if (typeof saved.puntos === "number") puntos = saved.puntos;
-    if (typeof saved.puntosPorClic === "number") puntosPorClic = saved.puntosPorClic;
-    if (typeof saved.barValue === "number") barValue = saved.barValue;
-    if (saved.prestigePoints) prestigePoints = saved.prestigePoints;
-    if (typeof saved.prestigeExplained === "boolean") prestigeExplained = saved.prestigeExplained;
-    if (typeof saved.currentImageLevel === "number") currentImageLevel = saved.currentImageLevel;
-    if (saved.overlayPosition && typeof saved.overlayPosition === "object") overlayPosition = saved.overlayPosition;
-    if (saved.lastSavedTimestamp) lastSavedTimestamp = saved.lastSavedTimestamp;
-
-    if (saved.mini && typeof saved.mini.count === "number") {
-      mini.count = saved.mini.count;
-      mini.cost = computeCost(mini.baseCost, mini.count);
-    }
-    if (saved.hongos && typeof saved.hongos.count === "number") {
-      hongos.count = saved.hongos.count;
-      hongos.cost = computeCost(hongos.baseCost, hongos.count);
-    }
-    if (saved.cristal && typeof saved.cristal.count === "number") {
-      cristal.count = saved.cristal.count;
-      cristal.cost = computeCost(cristal.baseCost, cristal.count);
-    }
-
-    // reconstruir puntosPorClic a partir de base + cristal + extras click/both
-    puntosPorClic = 1;
-    if (cristal.count > 0) {
-      puntosPorClic += cristal.count * cristal.bonusClic;
-    }
-
-    if (Array.isArray(saved.extras)) {
-      saved.extras.forEach((se, i) => {
-        if (typeof se.count === "number" && extras[i]) {
-          extras[i].count = se.count;
-          extras[i].cost = computeCost(extras[i].baseCost, extras[i].count);
-          if (extras[i].type === 'click') puntosPorClic += extras[i].count * extras[i].bonus;
-          else if (extras[i].type === 'both') puntosPorClic += extras[i].count * extras[i].bonus.click;
-        }
-      });
-    }
-
-    recalcPPS();
-
-    if (saved.buffActive && saved.buffExpiresAt && saved.buffExpiresAt > Date.now()) {
-      buffActive = true;
-      buffExpiresAt = saved.buffExpiresAt;
-      const remaining = Math.max(0, buffExpiresAt - Date.now());
-      document.getElementById('power-bar-circle').classList.add('active');
-      document.getElementById('power-bar-icon').textContent = '×2';
-      clearTimeout(buffTimeout);
-      buffTimeout = setTimeout(() => {
-        buffActive = false;
-        document.getElementById('power-bar-circle').classList.remove('active');
-        document.getElementById('power-bar-icon').textContent = '×1';
-        buffExpiresAt = 0;
-        saveState();
-      }, remaining);
-    } else {
-      buffActive = false;
-      buffExpiresAt = 0;
-    }
-
-    // aplicar ganancia offline
-    applyOfflineGain();
-
-  } catch (e) {
-    console.warn("Error cargando estado, se usará el estado por defecto:", e);
-  }
-}
-
-// ---------- interfaz dinámica de extras ----------
-const upgContainer = document.getElementById('upgrades');
-extras.forEach((u, i) => {
-  const div = document.createElement('div');
-  div.className = 'upgrade';
-  div.id = `upgrade-extra${i+1}`;
-  let efectoTexto = u.type === 'pps' ? `+${u.bonus} por segundo` :
-    (u.type === 'click' ? `+${u.bonus} por clic` :
-      `+${u.bonus.click} por clic y +${u.bonus.pps} por segundo`);
-  div.innerHTML = `
-    <p>${u.label}: <span id="extra${i+1}-count">0</span></p>
-    <p>Coste: <span id="extra${i+1}-cost">${u.cost}</span></p>
-    <p>${efectoTexto}</p>
-    <button id="btn-extra${i+1}">Comprar</button>
-  `;
-  upgContainer.appendChild(div);
-});
-
-// ---------- actualización visual ----------
+// UI
 function updateUI() {
   const buffMult = buffActive ? 2 : 1;
   const totalMult = buffMult * prestigeMultiplier();
@@ -472,237 +157,57 @@ function updateUI() {
   document.getElementById('hongo-cost').textContent = hongos.cost;
   document.getElementById('cristal-count').textContent = cristal.count;
   document.getElementById('cristal-cost').textContent = cristal.cost;
-  document.getElementById('btn-mini').disabled = puntos < mini.cost;
-  document.getElementById('btn-hongo').disabled = puntos < hongos.cost;
-  document.getElementById('btn-cristal').disabled = puntos < cristal.cost;
-  extras.forEach((u, i) => {
-    const countEl = document.getElementById(`extra${i+1}-count`);
-    const costEl = document.getElementById(`extra${i+1}-cost`);
-    const btn = document.getElementById(`btn-extra${i+1}`);
-    if (countEl) countEl.textContent = u.count;
-    if (costEl) costEl.textContent = u.cost;
-    if (btn) btn.disabled = puntos < u.cost;
-  });
-  // prestige button inline habilitado si puede
-  document.getElementById('btn-prestige-inline').disabled = puntos < 1_000_000;
-  const prestigeBtn = document.getElementById('btn-prestige');
-  if (prestigeBtn) prestigeBtn.disabled = puntos < 1_000_000;
 }
 
-// ---------- barra de poder ----------
-function updateBar() {
-  if (!buffActive) {
-    barValue = Math.max(0, barValue - barDecayPerSec / 10);
-    document.getElementById('power-bar-fill').style.height = barValue + '%';
-  }
+// --- ✅ Guardado Automático ---
+function saveGame() {
+  const gameState = {
+    puntos, puntosPorClic, pps,
+    mini, hongos, cristal,
+    extras,
+    prestigePoints,
+    currentImageLevel
+  };
+  localStorage.setItem('clickerGame', JSON.stringify(gameState));
 }
 
-// ---------- buff ----------
-function startBuff() {
-  buffActive = true;
-  buffExpiresAt = Date.now() + buffDuration;
-  document.getElementById('power-bar-circle').classList.add('active');
-  document.getElementById('power-bar-icon').textContent = '×2';
-  clearTimeout(buffTimeout);
-  buffTimeout = setTimeout(() => {
-    buffActive = false;
-    document.getElementById('power-bar-circle').classList.remove('active');
-    document.getElementById('power-bar-icon').textContent = '×1';
-    buffExpiresAt = 0;
-    saveState();
-  }, buffDuration);
-  saveState();
+function loadGame() {
+  const saved = JSON.parse(localStorage.getItem('clickerGame'));
+  if (!saved) return;
+  puntos = saved.puntos;
+  puntosPorClic = saved.puntosPorClic;
+  pps = saved.pps;
+  Object.assign(mini, saved.mini);
+  Object.assign(hongos, saved.hongos);
+  Object.assign(cristal, saved.cristal);
+  saved.extras.forEach((e, i) => Object.assign(extras[i], e));
+  prestigePoints = saved.prestigePoints;
+  currentImageLevel = saved.currentImageLevel || 0;
+  setImageLevel(currentImageLevel);
+  recalcPPS();
+  updateUI();
 }
 
-function calculatePointsFromPuntos(c) {
-  if (c >= 100_000_000) return 4 + Math.floor((c - 100_000_000) / 50_000_000);
-  else if (c >= 50_000_000) return 2;
-  else if (c >= 1_000_000) return 1;
-  return 0;
-}
-
-// ---------- imagen ----------
-function setImageLevel(level) {
-  level = Math.min(Math.max(0, level), 3);
-  if (level === currentImageLevel) return;
-  currentImageLevel = level;
-  const imgEl = document.getElementById('main-image');
-  imgEl.src = `./img/clicker/nivel${level}.png`;
-  imgEl.onerror = () => console.warn('No se pudo cargar imagen nivel', level);
-  saveState();
-}
-
-// ---------- carga inicial ----------
-loadState();
-recalcPPS();
-updateUI();
-setImageLevel(currentImageLevel);
-document.getElementById('power-bar-fill').style.height = barValue + '%';
-if (overlayPosition) {
-  const overlay = document.getElementById('stats-overlay');
-  overlay.style.left = (overlayPosition.left) + 'px';
-  overlay.style.top = (overlayPosition.top) + 'px';
-}
-if (buffActive) {
-  document.getElementById('power-bar-circle').classList.add('active');
-  document.getElementById('power-bar-icon').textContent = '×2';
-}
-
-// ---------- manejadores de eventos ----------
-document.getElementById('firefly-btn').addEventListener('pointerdown', e => {
-  e.preventDefault();
-  if (barValue >= activationThreshold && !buffActive) startBuff();
+// --- Eventos principales ---
+document.getElementById('firefly-btn').addEventListener('click', () => {
   const gain = puntosPorClic * (buffActive ? 2 : 1) * prestigeMultiplier();
   puntos += gain;
   barValue = Math.min(barValue + barIncrease, 100);
-  document.getElementById('power-bar-fill').style.height = barValue + '%';
-  const rect = document.getElementById('farm').getBoundingClientRect();
-  const span = document.createElement('span');
-  span.className = 'float-text';
-  span.textContent = '+' + gain.toFixed(2);
-  span.style.left = (e.clientX - rect.left) + 'px';
-  span.style.top = (e.clientY - rect.top) + 'px';
-  document.getElementById('farm').appendChild(span);
-  span.addEventListener('animationend', () => span.remove());
   updateUI();
-  saveState();
+  saveGame();
 });
 
-document.getElementById('btn-mini').onclick = () => {
-  if (puntos >= mini.cost) {
-    puntos -= mini.cost;
-    mini.count++;
-    mini.cost = computeCost(mini.baseCost, mini.count);
-    recalcPPS();
-    updateUI();
-    if (mini.count === 1) setImageLevel(1);
-    saveState();
-  }
-};
-document.getElementById('btn-hongo').onclick = () => {
-  if (puntos >= hongos.cost) {
-    puntos -= hongos.cost;
-    hongos.count++;
-    hongos.cost = computeCost(hongos.baseCost, hongos.count);
-    recalcPPS();
-    updateUI();
-    if (hongos.count === 1) setImageLevel(2);
-    saveState();
-  }
-};
-document.getElementById('btn-cristal').onclick = () => {
-  if (puntos >= cristal.cost) {
-    puntos -= cristal.cost;
-    cristal.count++;
-    puntosPorClic = 1 + cristal.count * cristal.bonusClic; // reconstruye base
-    // también sumar extras click/both
-    extras.forEach(u => {
-      if (u.type === 'click') puntosPorClic += u.count * u.bonus;
-      else if (u.type === 'both') puntosPorClic += u.count * u.bonus.click;
-    });
-    cristal.cost = computeCost(cristal.baseCost, cristal.count);
-    updateUI();
-    if (cristal.count === 1) setImageLevel(3);
-    saveState();
-  }
-};
-extras.forEach((u, i) => {
-  document.getElementById(`btn-extra${i+1}`).onclick = () => {
-    if (puntos >= u.cost) {
-      puntos -= u.cost;
-      u.count++;
-      if (u.type === 'click') puntosPorClic += u.bonus;
-      else if (u.type === 'both') puntosPorClic += u.bonus.click;
-      if (u.type !== 'click') recalcPPS();
-      u.cost = computeCost(u.baseCost, u.count);
-      updateUI();
-      saveState();
-    }
-  };
-});
+// Comprar upgrades
+document.getElementById('btn-mini').onclick = () => { if (puntos >= mini.cost) { puntos -= mini.cost; mini.count++; mini.cost = computeCost(mini.baseCost, mini.count); recalcPPS(); if (mini.count === 1) setImageLevel(1); updateUI(); saveGame(); }};
+document.getElementById('btn-hongo').onclick = () => { if (puntos >= hongos.cost) { puntos -= hongos.cost; hongos.count++; hongos.cost = computeCost(hongos.baseCost, hongos.count); recalcPPS(); if (hongos.count === 1) setImageLevel(2); updateUI(); saveGame(); }};
+document.getElementById('btn-cristal').onclick = () => { if (puntos >= cristal.cost) { puntos -= cristal.cost; cristal.count++; puntosPorClic += cristal.bonusClic; cristal.cost = computeCost(cristal.baseCost, cristal.count); if (cristal.count === 1) setImageLevel(3); updateUI(); saveGame(); }};
 
-function attemptPrestige() {
-  if (puntos < 1_000_000) return;
-  if (!prestigeExplained) { alert('Prestige: reinicia todo a cambio de prestige points.'); prestigeExplained = true; }
-  const gained = calculatePointsFromPuntos(puntos);
-  if (gained < 1) return;
-  if (!confirm(`¿Activar Prestige y ganar ${gained} puntos?`)) return;
-  prestigePoints += gained;
-  puntos = 0;
-  puntosPorClic = 1;
-  mini.count = 0; hongos.count = 0; cristal.count = 0;
-  mini.cost = computeCost(mini.baseCost, mini.count);
-  hongos.cost = computeCost(hongos.baseCost, hongos.count);
-  cristal.cost = computeCost(cristal.baseCost, cristal.count);
-  extras.forEach(u => {
-    u.count = 0;
-    u.cost = computeCost(u.baseCost, 0);
-  });
-  recalcPPS();
-  updateUI();
-  setImageLevel(0);
-  saveState();
-}
-document.getElementById('btn-prestige').onclick = attemptPrestige;
-document.getElementById('btn-prestige-inline').onclick = attemptPrestige;
+// Loop
+setInterval(() => { puntos += pps * (buffActive ? 2 : 1) * prestigeMultiplier(); updateUI(); saveGame(); }, 1000);
 
-// arrastrar el overlay de stats y guardar posición
-(() => {
-  const overlay = document.getElementById('stats-overlay');
-  let dragging = false;
-  let offsetX = 0, offsetY = 0;
-
-  overlay.addEventListener('pointerdown', e => {
-    dragging = true;
-    overlay.setPointerCapture(e.pointerId);
-    const rect = overlay.getBoundingClientRect();
-    offsetX = e.clientX - rect.left;
-    offsetY = e.clientY - rect.top;
-    e.preventDefault();
-  });
-
-  overlay.addEventListener('pointermove', e => {
-    if (!dragging) return;
-    let x = e.clientX - offsetX;
-    let y = e.clientY - offsetY;
-    x = Math.max(0, Math.min(window.innerWidth - overlay.offsetWidth, x));
-    y = Math.max(0, Math.min(window.innerHeight - overlay.offsetHeight, y));
-    overlay.style.left = x + 'px';
-    overlay.style.top = y + 'px';
-  });
-
-  overlay.addEventListener('pointerup', e => {
-    dragging = false;
-    try { overlay.releasePointerCapture(e.pointerId); } catch {}
-    // guardamos posición
-    const rect = overlay.getBoundingClientRect();
-    overlayPosition = { left: rect.left, top: rect.top };
-    saveState();
-  });
-})();
-
-// ---------- bucles ----------
-// decaimiento de barra
-setInterval(() => {
-  updateBar();
-  saveState(); // guardar decay/valor de barra
-}, 100);
-// ganancia pasiva por segundo
-setInterval(() => {
-  puntos += pps * (buffActive ? 2 : 1) * prestigeMultiplier();
-  updateUI();
-  saveState();
-}, 1000);
-
-// guardar periódico de seguridad (cada 5s)
-setInterval(() => {
-  saveState();
-}, 5000);
-
-// guardar antes de cerrar
-window.addEventListener("beforeunload", () => {
-  saveState();
-});
+// Carga inicial
+loadGame();
+updateUI();
 </script>
 </body>
 </html>
