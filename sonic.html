@@ -39,6 +39,7 @@
     let level = {};
     let platforms = [];
     let obstacles = [];
+    let spikes = [];
     let coins = [];
     let goal = {};
     let clouds = [];
@@ -46,12 +47,14 @@
     let currentLevel = 0;
     let message = '';
     let levelTransition = false;
+    let lives = 3;
 
     const levelData = [
       {
         width:2000,
         platforms:[{x:700, y:world.height - world.ground - 90, w:120, h:20}],
-        obstacles:[{x:500, y:world.height - world.ground - 30, w:40, h:30}]
+        obstacles:[{x:500, y:world.height - world.ground - 30, w:40, h:30}],
+        spikes:[{x:900, y:world.height - world.ground - 30, w:40, h:30}]
       },
       {
         width:2400,
@@ -62,6 +65,9 @@
         obstacles:[
           {x:600, y:world.height - world.ground - 30, w:40, h:30},
           {x:1100, y:world.height - world.ground - 30, w:40, h:30}
+        ],
+        spikes:[
+          {x:1700, y:world.height - world.ground - 30, w:40, h:30}
         ]
       },
       {
@@ -75,6 +81,9 @@
           {x:700, y:world.height - world.ground - 30, w:40, h:30},
           {x:1200, y:world.height - world.ground - 30, w:40, h:30},
           {x:1900, y:world.height - world.ground - 30, w:40, h:30}
+        ],
+        spikes:[
+          {x:2400, y:world.height - world.ground - 30, w:40, h:30}
         ]
       }
     ];
@@ -111,9 +120,13 @@
       level = { width:data.width, height:world.height, ground:world.ground };
       platforms = data.platforms.map(p=>({...p}));
       obstacles = data.obstacles.map(o=>({...o}));
+      spikes = (data.spikes || []).map(s=>({...s}));
       coins = [];
       for(let i=200;i<level.width-200;i+=200){
-        coins.push({x:i, y:world.height-world.ground-40, r:15, collected:false});
+        const nearSolid = obstacles.concat(spikes).some(s => i > s.x - 40 && i < s.x + s.w + 40);
+        if(!nearSolid){
+          coins.push({x:i, y:world.height-world.ground-40, r:15, collected:false});
+        }
       }
       platforms.forEach(p=>{
         coins.push({x:p.x + p.w/2, y:p.y - 20, r:15, collected:false});
@@ -150,6 +163,21 @@
       return coins.every(c => c.collected);
     }
 
+    function loseLife(){
+      if(levelTransition) return;
+      lives--;
+      if(lives > 0){
+        loadLevel(currentLevel);
+      }else{
+        showMessage('Game Over');
+        setTimeout(()=>{
+          lives = 3;
+          currentLevel = 0;
+          loadLevel(currentLevel);
+        },3000);
+      }
+    }
+
     function drawCloud(cl){
       ctx.fillStyle = '#fff';
       ctx.beginPath();
@@ -176,7 +204,7 @@
         player.onGround = true;
       }
 
-      const solids = platforms.concat(obstacles);
+      const solids = platforms.concat(obstacles, spikes);
       solids.forEach(s => {
         if(player.x < s.x + s.w && player.x + player.w > s.x &&
            player.y < s.y + s.h && player.y + player.h > s.y){
@@ -201,6 +229,13 @@
 
       if(player.x < 0) player.x = 0;
       if(player.x + player.w > level.width) player.x = level.width - player.w;
+
+      spikes.forEach(s => {
+        if(player.x < s.x + s.w && player.x + player.w > s.x &&
+           player.y < s.y + s.h && player.y + player.h >= s.y){
+          loseLife();
+        }
+      });
 
       coins.forEach(c => {
         const dx = player.x + player.w/2 - c.x;
@@ -246,6 +281,15 @@
         ctx.fillStyle = '#555';
         ctx.fillRect(o.x, o.y, o.w, o.h);
       });
+      spikes.forEach(s => {
+        ctx.fillStyle = '#888';
+        ctx.beginPath();
+        ctx.moveTo(s.x, s.y + s.h);
+        ctx.lineTo(s.x + s.w/2, s.y);
+        ctx.lineTo(s.x + s.w, s.y + s.h);
+        ctx.closePath();
+        ctx.fill();
+      });
       coins.forEach(c => {
         if(!c.collected){
           ctx.beginPath();
@@ -267,6 +311,10 @@
         ctx.textAlign = 'center';
         ctx.fillText(message, canvas.width/2, canvas.height/2);
       }
+      ctx.fillStyle = '#fff';
+      ctx.font = '20px sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText('Vidas: ' + lives, canvas.width - 10, canvas.height - 10);
     }
 
     function loop(){
