@@ -34,7 +34,7 @@
     const ctx = canvas.getContext('2d');
     const keys = { left:false, right:false };
     const gravity = 0.6;
-    const player = { x:50, y:0, w:40, h:40, vx:0, vy:0, speed:3.5, jump:12, onGround:false };
+    const player = { x:50, y:0, w:40, h:40, vx:0, vy:0, speed:3.5, jump:16, onGround:false };
     const world = { height:canvas.height, ground:80 };
     let level = {};
     let platforms = [];
@@ -48,6 +48,7 @@
     let message = '';
     let levelTransition = false;
     let lives = 3;
+    let score = 0;
 
     const levelData = [
       {
@@ -173,6 +174,7 @@
         setTimeout(()=>{
           lives = 3;
           currentLevel = 0;
+          score = 0;
           loadLevel(currentLevel);
         },3000);
       }
@@ -242,6 +244,7 @@
         const dy = player.y + player.h/2 - c.y;
         if(!c.collected && Math.hypot(dx,dy) < c.r + player.w/2){
           c.collected = true;
+          score++;
         }
       });
 
@@ -315,6 +318,8 @@
       ctx.font = '20px sans-serif';
       ctx.textAlign = 'right';
       ctx.fillText('Vidas: ' + lives, canvas.width - 10, canvas.height - 10);
+      ctx.textAlign = 'left';
+      ctx.fillText('Puntuación: ' + score, 10, 30);
     }
 
     function loop(){
