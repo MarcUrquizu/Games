@@ -34,7 +34,7 @@
     const ctx = canvas.getContext('2d');
     const keys = { left:false, right:false };
     const gravity = 0.6;
-    const player = { x:50, y:0, w:40, h:40, vx:0, vy:0, speed:3.5, jump:16, onGround:false };
+    const player = { x:50, y:0, w:40, h:40, vx:0, vy:0, speed:3.5, jump:12, onGround:false };
     const world = { height:canvas.height, ground:80 };
     let level = {};
     let platforms = [];
@@ -49,6 +49,7 @@
     let levelTransition = false;
     let lives = 3;
     let score = 0;
+    let controlsLocked = false;
 
     function randomInt(min, max){
       return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -63,7 +64,18 @@
     gctx.fillRect(0,20,40,20);
     const groundPattern = ctx.createPattern(groundCanvas, 'repeat');
 
+    const goalCanvas = document.createElement('canvas');
+    goalCanvas.width = goalCanvas.height = 20;
+    const goalCtx = goalCanvas.getContext('2d');
+    goalCtx.fillStyle = '#fff';
+    goalCtx.fillRect(0,0,20,20);
+    goalCtx.fillStyle = '#000';
+    goalCtx.fillRect(0,0,10,10);
+    goalCtx.fillRect(10,10,10,10);
+    const goalPattern = ctx.createPattern(goalCanvas, 'repeat');
+
     document.addEventListener('keydown', e => {
+      if(controlsLocked) return;
       if(e.code === 'ArrowLeft') keys.left = true;
       if(e.code === 'ArrowRight') keys.right = true;
       if((e.code === 'ArrowUp' || e.code === 'Space') && player.onGround){
@@ -72,6 +84,7 @@
       }
     });
     document.addEventListener('keyup', e => {
+      if(controlsLocked) return;
       if(e.code === 'ArrowLeft') keys.left = false;
       if(e.code === 'ArrowRight') keys.right = false;
     });
@@ -88,8 +101,12 @@
       let px = 600;
       while(px < width - 400){
         const w = randomInt(80,160);
-        const y = world.height - world.ground - randomInt(80,200);
+        const diff = randomInt(80,200);
+        const y = world.height - world.ground - diff;
         platforms.push({x:px, y:y, w:w, h:20});
+        if(diff > 120){
+          platforms.push({x:px - w/2, y:y + 80, w:w, h:20});
+        }
         px += w + randomInt(200,400);
       }
       obstacles = [];
@@ -127,6 +144,7 @@
       player.y = world.height - world.ground - player.h;
       player.vx = player.vy = 0;
       cameraX = 0;
+      controlsLocked = false;
       showMessage(`Nivel ${idx+1}`);
     }
 
@@ -134,6 +152,9 @@
       if(levelTransition) return;
       levelTransition = true;
       goal.pressed = true;
+      controlsLocked = true;
+      keys.left = keys.right = false;
+      player.vx = player.vy = 0;
       showMessage('Nivel completado');
       setTimeout(()=>{
         currentLevel++;
@@ -172,68 +193,70 @@
     }
 
     function update(){
-      player.vx = 0;
-      if(keys.left) player.vx = -player.speed;
-      if(keys.right) player.vx = player.speed;
-      player.vy += gravity;
-      const prevX = player.x;
-      const prevY = player.y;
-      player.x += player.vx;
-      player.y += player.vy;
-      player.onGround = false;
+      if(!controlsLocked){
+        player.vx = 0;
+        if(keys.left) player.vx = -player.speed;
+        if(keys.right) player.vx = player.speed;
+        player.vy += gravity;
+        const prevX = player.x;
+        const prevY = player.y;
+        player.x += player.vx;
+        player.y += player.vy;
+        player.onGround = false;
 
-      if(player.y + player.h > level.height - level.ground){
-        player.y = level.height - level.ground - player.h;
-        player.vy = 0;
-        player.onGround = true;
-      }
+        if(player.y + player.h > level.height - level.ground){
+          player.y = level.height - level.ground - player.h;
+          player.vy = 0;
+          player.onGround = true;
+        }
 
-      const solids = platforms.concat(obstacles, spikes);
-      solids.forEach(s => {
-        if(player.x < s.x + s.w && player.x + player.w > s.x &&
-           player.y < s.y + s.h && player.y + player.h > s.y){
-          const prevBottom = prevY + player.h;
-          const prevTop = prevY;
-          const prevRight = prevX + player.w;
-          const prevLeft = prevX;
-          if(prevBottom <= s.y){
-            player.y = s.y - player.h;
-            player.vy = 0;
-            player.onGround = true;
-          }else if(prevTop >= s.y + s.h){
-            player.y = s.y + s.h;
-            player.vy = 0;
-          }else if(prevRight <= s.x){
-            player.x = s.x - player.w;
-          }else if(prevLeft >= s.x + s.w){
-            player.x = s.x + s.w;
+        const solids = platforms.concat(obstacles, spikes);
+        solids.forEach(s => {
+          if(player.x < s.x + s.w && player.x + player.w > s.x &&
+             player.y < s.y + s.h && player.y + player.h > s.y){
+            const prevBottom = prevY + player.h;
+            const prevTop = prevY;
+            const prevRight = prevX + player.w;
+            const prevLeft = prevX;
+            if(prevBottom <= s.y){
+              player.y = s.y - player.h;
+              player.vy = 0;
+              player.onGround = true;
+            }else if(prevTop >= s.y + s.h){
+              player.y = s.y + s.h;
+              player.vy = 0;
+            }else if(prevRight <= s.x){
+              player.x = s.x - player.w;
+            }else if(prevLeft >= s.x + s.w){
+              player.x = s.x + s.w;
+            }
           }
+        });
+
+        if(player.x < 0) player.x = 0;
+        if(player.x + player.w > level.width) player.x = level.width - player.w;
+
+        spikes.forEach(s => {
+          if(player.x < s.x + s.w && player.x + player.w > s.x &&
+             player.y < s.y + s.h && player.y + player.h >= s.y){
+            loseLife();
+          }
+        });
+
+        coins.forEach(c => {
+          const dx = player.x + player.w/2 - c.x;
+          const dy = player.y + player.h/2 - c.y;
+          if(!c.collected && Math.hypot(dx,dy) < c.r + player.w/2){
+            c.collected = true;
+            score++;
+          }
+        });
+
+        if(allCoins() &&
+           player.x + player.w > goal.x && player.x < goal.x + goal.w &&
+           player.y + player.h > goal.y && player.y < goal.y + goal.h){
+          levelComplete();
         }
-      });
-
-      if(player.x < 0) player.x = 0;
-      if(player.x + player.w > level.width) player.x = level.width - player.w;
-
-      spikes.forEach(s => {
-        if(player.x < s.x + s.w && player.x + player.w > s.x &&
-           player.y < s.y + s.h && player.y + player.h >= s.y){
-          loseLife();
-        }
-      });
-
-      coins.forEach(c => {
-        const dx = player.x + player.w/2 - c.x;
-        const dy = player.y + player.h/2 - c.y;
-        if(!c.collected && Math.hypot(dx,dy) < c.r + player.w/2){
-          c.collected = true;
-          score++;
-        }
-      });
-
-      if(allCoins() &&
-         player.x + player.w > goal.x && player.x < goal.x + goal.w &&
-         player.y + player.h > goal.y && player.y < goal.y + goal.h){
-        levelComplete();
       }
 
       cameraX = player.x - canvas.width/2;
@@ -285,8 +308,12 @@
           ctx.stroke();
         }
       });
-      ctx.fillStyle = goal.pressed ? '#0f0' : '#f00';
+      ctx.fillStyle = goalPattern;
       ctx.fillRect(goal.x, goal.y, goal.w, goal.h);
+      if(goal.pressed){
+        ctx.fillStyle = 'rgba(0,255,0,0.5)';
+        ctx.fillRect(goal.x, goal.y, goal.w, goal.h);
+      }
       ctx.fillStyle = 'blue';
       ctx.fillRect(player.x, player.y, player.w, player.h);
       ctx.restore();
