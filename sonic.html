@@ -50,44 +50,9 @@
     let lives = 3;
     let score = 0;
 
-    const levelData = [
-      {
-        width:2000,
-        platforms:[{x:700, y:world.height - world.ground - 90, w:120, h:20}],
-        obstacles:[{x:500, y:world.height - world.ground - 30, w:40, h:30}],
-        spikes:[{x:900, y:world.height - world.ground - 30, w:40, h:30}]
-      },
-      {
-        width:2400,
-        platforms:[
-          {x:800, y:world.height - world.ground - 100, w:120, h:20},
-          {x:1500, y:world.height - world.ground - 150, w:150, h:20}
-        ],
-        obstacles:[
-          {x:600, y:world.height - world.ground - 30, w:40, h:30},
-          {x:1100, y:world.height - world.ground - 30, w:40, h:30}
-        ],
-        spikes:[
-          {x:1700, y:world.height - world.ground - 30, w:40, h:30}
-        ]
-      },
-      {
-        width:2800,
-        platforms:[
-          {x:900, y:world.height - world.ground - 100, w:120, h:20},
-          {x:1600, y:world.height - world.ground - 150, w:150, h:20},
-          {x:2100, y:world.height - world.ground - 200, w:150, h:20}
-        ],
-        obstacles:[
-          {x:700, y:world.height - world.ground - 30, w:40, h:30},
-          {x:1200, y:world.height - world.ground - 30, w:40, h:30},
-          {x:1900, y:world.height - world.ground - 30, w:40, h:30}
-        ],
-        spikes:[
-          {x:2400, y:world.height - world.ground - 30, w:40, h:30}
-        ]
-      }
-    ];
+    function randomInt(min, max){
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
 
     const groundCanvas = document.createElement('canvas');
     groundCanvas.width = groundCanvas.height = 40;
@@ -117,25 +82,46 @@
     }
 
     function loadLevel(idx){
-      const data = levelData[idx];
-      level = { width:data.width, height:world.height, ground:world.ground };
-      platforms = data.platforms.map(p=>({...p}));
-      obstacles = data.obstacles.map(o=>({...o}));
-      spikes = (data.spikes || []).map(s=>({...s}));
-      coins = [];
-      for(let i=200;i<level.width-200;i+=200){
-        const nearSolid = obstacles.concat(spikes).some(s => i > s.x - 40 && i < s.x + s.w + 40);
-        if(!nearSolid){
-          coins.push({x:i, y:world.height-world.ground-40, r:15, collected:false});
+      const width = randomInt(2000, 3000);
+      level = { width, height:world.height, ground:world.ground };
+      platforms = [];
+      let px = 600;
+      while(px < width - 400){
+        const w = randomInt(80,160);
+        const y = world.height - world.ground - randomInt(80,200);
+        platforms.push({x:px, y:y, w:w, h:20});
+        px += w + randomInt(200,400);
+      }
+      obstacles = [];
+      spikes = [];
+      let hx = 400;
+      while(hx < width - 200){
+        const overlapsPlatform = platforms.some(p => hx + 40 > p.x && hx < p.x + p.w);
+        if(!overlapsPlatform){
+          if(Math.random() < 0.5){
+            obstacles.push({x:hx, y:world.height - world.ground - 30, w:40, h:30});
+          }else{
+            spikes.push({x:hx, y:world.height - world.ground - 30, w:40, h:30});
+          }
+          hx += randomInt(300,600);
+        }else{
+          hx += 100;
         }
       }
-      platforms.forEach(p=>{
+      coins = [];
+      for(let i=200;i<width-200;i+=200){
+        const nearSolid = obstacles.concat(spikes).some(s => i > s.x - 40 && i < s.x + s.w + 40);
+        if(!nearSolid){
+          coins.push({x:i, y:world.height - world.ground - 40, r:15, collected:false});
+        }
+      }
+      platforms.forEach(p => {
         coins.push({x:p.x + p.w/2, y:p.y - 20, r:15, collected:false});
       });
-      goal = { x:level.width-100, y:world.height-world.ground-50, w:40, h:40, pressed:false };
+      goal = { x:width - 100, y:world.height - world.ground - 50, w:40, h:40, pressed:false };
       clouds = [];
       for(let i=0;i<5;i++){
-        clouds.push({x:Math.random()*level.width, y:20+Math.random()*80, w:80+Math.random()*40, h:40+Math.random()*20, speed:0.2+Math.random()*0.3});
+        clouds.push({x:Math.random()*width, y:20+Math.random()*80, w:80+Math.random()*40, h:40+Math.random()*20, speed:0.2+Math.random()*0.3});
       }
       player.x = 50;
       player.y = world.height - world.ground - player.h;
@@ -151,12 +137,8 @@
       showMessage('Nivel completado');
       setTimeout(()=>{
         currentLevel++;
-        if(currentLevel < levelData.length){
-          loadLevel(currentLevel);
-          levelTransition = false;
-        }else{
-          showMessage('¡Has ganado!');
-        }
+        loadLevel(currentLevel);
+        levelTransition = false;
       },3000);
     }
 
