@@ -328,7 +328,11 @@
     }
 
     sizeBtns.forEach(btn =>
-      btn.addEventListener('click', () => startGame(btn.dataset.size))
+      btn.addEventListener('click', () => {
+        if (confirm('¿Estás seguro de que quieres iniciar una nueva partida?')) {
+          startGame(btn.dataset.size);
+        }
+      })
     );
 
     startGame('mediano');
