@@ -63,7 +63,7 @@
 <body>
 
  <a href="./index.html" class="menu-button game-buttons">Menu</a>
-  <a href="./help.html" class="help-button game-buttons">Info</a>
+  <button class="help-button game-buttons" data-help="¡Intenta conseguir la mejor puntuación posible combinando fichas del mismo valor!">Info</button>
 
   <h1>2048</h1>
   <div id="game">
@@ -211,5 +211,6 @@
     document.getElementById('newGame').addEventListener('click', initGrid);
     initGrid();
   </script>
+<script src="help-modal.js"></script>
 </body>
 </html>

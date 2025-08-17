@@ -27,7 +27,7 @@
 </head>
 <body>
   <a href="./index.html" class="menu-button game-buttons">Menu</a>
-  <a href="./help.html" class="help-button game-buttons">Info</a>
+  <button class="help-button game-buttons" data-help="Corre por escenarios laterales, recoge todas las monedas y pulsa el botón rojo para avanzar.">Info</button>
   <canvas id="game" width="800" height="400"></canvas>
   <script>
     const canvas = document.getElementById('game');
@@ -350,5 +350,6 @@
     loadLevel(currentLevel);
     loop();
   </script>
+<script src="help-modal.js"></script>
 </body>
 </html>

@@ -90,7 +90,7 @@
 </head>
 <body>
   <a href="index.html" class="menu-button game-buttons">Menu</a>
-  <a href="help.html" class="help-button game-buttons">Info</a>
+  <button class="help-button game-buttons" data-help="¡Escapa del laberinto con el menor número de tiempo posible!">Info</button>
   <div id="info">Nivel: 1 | Tiempo: 0s</div>
 
   <div id="gameWrapper">
@@ -347,5 +347,6 @@
     window.addEventListener('resize', resizeCanvas);
     initLevel();
   </script>
+<script src="help-modal.js"></script>
 </body>
 </html>

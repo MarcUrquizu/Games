@@ -31,7 +31,7 @@
 <body>
 
   <a href="./index.html" class="menu-button game-buttons">Menu</a>
-  <a href="./help.html" class="help-button game-buttons">Info</a>
+  <button class="help-button game-buttons" data-help="Próximamente">Info</button>
 
   <div class="card">
     <div class="header">
@@ -219,5 +219,6 @@
     resetBtn.addEventListener('click', resetChat);
     userInput.addEventListener('keydown', e => { if (e.key === 'Enter') handleInput(); });
   </script>
+<script src="help-modal.js"></script>
 </body>
 </html>

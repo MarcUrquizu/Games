@@ -91,7 +91,7 @@
 <body>
   <!-- Botones superiores como antes -->
   <a href="./index.html" class="menu-button game-buttons">Menu</a>
-  <a href="./help.html" class="help-button game-buttons">Info</a>
+  <button class="help-button game-buttons" data-help="Juega al divertido juego del PAC-MAN! Come todas las bolas, pero vigila: los fantasmas van a por ti...">Info</button>
 
   <div id="shim">shim for font face</div>
   <h1>Pcman</h1>
@@ -506,5 +506,6 @@ $(function(){
       btn.addEventListener('click',function(e){e.preventDefault();});
     });
   </script>
+<script src="help-modal.js"></script>
 </body>
 </html>
