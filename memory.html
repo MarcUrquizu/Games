@@ -243,6 +243,7 @@
       if (a.dataset.val === b.dataset.val) {
         a.classList.add('matched');
         b.classList.add('matched');
+        matched.push(a, b);
         showTemp(matchMsg, '¡Coincidencia!');
         if (current === 1) { score1++; s1.textContent = score1; }
         else              { score2++; s2.textContent = score2; }
