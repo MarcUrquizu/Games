@@ -23,11 +23,26 @@
     }
     .menu-button { right:10px; }
     .help-button { left:10px; }
+    #level-message {
+      position:absolute;
+      top:50%;
+      left:50%;
+      transform:translate(-50%, -50%);
+      background:rgba(0,0,0,0.7);
+      color:#fff;
+      padding:20px 40px;
+      font:32px sans-serif;
+      border:2px solid #fff;
+      border-radius:10px;
+      display:none;
+      z-index:20;
+    }
   </style>
 </head>
 <body>
   <a href="./index.html" class="menu-button game-buttons">Menu</a>
   <button class="help-button game-buttons" data-help="Corre por escenarios laterales, recoge todas las monedas y pulsa el botón rojo para avanzar.">Info</button>
+  <div id="level-message"></div>
   <canvas id="game" width="800" height="400"></canvas>
   <script>
     const canvas = document.getElementById('game');
@@ -45,7 +60,6 @@
     let clouds = [];
     let cameraX = 0;
     let currentLevel = 0;
-    let message = '';
     let levelTransition = false;
     let lives = 3;
     let score = 0;
@@ -89,9 +103,11 @@
       if(e.code === 'ArrowRight') keys.right = false;
     });
 
+    const messageBox = document.getElementById('level-message');
     function showMessage(text){
-      message = text;
-      setTimeout(()=>{ message = ''; },3000);
+      messageBox.textContent = text;
+      messageBox.style.display = 'block';
+      setTimeout(()=>{ messageBox.style.display = 'none'; },3000);
     }
 
     function loadLevel(idx){
@@ -327,12 +343,6 @@
       ctx.fillStyle = 'blue';
       ctx.fillRect(player.x, player.y, player.w, player.h);
       ctx.restore();
-      if(message){
-        ctx.fillStyle = '#fff';
-        ctx.font = '24px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(message, canvas.width/2, canvas.height/2);
-      }
       ctx.fillStyle = '#fff';
       ctx.font = '20px sans-serif';
       ctx.textAlign = 'right';
