@@ -210,7 +210,7 @@
           player.onGround = true;
         }
 
-        const solids = platforms.concat(obstacles, spikes);
+        const solids = obstacles.concat(spikes);
         solids.forEach(s => {
           if(player.x < s.x + s.w && player.x + player.w > s.x &&
              player.y < s.y + s.h && player.y + player.h > s.y){
@@ -230,6 +230,16 @@
             }else if(prevLeft >= s.x + s.w){
               player.x = s.x + s.w;
             }
+          }
+        });
+
+        platforms.forEach(p => {
+          const prevBottom = prevY + player.h;
+          if(player.x < p.x + p.w && player.x + player.w > p.x &&
+             player.y + player.h > p.y && prevBottom <= p.y && player.vy >= 0){
+            player.y = p.y - player.h;
+            player.vy = 0;
+            player.onGround = true;
           }
         });
 
