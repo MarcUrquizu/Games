@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Juego de Memoria 10×6</title>
+  <title>Juego de Memoria</title>
   <style>
     :root {
       --color-bg-1: #e74c3c;
@@ -49,6 +49,21 @@
       text-decoration: none;
       font-weight: bold;
       border-radius: 4px;
+    }
+
+    .size-buttons {
+      display: flex;
+      gap: var(--gap);
+      margin-bottom: var(--gap);
+    }
+    .size-buttons button {
+      padding: .5em 1em;
+      background: #fff;
+      color: var(--color-bg-1);
+      border: none;
+      font-weight: bold;
+      border-radius: 4px;
+      cursor: pointer;
     }
 
     /* TÍTULO Y TURNO */
@@ -177,10 +192,16 @@
       <a href="./help.html">Info</a>
     </nav>
     <div class="title-container">
-      <h1>Juego de Memoria 10×6</h1>
+      <h1 id="gameTitle">Juego de Memoria</h1>
       <div class="player-turn" id="playerTurn">Turno: Jugador 1 (Rojo)</div>
     </div>
   </header>
+
+  <div class="size-buttons">
+    <button data-size="pequeño">Pequeño</button>
+    <button data-size="mediano">Mediano</button>
+    <button data-size="grande">Grande</button>
+  </div>
 
   <section class="main">
     <div class="game-board" id="gameBoard"></div>
@@ -194,7 +215,7 @@
   </section>
 
   <script>
-    const cardsArray = [
+    const allCards = [
       '💩','💩','🐱','🐱','🚗','🚗','🎸','🎸','🍕','🍕',
       '🌟','🌟','🎮','🎮','⚽','⚽','🍔','🍔','🍓','🍓',
       '🎩','🎩','🦄','🦄','🐶','🐶','🎤','🎤','🍍','🍍',
@@ -203,6 +224,12 @@
       '🎻','🎻','🐒','🐒','🌈','🌈','🍉','🍉','⚡','⚡'
     ];
 
+    const boardOptions = {
+      'pequeño': { pairs: 8,  cols: 4 },
+      'mediano': { pairs: 18, cols: 6 },
+      'grande':  { pairs: 30, cols: 10 }
+    };
+    let choice = 'mediano', pairs, cols, rows, cardsArray;
     let flipped = [], matched = [];
     let lock = false, current = 1, score1 = 0, score2 = 0;
     const board    = document.getElementById('gameBoard'),
@@ -210,12 +237,35 @@
           s1       = document.getElementById('scorePlayer1'),
           s2       = document.getElementById('scorePlayer2'),
           msg      = document.getElementById('message'),
-          matchMsg = document.getElementById('matchMessage');
+          matchMsg = document.getElementById('matchMessage'),
+          title    = document.getElementById('gameTitle'),
+          sizeBtns = document.querySelectorAll('.size-buttons button');
 
     function shuffle(a) { return a.sort(() => Math.random() - 0.5); }
 
+    function startGame(size) {
+      choice = size;
+      ({ pairs, cols } = boardOptions[choice]);
+      cardsArray = allCards.slice(0, pairs * 2);
+      rows = cardsArray.length / cols;
+      flipped = [];
+      matched = [];
+      lock = false;
+      current = 1;
+      score1 = 0; score2 = 0;
+      s1.textContent = score1;
+      s2.textContent = score2;
+      msg.textContent = '';
+      matchMsg.textContent = '';
+      turnEl.textContent = 'Turno: Jugador 1 (Rojo)';
+      document.body.style.backgroundColor = 'var(--color-bg-1)';
+      title.textContent = `Juego de Memoria ${cols}×${rows}`;
+      createBoard();
+    }
+
     function createBoard() {
       board.innerHTML = '';
+      board.style.gridTemplateColumns = `repeat(${cols}, var(--card-size))`;
       shuffle(cardsArray).forEach(val => {
         const c = document.createElement('div');
         c.className = 'card';
@@ -243,6 +293,7 @@
       if (a.dataset.val === b.dataset.val) {
         a.classList.add('matched');
         b.classList.add('matched');
+        matched.push(a,b);
         showTemp(matchMsg, '¡Coincidencia!');
         if (current === 1) { score1++; s1.textContent = score1; }
         else              { score2++; s2.textContent = score2; }
@@ -276,7 +327,11 @@
       setTimeout(() => el.textContent = '', 600);
     }
 
-    createBoard();
+    sizeBtns.forEach(btn =>
+      btn.addEventListener('click', () => startGame(btn.dataset.size))
+    );
+
+    startGame('mediano');
   </script>
 </body>
 </html>
