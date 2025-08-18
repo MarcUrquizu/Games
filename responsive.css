@@ -6,3 +6,34 @@ canvas, img, video {
   max-width: 100%;
   height: auto;
 }
+
+/* Touch controls */
+#touch-controls {
+  position: fixed;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  user-select: none;
+}
+#touch-controls .tc-row {
+  display: flex;
+}
+#touch-controls .tc-btn {
+  width: 60px;
+  height: 60px;
+  margin: 5px;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.5em;
+}
+@media (hover: hover) and (pointer: fine) {
+  #touch-controls {
+    display: none;
+  }
+}
