@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <link rel="stylesheet" href="responsive.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Math Rush - Marc's Games</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body{background:#222;color:#fff;text-align:center;font-family:Arial,sans-serif;}
+    #q{margin-top:120px;font-size:1.5em;}
+    input{font-size:1.2em;padding:5px;}
+  </style>
+</head>
+<body>
+  <a href="index.html" class="menu-button game-buttons">Menú</a>
+  <button class="help-button game-buttons"
+        data-help="Resuelve tantas operaciones como puedas en 30 segundos.">Info</button>
+  <div id="q"></div>
+  <input id="ans" type="number" autocomplete="off" />
+  <div id="score">Puntos: 0 - Tiempo: 30</div>
+  <script>
+    let score=0,time=30,a,b,op,correct;
+    const q=document.getElementById('q');
+    const ans=document.getElementById('ans');
+    const scoreEl=document.getElementById('score');
+    function update(){scoreEl.textContent=`Puntos: ${score} - Tiempo: ${time}`;}
+    function newQ(){a=Math.floor(Math.random()*10);b=Math.floor(Math.random()*10);
+      op=Math.random()<0.5?'+':'-';correct=op==='+'?a+b:a-b;
+      q.textContent=`${a} ${op} ${b} = ?`;ans.value='';ans.focus();}
+    ans.addEventListener('keyup',e=>{if(e.key==='Enter'){if(parseInt(ans.value)==correct){score++;}newQ();}});
+    const timer=setInterval(()=>{time--;update();if(time<=0){clearInterval(timer);q.textContent=`Fin. Puntos: ${score}`;ans.remove();document.body.addEventListener("pointerdown",()=>location.reload(),{once:true});}},1000);
+    update();newQ();
+  </script>
+  <script src="help-modal.js"></script>
+  <script src="touch-controls.js"></script>
+</body>
+</html>

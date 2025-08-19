@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <link rel="stylesheet" href="responsive.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Runner - Marc's Games</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body{margin:0;background:#222;color:#fff;text-align:center;font-family:Arial,sans-serif;overflow:hidden;}
+    canvas{background:#333;display:block;margin:120px auto 0;border:2px solid #fff;}
+  </style>
+</head>
+<body>
+  <a href="index.html" class="menu-button game-buttons">Menú</a>
+  <button class="help-button game-buttons" data-help="Toca para saltar y evita los obstáculos.">Info</button>
+  <canvas id="c" width="300" height="150"></canvas>
+  <script>
+    const canvas=document.getElementById('c');
+    const ctx=canvas.getContext('2d');
+    let player={x:30,y:0,v:0};
+    let obs=[];let score=0;let over=false;
+    function spawn(){obs.push({x:canvas.width,y:110,w:20,h:40});}
+    setInterval(spawn,1500);
+    canvas.addEventListener('pointerdown',()=>{if(over){location.reload();}if(player.y===0)player.v=18;});
+    function step(){
+      if(over){ctx.fillStyle='#fff';ctx.font='20px Arial';ctx.fillText('Fin! Puntos: '+score,80,80);return;}
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle='#fff';ctx.fillRect(0,140,canvas.width,10);
+      player.v-=1;player.y=Math.max(0,player.y+player.v);
+      ctx.fillRect(player.x,120-player.y,20,20);
+      obs.forEach((o,i)=>{
+        o.x-=5;ctx.fillRect(o.x,o.y,o.w,o.h);
+        if(o.x+o.w<0){obs.splice(i,1);score++;}
+        if(o.x<player.x+20&&o.x+o.w>player.x&&o.y<140&&o.y+o.h>120-player.y){over=true;}
+      });
+      requestAnimationFrame(step);
+    }
+    step();
+  </script>
+  <script src="help-modal.js"></script>
+  <script src="touch-controls.js"></script>
+</body>
+</html>
