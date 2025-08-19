@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <link rel="stylesheet" href="responsive.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reacción - Marc's Games</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body { background:#b00; color:#fff; font-family: Arial, sans-serif; text-align:center; height:100vh; display:flex; flex-direction:column; justify-content:center; }
+    #msg { font-size:1.5em; margin-bottom:20px; }
+  </style>
+</head>
+<body>
+  <a href="index.html" class="menu-button game-buttons">Menú</a>
+  <button class="help-button game-buttons" data-help="Toca la pantalla tan pronto se ponga verde para medir tu tiempo de reacción.">Info</button>
+  <div id="msg">Espera el verde...</div>
+  <script>
+    let start;
+    function init(){
+      document.body.style.background='#b00';
+      document.getElementById('msg').textContent='Espera el verde...';
+      start=undefined;
+      setTimeout(()=>{
+        document.body.style.background='#0b0';
+        document.getElementById('msg').textContent='¡Toca!';
+        start=performance.now();
+      }, 2000+Math.random()*3000);
+    }
+    document.body.addEventListener('pointerdown', ()=>{
+      if(!start){
+        if(document.getElementById('msg').textContent!=='Otra vez?')
+          document.getElementById('msg').textContent='¡Muy pronto!';
+        return;
+      }
+      const t=Math.round(performance.now()-start);
+      document.getElementById('msg').textContent=`Tiempo: ${t} ms. Toca para jugar otra vez.`;
+      document.body.style.background='#b00';
+      start=null;
+    });
+    document.body.addEventListener('pointerup',()=>{ if(start===null){ start=undefined; init(); }});
+    init();
+  </script>
+  <script src="help-modal.js"></script>
+  <script src="touch-controls.js"></script>
+</body>
+</html>

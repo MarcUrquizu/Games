@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <link rel="stylesheet" href="responsive.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dodge - Marc's Games</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body { background:#000; color:#fff; text-align:center; font-family: Arial, sans-serif; }
+    canvas { background:#111; display:block; margin:80px auto 0; border:1px solid #555; }
+    #score { margin-top:20px; }
+  </style>
+</head>
+<body>
+  <a href="index.html" class="menu-button game-buttons">Menú</a>
+  <button class="help-button game-buttons" data-help="Mueve el cuadrado para esquivar los bloques que caen. Usa las flechas o los botones táctiles.">Info</button>
+  <canvas id="game" width="400" height="600"></canvas>
+  <div id="score">Puntuación: 0</div>
+  <script>
+    const canvas=document.getElementById('game');
+    const ctx=canvas.getContext('2d');
+    const player={x:180,y:560,w:40,h:40};
+    const keys={};
+    const blocks=[];
+    let score=0, gameOver=false;
+    document.addEventListener('keydown',e=>keys[e.key]=true);
+    document.addEventListener('keyup',e=>keys[e.key]=false);
+    function spawn(){
+      blocks.push({x:Math.random()*360,y:-40,w:40,h:40});
+    }
+    function update(){
+      if(gameOver) return;
+      if(keys.ArrowLeft) player.x-=5;
+      if(keys.ArrowRight) player.x+=5;
+      player.x=Math.max(0,Math.min(canvas.width-player.w,player.x));
+      blocks.forEach(b=>{
+        b.y+=5;
+        if(b.y>canvas.height){ b.y=-40; b.x=Math.random()*360; score++; document.getElementById('score').textContent='Puntuación: '+score; }
+        if(b.x<player.x+player.w && b.x+b.w>player.x && b.y<player.y+player.h && b.y+b.h>player.y){
+          gameOver=true; setTimeout(()=>alert('Fin del juego. Puntuación: '+score),100);
+        }
+      });
+      draw();
+      requestAnimationFrame(update);
+    }
+    function draw(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle='#0f0';
+      ctx.fillRect(player.x,player.y,player.w,player.h);
+      ctx.fillStyle='#f00';
+      blocks.forEach(b=>ctx.fillRect(b.x,b.y,b.w,b.h));
+    }
+    setInterval(spawn,1000);
+    update();
+  </script>
+  <script src="help-modal.js"></script>
+  <script src="touch-controls.js"></script>
+</body>
+</html>
