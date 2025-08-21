@@ -2,6 +2,15 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-Q25WGL1GDZ"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-Q25WGL1GDZ');
+  </script>
   <link rel="stylesheet" href="responsive.css">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta charset="UTF-8" />
@@ -49,7 +58,7 @@
       z-index: 10;
     }
 
-    .menu-button, .info-button {
+    .game-buttons {
       position: absolute;
       top: 20px;
       background-color: white;
@@ -64,7 +73,7 @@
     }
 
     .menu-button { left: 20px; }
-    .info-button { left: 130px; }
+    .help-button { left: 130px; }
 
     .nivel-indicador {
       position: absolute;
@@ -129,8 +138,8 @@
 <body>
 
 <div id="pantalla-inicio">
-  <a href="./index.html" class="menu-button">Menú</a>
-  <a href="./info.html" class="info-button">Info</a>
+  <a href="./index.html" class="menu-button game-buttons">Menú</a>
+  <button class="help-button game-buttons" data-help="Usa el cursor para llegar al otro lado sin tocar las paredes.">Info</button>
   <p>¡Hola! Bienvenido al laberinto.<br> Usa el cursor para llegar al otro lado sin tocar las paredes.</p>
   <button class="btn-comenzar" onclick="iniciarJuego()" id="btnStart">▶</button>
   <img id="flecha" src="https://png.pngtree.com/png-clipart/20220122/ourmid/pngtree-direction-arrow-red-irregular-triangle-png-image_4362206.png" alt="flecha" />
@@ -307,6 +316,7 @@ function mostrarJumpscare() {
 }
 </script>
 
+  <script src="help-modal.js"></script>
   <script src="touch-controls.js"></script>
 </body>
 </html>

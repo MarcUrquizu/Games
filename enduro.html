@@ -1,12 +1,18 @@
 <!DOCTYPE html>
 <html>
-    <meta charset="UTF-8">
 <head>
+  <meta charset="UTF-8">
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-Q25WGL1GDZ"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-Q25WGL1GDZ');
+  </script>
   <link rel="stylesheet" href="responsive.css">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <a href="./index.html" class="menu-button game-buttons">Menu</a>
-    <button class="help-button game-buttons" data-help="Esquiva los coches y consigue la mejor puntuación posible.">Info</button>
-
     <title>Enduro</title>
     <link rel="stylesheet" href="enduro.css" />
     <link rel="stylesheet" href="style.css" />
@@ -15,6 +21,9 @@
 </head>
 
 <body>
+
+  <a href="./index.html" class="menu-button game-buttons">Menu</a>
+  <button class="help-button game-buttons" data-help="Esquiva los coches y consigue la mejor puntuación posible.">Info</button>
 
 <div id="game">
     <div id="sky"></div>
