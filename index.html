@@ -163,6 +163,22 @@
       requestAnimationFrame(loop);
     }
   </script>
+  <script>
+    fetch("https://api.countapi.xyz/hit/olap.es/visits").catch(() => {});
+    const secret = ["1","9","9","2"];
+    let secretIndex = 0;
+    window.addEventListener("keydown", (e) => {
+      if (e.key === secret[secretIndex]) {
+        secretIndex++;
+        if (secretIndex === secret.length) {
+          window.location.href = "gente.html";
+          secretIndex = 0;
+        }
+      } else {
+        secretIndex = e.key === secret[0] ? 1 : 0;
+      }
+    });
+  </script>
   <script src="touch-controls.js"></script>
 </body>
 </html>
