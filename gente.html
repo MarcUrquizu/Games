@@ -6,13 +6,13 @@
   <title>Visitantes</title>
   <link rel="stylesheet" href="responsive.css">
   <link rel="icon" type="image/png" href="img/favicon.png">
-  <!-- Google tag (gtag.js) - replace G-XXXXXXXXXX with your own ID -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-Q25WGL1GDZ"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
-    gtag('config', 'G-XXXXXXXXXX');
+    gtag('config', 'G-Q25WGL1GDZ');
   </script>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <style>
@@ -30,9 +30,9 @@
   <p id="contador">Cargando...</p>
   <script>
     fetch('https://api.countapi.xyz/get/olap.es/visits')
-      .then(r => r.json())
+      .then(r => r.ok ? r.json() : Promise.reject(r))
       .then(d => {
-        document.getElementById('contador').textContent = d.value + ' personas han entrado';
+        document.getElementById('contador').textContent = d.value + ' personas han entrado a olap.es en total';
       })
       .catch(() => {
         document.getElementById('contador').textContent = 'No se pudo obtener el contador';

@@ -26,11 +26,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const text = document.createElement('p');
   text.id = 'help-modal-text';
-  text.style.marginBottom = '20px';
+  Object.assign(text.style, {
+    marginBottom: '20px',
+    color: '#000',
+  });
   box.appendChild(text);
 
   const close = document.createElement('button');
   close.textContent = 'Cerrar';
+  Object.assign(close.style, {
+    fontSize: '16px',
+  });
   close.addEventListener('click', () => {
     modal.style.display = 'none';
   });
