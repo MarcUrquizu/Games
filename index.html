@@ -16,6 +16,7 @@
   </script>
   <!-- Pixel font -->
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+
   <style>
     /* RESET Y BOX-SIZING */
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -93,6 +94,70 @@
       transform: perspective(100px) rotateX(5deg) scale(1.05);
       box-shadow: 0 0 12px #0ff, 0 0 20px #0ff;
     }
+
+    /* ===== Overlay Matrix (segundo código secreto) ===== */
+    #matrixOverlay {
+      position: fixed;
+      inset: 0;
+      background: #000;
+      display: none;          /* hidden por defecto */
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      z-index: 9999;
+    }
+    #matrixCanvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+    .download-ui {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      padding: 20px 24px;
+      border: 2px solid #0f0;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.4);
+      box-shadow: 0 0 12px #0f0, inset 0 0 12px #0f0;
+    }
+    .download-title {
+      color: #0f0;
+      text-shadow: 0 0 8px #0f0;
+      font-size: 18px;
+    }
+    .bar {
+      width: 280px;
+      height: 18px;
+      border: 2px solid #0f0;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: inset 0 0 8px #0f0;
+      background: rgba(0,255,0,0.1);
+    }
+    .fill {
+      height: 100%;
+      width: 0%;
+      background: #0f0;
+      box-shadow: 0 0 16px #0f0;
+      transition: width 0.2s linear;
+    }
+    .small {
+      color: #0f0;
+      font-size: 10px;
+      opacity: 0.85;
+    }
+    .close-hint {
+      margin-top: 6px;
+      font-size: 10px;
+      color: #0f0;
+      opacity: 0.6;
+    }
+    .show { display: flex !important; }
   </style>
 </head>
 <body>
@@ -124,13 +189,24 @@
     <a class="btn" href="laberinto-3D/index.html">Laberinto 3D</a>
     <a class="btn" href="brakeautnulls.html">Null's Breakout</a>
     <a class="btn" href="clicker.html">Italian brainrot clicker</a>
-        <a class="btn" href="pcman.html">Pcman</a>
+    <a class="btn" href="pcman.html">Pcman</a>
     <a class="btn" href="sonic.html">Sonic</a>
   </div>
 
   <header><h4>Comentarios y sugerencias a olap.comentarios@gmail.com</h4></header>
 
+  <!-- ===== Overlay de “Descargando virus…” con lluvia de 0 y 1 ===== -->
+  <div id="matrixOverlay" aria-hidden="true">
+    <canvas id="matrixCanvas"></canvas>
+    <div class="download-ui">
+      <div class="download-title">Descargando virus…</div>
+      <div class="bar"><div class="fill" id="progressFill"></div></div>
+      <div class="small" id="progressText">0%</div>
+    </div>
+  </div>
+
   <script>
+    /* ===== Fondo de estrellas ===== */
     const canvas = document.getElementById('stars');
     const ctx = canvas.getContext('2d');
     function resizeCanvas() {
@@ -165,28 +241,141 @@
         ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
         ctx.fill();
       });
+      ctx.globalAlpha = 1;
     }
     function loop() {
       drawStars();
       requestAnimationFrame(loop);
     }
   </script>
+
   <script>
+    /* ===== Contador de visitas y códigos secretos ===== */
     fetch("https://api.countapi.xyz/hit/olap.es/visits").catch(() => {});
-    const secret = ["0","1","2","0"];
-    let secretIndex = 0;
+
+    // Código secreto 1 (existente): 0 1 2 0 -> gente.html
+    const secret1 = ["0","1","2","0"];
+    let idx1 = 0;
+
+    // Código secreto 2 (modificado): 1 0 0 1 -> overlay Matrix
+    const secret2 = ["1","0","0","1"];
+    let idx2 = 0;
+
     window.addEventListener("keydown", (e) => {
-      if (e.key === secret[secretIndex]) {
-        secretIndex++;
-        if (secretIndex === secret.length) {
+      const key = e.key.toLowerCase();
+
+      // Secuencia 1
+      if (key === secret1[idx1]) {
+        idx1++;
+        if (idx1 === secret1.length) {
           window.location.href = "gente.html";
-          secretIndex = 0;
+          idx1 = 0;
         }
       } else {
-        secretIndex = e.key === secret[0] ? 1 : 0;
+        idx1 = (key === secret1[0]) ? 1 : 0;
       }
+
+      // Secuencia 2 (ahora 1 0 0 1)
+      // Acepta teclas numéricas y también las del keypad
+      const normalizedKey = (e.key === 'Unidentified') ? key : key; // placeholder (compat)
+      if (key === secret2[idx2]) {
+        idx2++;
+        if (idx2 === secret2.length) {
+          startMatrixOverlay();
+          idx2 = 0;
+        }
+      } else {
+        idx2 = (key === secret2[0]) ? 1 : 0;
+      }
+
+      // Cerrar overlay con ESC
+      if (e.key === "Escape") stopMatrixOverlay();
     });
   </script>
+
+  <script>
+    /* ===== Overlay Matrix: lluvia de 0 y 1 y barra de progreso ===== */
+    const overlay = document.getElementById('matrixOverlay');
+    const mtx = document.getElementById('matrixCanvas');
+    const mctx = mtx.getContext('2d');
+    const fill = document.getElementById('progressFill');
+    const ptxt = document.getElementById('progressText');
+
+    let matrixAnimId = null;
+    let rainCols = [];
+    let fontSize = 16;
+    let progress = 0;
+    let progressTimer = null;
+
+    function sizeMatrix() {
+      mtx.width = window.innerWidth;
+      mtx.height = window.innerHeight;
+      fontSize = Math.max(14, Math.min(22, Math.floor(mtx.width / 80)));
+      const cols = Math.floor(mtx.width / fontSize);
+      rainCols = Array.from({length: cols}, () => Math.floor(Math.random() * -50));
+    }
+
+    function drawMatrix() {
+      // Fondo semitransparente para "estela"
+      mctx.fillStyle = "rgba(0, 0, 0, 0.15)";
+      mctx.fillRect(0, 0, mtx.width, mtx.height);
+
+      mctx.fillStyle = "#0f0";
+      mctx.font = `${fontSize}px monospace`;
+
+      const chars = ["0","1"];
+      for (let i = 0; i < rainCols.length; i++) {
+        const text = chars[Math.random() < 0.5 ? 0 : 1];
+        const x = i * fontSize;
+        const y = rainCols[i] * fontSize;
+        mctx.fillText(text, x, y);
+
+        // Reiniciar caída al final
+        if (y > mtx.height && Math.random() > 0.975) {
+          rainCols[i] = 0;
+        }
+        rainCols[i]++;
+      }
+      matrixAnimId = requestAnimationFrame(drawMatrix);
+    }
+
+    function startMatrixOverlay() {
+      overlay.classList.add('show');
+      sizeMatrix();
+      drawMatrix();
+      window.addEventListener('resize', sizeMatrix);
+
+      // Simular progreso de "Descargando virus…"
+      progress = 0;
+      fill.style.width = "0%";
+      ptxt.textContent = "0%";
+      progressTimer = setInterval(() => {
+        // Incrementos irregulares para que parezca "de verdad"
+        const step = Math.floor(2 + Math.random() * 6);
+        progress = Math.min(100, progress + step);
+        fill.style.width = progress + "%";
+        ptxt.textContent = progress + "%";
+        if (progress >= 100) {
+          clearInterval(progressTimer);
+          ptxt.textContent = "100% • Completado";
+        }
+      }, 180);
+    }
+
+    function stopMatrixOverlay() {
+      overlay.classList.remove('show');
+      if (matrixAnimId) {
+        cancelAnimationFrame(matrixAnimId);
+        matrixAnimId = null;
+      }
+      if (progressTimer) {
+        clearInterval(progressTimer);
+        progressTimer = null;
+      }
+      mctx.clearRect(0, 0, mtx.width, mtx.height);
+    }
+  </script>
+
   <script src="touch-controls.js"></script>
 </body>
 </html>
