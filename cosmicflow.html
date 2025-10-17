@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cosmic Flow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: 'Press Start 2P', system-ui, sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 1.5rem;
+      padding: clamp(12px, 2vw, 32px);
+      background: radial-gradient(circle at 20% 20%, #23396b, #050611 70%);
+      color: #f2f6ff;
+    }
+    h1 {
+      margin-top: 1rem;
+      font-size: clamp(1.5rem, 4vw, 2.5rem);
+      text-align: center;
+      text-shadow: 0 0 12px rgba(99, 167, 255, 0.6);
+    }
+    .hud {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      background: rgba(13, 20, 51, 0.6);
+      border: 2px solid rgba(123, 195, 255, 0.5);
+      border-radius: 16px;
+      padding: 1rem 1.5rem;
+      box-shadow: 0 0 20px rgba(80, 140, 255, 0.25);
+      backdrop-filter: blur(6px);
+    }
+    .hud span { font-size: clamp(0.65rem, 1.6vw, 0.9rem); }
+    canvas {
+      width: min(90vw, 720px);
+      aspect-ratio: 16 / 9;
+      border-radius: 20px;
+      border: 2px solid rgba(129, 209, 255, 0.5);
+      background: linear-gradient(160deg, rgba(6, 12, 31, 0.95), rgba(11, 31, 66, 0.8));
+      box-shadow: 0 0 35px rgba(85, 160, 255, 0.25);
+      touch-action: none;
+    }
+    .instructions {
+      max-width: min(90vw, 720px);
+      line-height: 1.8;
+      font-size: clamp(0.7rem, 1.8vw, 0.95rem);
+      text-align: left;
+      background: rgba(8, 14, 35, 0.65);
+      border-radius: 18px;
+      border: 2px solid rgba(104, 174, 255, 0.3);
+      padding: 1.25rem;
+    }
+    .instructions strong { color: #80d6ff; }
+    button {
+      appearance: none;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 999px;
+      font-family: inherit;
+      font-size: clamp(0.7rem, 2vw, 1rem);
+      background: linear-gradient(120deg, #4dd0ff, #726bff);
+      color: #02030a;
+      cursor: pointer;
+      box-shadow: 0 0 18px rgba(90, 150, 255, 0.4);
+      transition: transform 0.2s ease, filter 0.2s ease;
+    }
+    button:focus-visible {
+      outline: 3px solid #f8ff95;
+      outline-offset: 4px;
+    }
+    button:hover { transform: translateY(-2px); filter: brightness(1.05); }
+  </style>
+</head>
+<body>
+  <h1>Cosmic Flow</h1>
+  <section class="hud" role="status" aria-live="polite">
+    <span>Puntuación: <strong id="score">0</strong></span>
+    <span>Multiplicador: <strong id="multiplier">x1</strong></span>
+    <span>Récord: <strong id="best">0</strong></span>
+    <button type="button" id="reset">Reiniciar</button>
+  </section>
+  <canvas id="board" width="960" height="540" role="img" aria-label="Nave esquivando corrientes de energía y recolectando cristales."></canvas>
+  <section class="instructions">
+    <p>Surfea el flujo cósmico, esquiva distorsiones y absorbe cristales para aumentar tu energía. Cuantos más recojas sin recibir daño, mayor será el multiplicador. Tras cada oleada, la velocidad del flujo aumenta.</p>
+    <p><strong>Controles:</strong> WASD o flechas para moverte, barra espaciadora o doble toque para activar un impulso breve que atraviesa distorsiones. En móviles arrastra el dedo para moverte y toca rápidamente para impulsarte.</p>
+  </section>
+  <script>
+    (() => {
+      const canvas = document.getElementById('board');
+      const ctx = canvas.getContext('2d');
+      const scoreEl = document.getElementById('score');
+      const bestEl = document.getElementById('best');
+      const multEl = document.getElementById('multiplier');
+      const resetBtn = document.getElementById('reset');
+
+      let width, height, dpr;
+      const storedBest = Number(localStorage.getItem('cosmic-flow-best') || '0');
+      let bestScore = storedBest;
+      bestEl.textContent = storedBest.toString();
+
+      function resize() {
+        dpr = window.devicePixelRatio || 1;
+        width = canvas.clientWidth * dpr;
+        height = canvas.clientHeight * dpr;
+        canvas.width = width;
+        canvas.height = height;
+      }
+      resize();
+      window.addEventListener('resize', resize);
+
+      const pointer = { active: false, x: 0, y: 0 };
+      let keys = new Set();
+      let animationId;
+
+      const player = {
+        x: width * 0.1,
+        y: height * 0.5,
+        vx: 0,
+        vy: 0,
+        radius: Math.min(width, height) * 0.03,
+        baseSpeed: () => Math.min(width, height) * 0.0009,
+        dashPower: () => Math.min(width, height) * 0.02,
+        dashCooldown: 0,
+        trail: []
+      };
+
+      const crystals = [];
+      const distortions = [];
+      let score = 0;
+      let multiplier = 1;
+      let difficulty = 1;
+      let spawnTimer = 0;
+      let distortionTimer = 0;
+      let gameOver = false;
+
+      function resetGame() {
+        score = 0;
+        multiplier = 1;
+        difficulty = 1;
+        spawnTimer = 0;
+        distortionTimer = 0;
+        gameOver = false;
+        player.x = width * 0.2;
+        player.y = height * 0.5;
+        player.vx = 0;
+        player.vy = 0;
+        player.trail = [];
+        player.dashCooldown = 0;
+        crystals.length = 0;
+        distortions.length = 0;
+        scoreEl.textContent = '0';
+        multEl.textContent = 'x1';
+        cancelAnimationFrame(animationId);
+        loop(0);
+      }
+
+      resetBtn.addEventListener('click', resetGame);
+
+      function spawnCrystal() {
+        const radius = Math.min(width, height) * 0.02;
+        crystals.push({
+          x: width + radius + Math.random() * radius,
+          y: radius + Math.random() * (height - radius * 2),
+          radius,
+          energy: 5 + Math.floor(Math.random() * 4),
+          drift: (Math.random() - 0.5) * Math.min(width, height) * 0.0008
+        });
+      }
+
+      function spawnDistortion() {
+        const size = Math.min(width, height) * (0.05 + Math.random() * 0.08);
+        distortions.push({
+          x: width + size,
+          y: size + Math.random() * (height - size * 2),
+          w: size,
+          h: size * (0.6 + Math.random() * 0.8),
+          pulse: Math.random() * Math.PI * 2,
+          damage: 1
+        });
+      }
+
+      function drawBackground(time) {
+        ctx.save();
+        const gradient = ctx.createLinearGradient(0, 0, width, height);
+        gradient.addColorStop(0, '#050919');
+        gradient.addColorStop(1, '#0a1f3c');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, width, height);
+
+        ctx.globalAlpha = 0.4;
+        for (let i = 0; i < 60; i++) {
+          const x = (time * 0.02 + i * width / 60) % width;
+          const y = (i * 97) % height;
+          const size = (i % 7) + 1;
+          ctx.fillStyle = `rgba(140, 200, 255, ${0.1 + (i % 5) * 0.08})`;
+          ctx.beginPath();
+          ctx.arc(width - x, y, size, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      function handleInput(delta) {
+        const accel = player.baseSpeed() * (delta / 16.67);
+        if (pointer.active) {
+          const dx = pointer.x - player.x;
+          const dy = pointer.y - player.y;
+          player.vx += Math.sign(dx) * accel;
+          player.vy += Math.sign(dy) * accel;
+        } else {
+          if (keys.has('ArrowUp') || keys.has('KeyW')) player.vy -= accel;
+          if (keys.has('ArrowDown') || keys.has('KeyS')) player.vy += accel;
+          if (keys.has('ArrowLeft') || keys.has('KeyA')) player.vx -= accel;
+          if (keys.has('ArrowRight') || keys.has('KeyD')) player.vx += accel;
+        }
+
+        player.vx *= 0.94;
+        player.vy *= 0.94;
+        player.x = Math.max(player.radius, Math.min(width - player.radius, player.x + player.vx));
+        player.y = Math.max(player.radius, Math.min(height - player.radius, player.y + player.vy));
+
+        if (player.dashCooldown > 0) {
+          player.dashCooldown -= delta;
+        }
+      }
+
+      function activateDash() {
+        if (player.dashCooldown > 0 || gameOver) return;
+        const dash = player.dashPower();
+        player.vx += dash;
+        player.dashCooldown = 1800;
+        multiplier = Math.min(10, multiplier + 1);
+        multEl.textContent = `x${multiplier}`;
+      }
+
+      function updateCrystals(delta) {
+        const speed = Math.min(width, height) * (0.002 + difficulty * 0.0004);
+        for (let i = crystals.length - 1; i >= 0; i--) {
+          const c = crystals[i];
+          c.x -= speed * (delta / 16.67);
+          c.y += c.drift * (delta / 16.67);
+          if (c.x < -c.radius) {
+            crystals.splice(i, 1);
+            multiplier = 1;
+            multEl.textContent = 'x1';
+            continue;
+          }
+          const dx = c.x - player.x;
+          const dy = c.y - player.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist < c.radius + player.radius) {
+            score += c.energy * multiplier;
+            scoreEl.textContent = score.toString();
+            crystals.splice(i, 1);
+            multiplier = Math.min(10, multiplier + 1);
+            multEl.textContent = `x${multiplier}`;
+            if (score > bestScore) {
+              bestScore = score;
+              bestEl.textContent = bestScore.toString();
+              localStorage.setItem('cosmic-flow-best', String(bestScore));
+            }
+          }
+        }
+      }
+
+      function updateDistortions(delta) {
+        const speed = Math.min(width, height) * (0.003 + difficulty * 0.0005);
+        for (let i = distortions.length - 1; i >= 0; i--) {
+          const d = distortions[i];
+          d.x -= speed * (delta / 16.67);
+          d.pulse += delta * 0.004;
+          if (d.x + d.w < 0) {
+            distortions.splice(i, 1);
+            continue;
+          }
+          const px = Math.max(d.x, Math.min(player.x, d.x + d.w));
+          const py = Math.max(d.y, Math.min(player.y, d.y + d.h));
+          const dx = player.x - px;
+          const dy = player.y - py;
+          if (dx * dx + dy * dy < player.radius * player.radius) {
+            gameOver = true;
+            multiplier = 1;
+            multEl.textContent = 'x1';
+            break;
+          }
+        }
+      }
+
+      function drawPlayer(time) {
+        player.trail.unshift({ x: player.x, y: player.y, life: 1 });
+        if (player.trail.length > 40) player.trail.pop();
+
+        ctx.save();
+        for (let i = 0; i < player.trail.length; i++) {
+          const t = player.trail[i];
+          const alpha = (1 - i / player.trail.length) * 0.4;
+          ctx.fillStyle = `rgba(110, 200, 255, ${alpha})`;
+          ctx.beginPath();
+          ctx.arc(t.x, t.y, player.radius * (0.4 + (1 - i / player.trail.length) * 0.6), 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        ctx.fillStyle = '#f6fffa';
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.lineWidth = Math.max(2, player.radius * 0.2);
+        ctx.strokeStyle = '#6ce7ff';
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, player.radius * 1.4, Math.sin(time * 0.005), Math.PI * 2 + Math.sin(time * 0.005));
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function drawCrystals(time) {
+        crystals.forEach((c, idx) => {
+          const glow = 0.35 + (idx % 5) * 0.1;
+          ctx.save();
+          ctx.translate(c.x, c.y);
+          ctx.rotate(time * 0.001 + idx);
+          ctx.fillStyle = `rgba(120, 220, 255, ${glow})`;
+          ctx.beginPath();
+          for (let i = 0; i < 6; i++) {
+            const angle = (Math.PI * 2 * i) / 6;
+            const radius = c.radius * (i % 2 === 0 ? 0.6 : 1);
+            ctx.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
+          }
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        });
+      }
+
+      function drawDistortions(time) {
+        distortions.forEach(d => {
+          const wobble = Math.sin(d.pulse) * d.w * 0.1;
+          ctx.save();
+          ctx.translate(d.x + d.w / 2, d.y + d.h / 2);
+          ctx.rotate(Math.sin(time * 0.001 + d.pulse) * 0.15);
+          ctx.strokeStyle = 'rgba(255, 120, 170, 0.8)';
+          ctx.lineWidth = Math.max(3, d.w * 0.08);
+          ctx.beginPath();
+          ctx.rect(-d.w / 2 - wobble, -d.h / 2 - wobble, d.w + wobble * 2, d.h + wobble * 2);
+          ctx.stroke();
+          ctx.restore();
+        });
+      }
+
+      function loop(time) {
+        animationId = requestAnimationFrame(loop);
+        const delta = Math.min(50, animationId ? time - (loop.lastTime || time) : 16.67);
+        loop.lastTime = time;
+
+        drawBackground(time);
+        if (!gameOver) {
+          handleInput(delta);
+          player.dashCooldown = Math.max(0, player.dashCooldown - delta);
+          spawnTimer -= delta;
+          distortionTimer -= delta;
+          if (spawnTimer <= 0) {
+            spawnCrystal();
+            spawnTimer = Math.max(350 - difficulty * 8, 180);
+          }
+          if (distortionTimer <= 0) {
+            spawnDistortion();
+            distortionTimer = Math.max(900 - difficulty * 20, 400);
+          }
+          updateCrystals(delta);
+          updateDistortions(delta);
+          difficulty += delta * 0.0002;
+        } else {
+          ctx.fillStyle = 'rgba(5, 10, 25, 0.74)';
+          ctx.fillRect(0, 0, width, height);
+          ctx.fillStyle = '#ffb4e6';
+          ctx.textAlign = 'center';
+          ctx.font = `${Math.max(28, width * 0.04)}px 'Press Start 2P', monospace`;
+          ctx.fillText('Flujo interrumpido', width / 2, height / 2 - 30);
+          ctx.font = `${Math.max(18, width * 0.025)}px 'Press Start 2P', monospace`;
+          ctx.fillText('Pulsa reiniciar', width / 2, height / 2 + 20);
+        }
+
+        drawCrystals(time);
+        drawDistortions(time);
+        drawPlayer(time);
+      }
+
+      loop(0);
+
+      window.addEventListener('keydown', e => {
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(e.code)) {
+          e.preventDefault();
+        }
+        if (e.code === 'Space') activateDash();
+        keys.add(e.code);
+        if (gameOver && e.code === 'Space') resetGame();
+      });
+      window.addEventListener('keyup', e => keys.delete(e.code));
+
+      canvas.addEventListener('pointerdown', e => {
+        pointer.active = true;
+        const rect = canvas.getBoundingClientRect();
+        pointer.x = (e.clientX - rect.left) * (width / rect.width);
+        pointer.y = (e.clientY - rect.top) * (height / rect.height);
+        const now = performance.now();
+        if (!activateDash.lastTap || now - activateDash.lastTap < 300) {
+          activateDash();
+        }
+        activateDash.lastTap = now;
+      });
+      canvas.addEventListener('pointermove', e => {
+        if (!pointer.active) return;
+        const rect = canvas.getBoundingClientRect();
+        pointer.x = (e.clientX - rect.left) * (width / rect.width);
+        pointer.y = (e.clientY - rect.top) * (height / rect.height);
+      });
+      canvas.addEventListener('pointerup', () => { pointer.active = false; });
+      canvas.addEventListener('pointerleave', () => { pointer.active = false; });
+    })();
+  </script>
+</body>
+</html>

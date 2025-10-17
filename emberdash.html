@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ember Dash</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: 'Press Start 2P', system-ui;
+      --cell-size: clamp(36px, 9vw, 72px);
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: clamp(14px, 3vw, 28px);
+      padding: clamp(12px, 2.5vw, 36px);
+      background: radial-gradient(circle at 40% 20%, #3d1b25, #060208 70%);
+      color: #ffe3d9;
+    }
+    h1 { margin-top: 8px; font-size: clamp(1.6rem, 4vw, 2.5rem); text-shadow: 0 0 16px rgba(255, 140, 97, 0.6); }
+    .hud {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: clamp(12px, 2vw, 24px);
+      padding: clamp(12px, 2vw, 24px);
+      background: rgba(36, 12, 16, 0.65);
+      border-radius: 18px;
+      border: 2px solid rgba(255, 140, 97, 0.4);
+      box-shadow: 0 0 24px rgba(255, 98, 59, 0.25);
+    }
+    .hud span { font-size: clamp(0.65rem, 1.7vw, 0.95rem); }
+    .arena {
+      display: grid;
+      grid-template-columns: repeat(7, var(--cell-size));
+      grid-auto-rows: var(--cell-size);
+      gap: clamp(6px, 1.4vw, 12px);
+      padding: clamp(12px, 2vw, 24px);
+      border-radius: 22px;
+      border: 2px solid rgba(255, 168, 122, 0.45);
+      background: rgba(26, 8, 10, 0.6);
+      backdrop-filter: blur(6px);
+    }
+    button.cell {
+      appearance: none;
+      border: none;
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      font-family: inherit;
+      font-size: clamp(0.6rem, 2vw, 0.9rem);
+      color: #240103;
+      cursor: pointer;
+      transition: transform 0.16s ease, filter 0.2s ease;
+      position: relative;
+    }
+    button.cell:focus-visible { outline: 3px solid #ffe6b3; outline-offset: 4px; }
+    .cell[data-type="ember"] { background: radial-gradient(circle, #ffddb7, #ff843d); box-shadow: 0 0 20px rgba(255, 132, 61, 0.45); }
+    .cell[data-type="wall"] { background: linear-gradient(135deg, #441722, #1b050a); color: #ff9c72; }
+    .cell[data-type="empty"] { background: linear-gradient(135deg, #1e070b, #100206); color: #ffbca0; }
+    .cell[data-type="player"] { background: radial-gradient(circle, #fff6eb, #ffd170); box-shadow: 0 0 22px rgba(255, 214, 112, 0.5); }
+    .cell[data-type="storm"] { background: radial-gradient(circle, #ff9696, #991b2f); color: #ffd8d8; animation: pulse 1s infinite alternate ease-in-out; }
+
+    @keyframes pulse {
+      from { filter: brightness(0.9); }
+      to { filter: brightness(1.2); }
+    }
+
+    .instructions {
+      max-width: min(92vw, 640px);
+      background: rgba(24, 7, 10, 0.65);
+      border-radius: 18px;
+      border: 1px solid rgba(255, 166, 120, 0.35);
+      padding: clamp(14px, 2.5vw, 28px);
+      line-height: 1.8;
+      font-size: clamp(0.7rem, 1.8vw, 0.95rem);
+    }
+    .actions { display: flex; gap: 12px; justify-content: center; }
+    button.action {
+      background: linear-gradient(120deg, #ffb561, #ff5b4c);
+      color: #2c0207;
+      border: none;
+      border-radius: 999px;
+      padding: 0.7rem 1.6rem;
+      font-size: clamp(0.65rem, 2vw, 0.95rem);
+      cursor: pointer;
+      transition: transform 0.2s ease, filter 0.2s ease;
+      box-shadow: 0 0 20px rgba(255, 140, 97, 0.35);
+    }
+    button.action:hover { transform: translateY(-2px); filter: brightness(1.1); }
+    button.action:focus-visible { outline: 3px solid #ffe6b3; outline-offset: 4px; }
+  </style>
+</head>
+<body>
+  <h1>Ember Dash</h1>
+  <div class="hud" role="status" aria-live="polite">
+    <span>Ronda: <strong id="round">1</strong></span>
+    <span>Rescate: <strong id="rescued">0</strong></span>
+    <span>Récord: <strong id="best">0</strong></span>
+    <span>Turnos: <strong id="turns">0</strong></span>
+  </div>
+  <div class="arena" id="arena" role="grid" aria-label="Santuario con brasas por rescatar"></div>
+  <section class="instructions">
+    <p>Despierta cada brasa sagrada antes de que la tormenta ígnea destruya el santuario. Cada ronda añade más muros y tormentas móviles. Las tormentas se desplazan tras tu jugada y consumen una brasa si la alcanzan.</p>
+    <p><strong>Controles:</strong> Usa WASD, las flechas o toca las casillas adyacentes para moverte. Mantén pulsada la barra espaciadora o toca una brasa desde lejos para planear una carrera doble. El modo accesible usa botones táctiles visibles al tocar la pantalla.</p>
+    <div class="actions">
+      <button type="button" class="action" id="reset">Reiniciar</button>
+      <button type="button" class="action" id="access">Alternar accesibilidad</button>
+    </div>
+  </section>
+  <script>
+    (() => {
+      const arenaEl = document.getElementById('arena');
+      const roundEl = document.getElementById('round');
+      const rescuedEl = document.getElementById('rescued');
+      const bestEl = document.getElementById('best');
+      const turnsEl = document.getElementById('turns');
+      const resetBtn = document.getElementById('reset');
+      const accessBtn = document.getElementById('access');
+
+      const size = 7;
+      let grid = [];
+      let player = { x: 3, y: 6, dash: false };
+      let storms = [];
+      let rescued = 0;
+      let best = Number(localStorage.getItem('ember-dash-best') || '0');
+      let round = 1;
+      let turns = 0;
+      let accessible = false;
+
+      bestEl.textContent = String(best);
+
+      function initGrid() {
+        grid = Array.from({ length: size }, () => Array.from({ length: size }, () => 'empty'));
+        storms = [];
+        player = { x: Math.floor(size / 2), y: size - 1, dash: false };
+        placeWalls();
+        placeEmbers();
+        placeStorms();
+        draw();
+      }
+
+      function placeWalls() {
+        for (let i = 0; i < round + 4; i++) {
+          const x = Math.floor(Math.random() * size);
+          const y = Math.floor(Math.random() * (size - 2));
+          if ((x === player.x && y === player.y) || grid[y][x] !== 'empty') { i--; continue; }
+          grid[y][x] = 'wall';
+        }
+      }
+
+      function placeEmbers() {
+        for (let i = 0; i < 3 + Math.floor(round / 2); i++) {
+          const x = Math.floor(Math.random() * size);
+          const y = Math.floor(Math.random() * (size - 1));
+          if (grid[y][x] === 'empty') grid[y][x] = 'ember'; else i--;
+        }
+      }
+
+      function placeStorms() {
+        const count = Math.min(3 + Math.floor(round / 2), size - 1);
+        for (let i = 0; i < count; i++) {
+          const x = Math.floor(Math.random() * size);
+          const y = Math.floor(Math.random() * (size - 2));
+          if (grid[y][x] !== 'empty') { i--; continue; }
+          grid[y][x] = 'storm';
+          storms.push({ x, y });
+        }
+      }
+
+      function draw() {
+        arenaEl.textContent = '';
+        grid.forEach((row, y) => {
+          row.forEach((cell, x) => {
+            const button = document.createElement('button');
+            button.className = 'cell';
+            let type = cell;
+            if (player.x === x && player.y === y) type = 'player';
+            button.dataset.type = type;
+            button.dataset.x = String(x);
+            button.dataset.y = String(y);
+            button.setAttribute('role', 'gridcell');
+            button.setAttribute('aria-label', labelForCell(type, x, y));
+            if (accessible && isAdjacent(x, y)) {
+              button.textContent = '▶';
+            } else if (type === 'ember') {
+              button.textContent = '🔥';
+            } else if (type === 'storm') {
+              button.textContent = '⚡';
+            } else if (type === 'player') {
+              button.textContent = '🜂';
+            }
+            button.addEventListener('click', () => handleTap(x, y));
+            arenaEl.appendChild(button);
+          });
+        });
+        roundEl.textContent = String(round);
+        rescuedEl.textContent = String(rescued);
+        turnsEl.textContent = String(turns);
+      }
+
+      function labelForCell(type, x, y) {
+        const labels = {
+          ember: 'Brasa por salvar',
+          wall: 'Columna quebrada',
+          empty: 'Suelo estable',
+          player: 'Guardiana',
+          storm: 'Tormenta peligrosa'
+        };
+        return `${labels[type]} en fila ${y + 1}, columna ${x + 1}`;
+      }
+
+      function isAdjacent(x, y) {
+        const dx = Math.abs(x - player.x);
+        const dy = Math.abs(y - player.y);
+        return dx + dy === 1 || (player.dash && (dx === 0 || dy === 0) && (dx + dy) === 2);
+      }
+
+      function handleTap(x, y) {
+        if (!isAdjacent(x, y)) {
+          player.dash = true;
+          return;
+        }
+        movePlayer(x, y);
+      }
+
+      function movePlayer(x, y) {
+        const target = grid[y][x];
+        if (target === 'wall') return;
+        const dashMove = Math.abs(x - player.x) + Math.abs(y - player.y) === 2;
+        if (dashMove && !player.dash) return;
+        player.x = x;
+        player.y = y;
+        player.dash = false;
+        turns++;
+        if (target === 'ember') {
+          rescued++;
+          if (rescued > best) {
+            best = rescued;
+            bestEl.textContent = String(best);
+            localStorage.setItem('ember-dash-best', String(best));
+          }
+        }
+        if (target === 'storm') {
+          rescued = Math.max(0, rescued - 1);
+        }
+        grid[y][x] = 'empty';
+        storms.forEach(storm => {
+          if (storm.x === x && storm.y === y) {
+            storm.x = -1;
+            storm.y = -1;
+          }
+        });
+        advanceStorms();
+        if (!hasEmbers()) nextRound();
+        draw();
+      }
+
+      function advanceStorms() {
+        storms = storms.filter(storm => storm.x >= 0);
+        storms.forEach(storm => {
+          const dirs = shuffle([[1,0],[-1,0],[0,1],[0,-1]]);
+          for (const [dx, dy] of dirs) {
+            const nx = storm.x + dx;
+            const ny = storm.y + dy;
+            if (nx < 0 || ny < 0 || nx >= size || ny >= size - 1) continue;
+            if (nx === player.x && ny === player.y) continue;
+            if (grid[ny][nx] === 'wall') continue;
+            if (grid[ny][nx] === 'storm') continue;
+            if (grid[ny][nx] === 'ember') {
+              grid[ny][nx] = 'empty';
+              rescued = Math.max(0, rescued - 1);
+            }
+            grid[storm.y][storm.x] = 'empty';
+            storm.x = nx;
+            storm.y = ny;
+            grid[ny][nx] = 'storm';
+            break;
+          }
+        });
+      }
+
+      function hasEmbers() {
+        return grid.some(row => row.includes('ember'));
+      }
+
+      function nextRound() {
+        round++;
+        grid = Array.from({ length: size }, () => Array.from({ length: size }, () => 'empty'));
+        storms = [];
+        player = { x: Math.floor(size / 2), y: size - 1, dash: false };
+        placeWalls();
+        placeEmbers();
+        placeStorms();
+      }
+
+      function shuffle(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
+      }
+
+      function toggleAccessibility() {
+        accessible = !accessible;
+        draw();
+      }
+
+      function resetGame() {
+        rescued = 0;
+        round = 1;
+        turns = 0;
+        player.dash = false;
+        initGrid();
+      }
+
+      resetBtn.addEventListener('click', resetGame);
+      accessBtn.addEventListener('click', toggleAccessibility);
+
+      const keyMap = {
+        ArrowUp: [0, -1],
+        ArrowDown: [0, 1],
+        ArrowLeft: [-1, 0],
+        ArrowRight: [1, 0],
+        KeyW: [0, -1],
+        KeyS: [0, 1],
+        KeyA: [-1, 0],
+        KeyD: [1, 0]
+      };
+
+      window.addEventListener('keydown', e => {
+        if (e.code === 'Space') {
+          player.dash = true;
+          e.preventDefault();
+          return;
+        }
+        const move = keyMap[e.code];
+        if (!move) return;
+        e.preventDefault();
+        const [dx, dy] = move;
+        const targetX = player.x + dx + (player.dash ? dx : 0);
+        const targetY = player.y + dy + (player.dash ? dy : 0);
+        if (targetX < 0 || targetY < 0 || targetX >= size || targetY >= size) {
+          player.dash = false;
+          return;
+        }
+        movePlayer(targetX, targetY);
+      });
+
+      window.addEventListener('keyup', e => {
+        if (e.code === 'Space') {
+          player.dash = false;
+        }
+      });
+
+      initGrid();
+    })();
+  </script>
+</body>
+</html>
