@@ -52,6 +52,13 @@
     #bottom-controls button:hover {
       background-color: #007a3d;
     }
+    #result {
+      margin-top: 25px;
+      padding: 15px;
+      border-radius: 8px;
+      background-color: #eef9ff;
+      border: 1px solid #0077cc;
+    }
   </style>
 </head>
 <body>
@@ -78,6 +85,8 @@ Finalment, avui mateix hem celebrat discretament els resultats: sincerament, est
     <button id="check-all">Corregir</button>
     <button id="reset">Reinicia</button>
   </div>
+
+  <div id="result"></div>
 
   <script>
     const btnAdv = document.getElementById('mode-adverbs');
@@ -113,24 +122,43 @@ Finalment, avui mateix hem celebrat discretament els resultats: sincerament, est
         span.classList.remove('selected','correct','incorrect');
         span.style.backgroundColor = '';
       });
+      document.getElementById('result').innerHTML = '';
     };
 
     document.getElementById('check-all').onclick = () => {
       const list = answers.adverbis;
+      let correct = 0;
+      let totalAdverbs = 0;
+      let selectedCount = 0;
+
       document.querySelectorAll('.word').forEach(span => {
         const word = span.dataset.word;
+        const isAdverb = list.includes(word);
+        if (isAdverb) totalAdverbs++;
         if (span.classList.contains('selected')) {
-          if (list.includes(word)) {
+          selectedCount++;
+          if (isAdverb) {
             span.classList.remove('selected');
             span.classList.add('correct');
+            correct++;
           } else {
             span.classList.remove('selected');
             span.classList.add('incorrect');
           }
-        } else if (list.includes(word)) {
+        } else if (isAdverb) {
           span.classList.add('incorrect');
         }
       });
+
+      const score = totalAdverbs ? Math.round((correct / totalAdverbs) * 100) : 0;
+      const resultBox = document.getElementById('result');
+      resultBox.innerHTML = `<h2>Resultats</h2>
+        <p><strong>Adverbis totals:</strong> ${totalAdverbs}</p>
+        <p><strong>Seleccionats:</strong> ${selectedCount}</p>
+        <p><strong>Encerts:</strong> ${correct}</p>
+        <p><strong>Puntuació:</strong> ${score}%</p>
+        <h3>Respostes correctes:</h3>
+        <p>${list.join(', ')}</p>`;
     };
 
     btnAdv.click();
