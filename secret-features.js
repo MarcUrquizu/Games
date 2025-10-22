@@ -134,7 +134,7 @@
   const features = {
     '2048': {
       name: '2048',
-      code: 'fusiona',
+      code: '4821',
       description: 'Genera un bloque de 256 y ralentiza la partida durante tres turnos.',
       activate() {
         if (typeof grid === 'undefined' || typeof render !== 'function') return;
@@ -173,7 +173,7 @@
     },
     '3ratlla': {
       name: '3 en raya',
-      code: 'trio',
+      code: '7035',
       description: 'Activa el radar que marca tus mejores casillas de victoria inmediata.',
       activate() {
         helpers.ensureBaseStyles();
@@ -204,7 +204,7 @@
     },
     '4rayagpt': {
       name: '4 en raya',
-      code: 'linea',
+      code: '1569',
       description: 'Ilumina las columnas que te dan la victoria al caer la ficha.',
       activate() {
         helpers.ensureBaseStyles();
@@ -234,7 +234,7 @@
     },
     'Clickometeor': {
       name: 'Color Snipe',
-      code: 'prisma',
+      code: '9182',
       description: 'Congela el tiempo y señala el color correcto durante esta ronda.',
       activate() {
         helpers.ensureBaseStyles();
@@ -253,7 +253,7 @@
     },
     'adivinanum': {
       name: 'Adivina el número',
-      code: 'oraculo',
+      code: '6743',
       description: 'Revela una pista precisa sobre el número secreto.',
       activate() {
         if (typeof secretNumber === 'undefined') return;
@@ -265,7 +265,7 @@
     },
     'ahorcado': {
       name: 'Ahorcado',
-      code: 'rescate',
+      code: '8217',
       description: 'Revela automáticamente una letra aleatoria que aún no hayas descubierto.',
       activate() {
         if (typeof palabra === 'undefined' || typeof letrasAdivinadas === 'undefined') return;
@@ -284,7 +284,7 @@
     },
     'Godshot': {
       name: 'God Shot',
-      code: 'halcon',
+      code: '5408',
       description: 'Tus objetivos rojos brillan y las unidades verdes quedan marcadas como prohibidas.',
       activate() {
         helpers.ensureBaseStyles();
@@ -314,7 +314,7 @@
     },
     'Laberintocursor': {
       name: 'Laberinto del cursor',
-      code: 'fantasma',
+      code: '3974',
       description: 'Neutraliza el jumpscare y añade un halo protector al cursor.',
       activate() {
         helpers.ensureBaseStyles();
@@ -343,7 +343,7 @@
     },
     'laberinto': {
       name: 'Laberinto',
-      code: 'sendero',
+      code: '2635',
       description: 'Revela el camino óptimo hacia la salida en el nivel actual.',
       activate() {
         helpers.ensureBaseStyles();
@@ -393,7 +393,7 @@
     },
     'laberinto2': {
       name: 'Laberinto 2',
-      code: 'claridad',
+      code: '7496',
       description: 'Amplía tu campo de visión y marca el objetivo con un faro verde.',
       activate() {
         if (typeof draw !== 'function' || typeof ctx === 'undefined') return;
@@ -425,7 +425,7 @@
     },
     'memory': {
       name: 'Memory',
-      code: 'fotografica',
+      code: '3187',
       description: 'Memoriza todas las cartas mostrando la cara unos segundos.',
       activate() {
         if (typeof board === 'undefined') return;
@@ -445,7 +445,7 @@
     },
     'simondice': {
       name: 'Simon Dice',
-      code: 'eco',
+      code: '4520',
       description: 'Resalta automáticamente el próximo color que debes pulsar.',
       activate() {
         helpers.ensureBaseStyles();
@@ -485,7 +485,7 @@
     },
     'pingpong': {
       name: 'Breakout',
-      code: 'rebote',
+      code: '6391',
       description: 'Convierte tus pelotas en bolas prismáticas indestructibles por un tiempo.',
       activate() {
         if (!Array.isArray(balls)) return;
@@ -498,7 +498,7 @@
     },
     'asteroides': {
       name: 'Galaxy Collector',
-      code: 'orbita',
+      code: '2874',
       description: 'Invoca estrellas adicionales que orbitan cerca de tu nave.',
       activate() {
         if (typeof spawnStar !== 'function') return;
@@ -513,7 +513,7 @@
     },
     'flsppybird': {
       name: 'Flappy Bird',
-      code: 'pluma',
+      code: '8640',
       description: 'Reduce la gravedad temporalmente para volar con mayor control.',
       activate() {
         if (typeof gravity === 'undefined') return;
@@ -524,7 +524,7 @@
     },
     'Snake': {
       name: 'Snake',
-      code: 'escama',
+      code: '9156',
       description: 'Activa turbo y limpia los obstáculos del tablero.',
       activate() {
         if (typeof speed !== 'undefined') speed = Math.max(60, speed - 100);
@@ -537,7 +537,7 @@
     },
     'Sacos': {
       name: 'Sacos',
-      code: 'tesoro',
+      code: '7042',
       description: 'Revela el rango exacto de valores que esconden los sacos.',
       activate() {
         if (!window.__sacosSecret) return;
@@ -548,7 +548,7 @@
     },
     'brakeautnulls': {
       name: 'Null\'s Breakout',
-      code: 'tormenta',
+      code: '5713',
       description: 'Convierte todas las bolas en rayos arcoíris súper potentes.',
       activate() {
         if (!Array.isArray(balls)) return;
@@ -561,7 +561,7 @@
     },
     'catala': {
       name: 'Gramàtica catalana',
-      code: 'accent',
+      code: '8342',
       description: 'Muestra una pista rápida con la respuesta correcta actual.',
       activate() {
         if (typeof mostrarPista === 'function') {
@@ -574,7 +574,7 @@
     },
     'catala2': {
       name: 'Català 2',
-      code: 'rodola',
+      code: '6207',
       description: 'Activa el modo estudio con una explicación extra.',
       activate() {
         helpers.showOverlay('Mode estudi', 'Recorda: els pronoms febles van abans del verb en forma personal.');
@@ -582,7 +582,7 @@
     },
     'clicker': {
       name: 'Italian brainrot clicker',
-      code: 'espresso',
+      code: '7591',
       description: 'Multiplica temporalmente tus clics por diez.',
       activate() {
         if (typeof puntos === 'undefined') return;
@@ -594,7 +594,7 @@
     },
     'enduro': {
       name: 'Enduro',
-      code: 'nitro',
+      code: '4683',
       description: 'Recarga la energía y despeja a los coches lentos cercanos.',
       activate() {
         if (window.car && typeof car.speed === 'number') {
@@ -609,7 +609,7 @@
     },
     'pcman': {
       name: 'Pcman',
-      code: 'chomp',
+      code: '2314',
       description: 'Congela a los fantasmas brevemente.',
       activate() {
         helpers.ensureBaseStyles();
@@ -632,7 +632,7 @@
     },
     'skyhooper': {
       name: 'Sky Hopper',
-      code: 'ascenso',
+      code: '8925',
       description: 'Genera una ráfaga de plataformas extra para tu salto.',
       activate() {
         if (Array.isArray(platforms) && typeof Platform === 'function') {
@@ -647,7 +647,7 @@
     },
     'sonic': {
       name: 'Sonic',
-      code: 'anillo',
+      code: '3468',
       description: 'Regala un escudo temporal y suma anillos bonus.',
       activate() {
         const counter = document.getElementById('rings');
