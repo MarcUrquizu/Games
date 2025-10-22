@@ -52,7 +52,7 @@
 
     /* === BOTÓN Y PANEL DEL MEMORY (pantalla completa) === */
     .mem-fab {
-      position: fixed; left: 16px; bottom: 16px;
+      position: fixed; left: 1160px; bottom: 16px;
       width: 56px; height: 56px; border-radius: 50%;
       display: grid; place-items: center;
       background: linear-gradient(180deg, #0077cc, #005fa3);
@@ -172,7 +172,7 @@ Finalment, avui mateix hem celebrat discretament els resultats: sincerament, est
   <div id="result"></div>
 
   <!-- Botó flotant -->
-  <button class="mem-fab" id="mem-fab" title="Obre el Memory">⬇</button>
+  <button class="mem-fab" id="mem-fab" title="Obre el Memory">⮕</button>
 
   <!-- Panell fullscreen -->
   <div class="mem-panel" id="mem-panel">
@@ -283,8 +283,8 @@ Finalment, avui mateix hem celebrat discretament els resultats: sincerament, est
       c.className='mem-card';
       c.dataset.id=id;c.dataset.kind=isType?'t':'w';
       c.innerHTML=`<div class="mem-inner">
-        <div class="mem-face mem-front"><span class="mem-tag ${isType?'mem-type':'mem-word'}">${isType?'Tipus':'Paraula'}</span></div>
-        <div class="mem-face mem-back"><span class="mem-tag ${isType?'mem-type':'mem-word'}">${isType?'Tipus':'Paraula'}</span>${label}</div>
+        <div class="mem-face mem-front"><span class="mem-tag ${isType?'mem-type':'mem-word'}">${isType?'':''}</span></div>
+        <div class="mem-face mem-back"><span class="mem-tag ${isType?'mem-type':'mem-word'}">${isType?'':''}</span>${label}</div>
       </div>`;
       c.onclick=()=>flip(c);
       return c;
