@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Joc d'Adverbis en Català</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      padding: 40px 20px;
+      background-color: #ffffff;
+      color: #111111;
+    }
+    h1 {
+      color: #003366;
+      text-align: center;
+    }
+    .controls { margin-bottom: 20px; text-align: center; }
+    .controls button {
+      margin: 5px;
+      padding: 10px 20px;
+      border: none;
+      cursor: pointer;
+      border-radius: 6px;
+      background-color: #0077cc;
+      color: white;
+      font-weight: bold;
+    }
+    .controls button:hover {
+      background-color: #005fa3;
+    }
+    .text-area {
+      border: 2px solid #0077cc;
+      padding: 20px;
+      border-radius: 10px;
+      white-space: pre-wrap;
+      background-color: #f8faff;
+      color: #111111;
+      font-size: 1.05em;
+    }
+    .word { cursor: pointer; transition: background-color 0.3s, text-decoration 0.3s; }
+    .selected { background-color: yellow; text-decoration: underline; }
+    .correct { background-color: #b2f5b2; text-decoration: underline; }
+    .incorrect { background-color: #ffb3b3; text-decoration: underline; }
+    #bottom-controls { margin-top: 20px; text-align: center; }
+    #bottom-controls button {
+      background-color: #00994d;
+      color: white;
+    }
+    #bottom-controls button:hover {
+      background-color: #007a3d;
+    }
+  </style>
+</head>
+<body>
+  <h1>Joc: Troba només els adverbis</h1>
+
+  <div class="controls">
+    <button id="mode-adverbs">Adverbis</button>
+  </div>
+
+  <div class="text-area" id="text-area">
+Avui, molt aviat, hem arribat puntualment a l'escola i, tranquil·lament, hem preparat el material.
+La Júlia parla bé gairebé sempre, però sovint respon massa ràpidament; jo, en canvi, escolto atentament i contesto més tard.
+Aquí tothom treballa bastant ordenadament: sovint revisem els apunts, i després corregim els errors clarament i pacíficament.
+Abans, alguns feien els exercicis lentament; ara, però, avancen molt més de pressa i gairebé mai s'aturen.
+Potser demà acabarem definitivament el projecte; si no, simplement continuarem tranquil·lament i exactament on érem.
+També practiquem fora, a la biblioteca: allà llegim llargament, anotem curosament i, finalment, resumim breument el que hem entès.
+Quan plou, normalment ens quedem dins; quan fa sol, sortim fora i treballem igualment bé.
+Encara hi ha qui només participa tímidament, però, progressivament, tothom s'hi implica més; aleshores, el grup funciona millor i, clarament, aprenem més ràpid.
+Rarament ens equivoquem greument perquè, habitualment, planifiquem prèviament i actuem responsablement.
+Finalment, avui mateix hem celebrat discretament els resultats: sincerament, estem molt contents!
+  </div>
+
+  <div id="bottom-controls">
+    <button id="check-all">Corregir</button>
+    <button id="reset">Reinicia</button>
+  </div>
+
+  <script>
+    const btnAdv = document.getElementById('mode-adverbs');
+    let currentMode = null;
+
+    function setMode(mode, btn) {
+      currentMode = mode;
+      btn.style.backgroundColor = '#00aa66';
+    }
+    btnAdv.onclick = () => setMode('adverbis', btnAdv);
+
+    const answers = {
+      adverbis: [
+        'avui','molt','aviat','puntualment','tranquil·lament','bé','gairebé','sempre','sovint','massa','ràpidament','atentament','més','tard','aquí','bastant','ordenadament','després','clarament','pacíficament','abans','lentament','ara','mai','potser','demà','definitivament','simplement','exactament','també','fora','allà','llargament','curosament','finalment','breument','normalment','dins','igualment','encara','només','tímidament','progressivament','aleshores','millor','ràpid','rarament','greument','habitualment','prèviament','responsablement','discretament','sincerament'
+      ]
+    };
+    answers.adverbis = Array.from(new Set(answers.adverbis));
+
+    const textEl = document.getElementById('text-area');
+    textEl.innerHTML = textEl.textContent.split(/(\s+)/).map(w => {
+      if (/^\s+$/.test(w)) return w;
+      const clean = w.replace(/[.,?!;:—–()\[\]«»"'’]/g, '').toLowerCase();
+      return `<span class="word" data-word="${clean}">${w}</span>`;
+    }).join('');
+
+    textEl.addEventListener('click', e => {
+      if (!e.target.classList.contains('word')) return;
+      e.target.classList.toggle('selected');
+    });
+
+    document.getElementById('reset').onclick = () => {
+      document.querySelectorAll('.word').forEach(span => {
+        span.classList.remove('selected','correct','incorrect');
+        span.style.backgroundColor = '';
+      });
+    };
+
+    document.getElementById('check-all').onclick = () => {
+      const list = answers.adverbis;
+      document.querySelectorAll('.word').forEach(span => {
+        const word = span.dataset.word;
+        if (span.classList.contains('selected')) {
+          if (list.includes(word)) {
+            span.classList.remove('selected');
+            span.classList.add('correct');
+          } else {
+            span.classList.remove('selected');
+            span.classList.add('incorrect');
+          }
+        } else if (list.includes(word)) {
+          span.classList.add('incorrect');
+        }
+      });
+    };
+
+    btnAdv.click();
+  </script>
+</body>
+</html>
