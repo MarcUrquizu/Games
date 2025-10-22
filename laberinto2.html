@@ -98,7 +98,7 @@
     }
   </style>
 </head>
-<body>
+<body data-game-key="laberinto2">
   <a href="index.html" class="menu-button game-buttons">Menu</a>
   <button class="help-button game-buttons" data-help="¡Escapa del laberinto con el menor número de tiempo posible!">Info</button>
   <div id="info">Nivel: 1 | Tiempo: 0s</div>
@@ -357,7 +357,8 @@
     window.addEventListener('resize', resizeCanvas);
     initLevel();
   </script>
-<script src="help-modal.js"></script>
+  <script src="secret-features.js"></script>
+  <script src="help-modal.js"></script>
   <script src="touch-controls.js"></script>
 </body>
 </html>

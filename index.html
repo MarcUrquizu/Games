@@ -158,6 +158,78 @@
       opacity: 0.6;
     }
     .show { display: flex !important; }
+
+    /* ===== Overlay de códigos secretos ===== */
+    #codesOverlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(2, 0, 20, 0.92);
+      z-index: 10000;
+      padding: 24px;
+    }
+    #codesOverlay.show { display: flex; }
+    .codes-panel {
+      max-width: 720px;
+      width: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      border: 2px solid #0ff;
+      border-radius: 18px;
+      padding: 28px 26px;
+      box-shadow: 0 0 24px rgba(0,255,255,0.45);
+      color: #bff;
+      font-family: 'Press Start 2P', cursive;
+    }
+    .codes-panel h2 {
+      margin-bottom: 18px;
+      font-size: 18px;
+      color: #0ff;
+      text-align: center;
+      text-shadow: 0 0 14px rgba(0,255,255,0.75);
+    }
+    .codes-panel p {
+      font-size: 11px;
+      line-height: 1.6;
+      margin-bottom: 18px;
+    }
+    .codes-panel ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      max-height: 320px;
+      overflow-y: auto;
+      border: 1px solid rgba(0,255,255,0.15);
+      border-radius: 12px;
+    }
+    .codes-panel li {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(0,255,255,0.12);
+    }
+    .codes-panel li:last-child { border-bottom: none; }
+    .codes-panel .game { color: #0ff; }
+    .codes-panel .code { font-weight: bold; color: #fff; }
+    .codes-panel .desc {
+      grid-column: 1 / -1;
+      font-size: 10px;
+      color: #8ff;
+      line-height: 1.5;
+    }
+    .codes-panel button {
+      margin-top: 22px;
+      margin-left: auto;
+      padding: 10px 16px;
+      font-size: 11px;
+      border: 2px solid #0ff;
+      border-radius: 10px;
+      background: transparent;
+      color: #0ff;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -205,6 +277,16 @@
     </div>
   </div>
 
+  <!-- ===== Overlay con listado de códigos ===== -->
+  <div id="codesOverlay" aria-hidden="true">
+    <div class="codes-panel">
+      <h2>Combinaciones secretas</h2>
+      <p>Pulsa la secuencia adecuada dentro de cada juego para desbloquear su poder oculto.</p>
+      <ul id="codesList"></ul>
+      <button type="button" id="closeCodes">Cerrar</button>
+    </div>
+  </div>
+
   <script>
     /* ===== Fondo de estrellas ===== */
     const canvas = document.getElementById('stars');
@@ -249,6 +331,8 @@
     }
   </script>
 
+  <script src="secret-features.js"></script>
+
   <script>
     /* ===== Contador de visitas y códigos secretos ===== */
     fetch("https://api.countapi.xyz/hit/olap.es/visits").catch(() => {});
@@ -260,6 +344,47 @@
     // Código secreto 2 (modificado): 1 0 0 1 -> overlay Matrix
     const secret2 = ["1","0","0","1"];
     let idx2 = 0;
+
+    // Código secreto 3: 2 8 0 6 -> listado de códigos
+    const secret3 = ["2", "8", "0", "6"];
+    let idx3 = 0;
+
+    const codesOverlay = document.getElementById('codesOverlay');
+    const codesList = document.getElementById('codesList');
+    const closeCodesBtn = document.getElementById('closeCodes');
+
+    function buildCodesList() {
+      if (!codesOverlay || !codesList) return;
+      if (codesOverlay.dataset.ready === 'true') return;
+      if (!window.SecretFeatures || typeof SecretFeatures.listFeatures !== 'function') return;
+      const items = SecretFeatures.listFeatures()
+        .slice()
+        .sort((a, b) => a.name.localeCompare(b.name, 'es'));
+      codesList.innerHTML = items.map(item => `
+        <li>
+          <span class="game">${item.name}</span>
+          <span class="code">${item.code.toUpperCase()}</span>
+          <span class="desc">${item.description}</span>
+        </li>
+      `).join('');
+      codesOverlay.dataset.ready = 'true';
+    }
+
+    function showCodesOverlay() {
+      buildCodesList();
+      if (codesOverlay) codesOverlay.classList.add('show');
+    }
+
+    function hideCodesOverlay() {
+      if (codesOverlay) codesOverlay.classList.remove('show');
+    }
+
+    if (closeCodesBtn) closeCodesBtn.addEventListener('click', hideCodesOverlay);
+    if (codesOverlay) {
+      codesOverlay.addEventListener('click', (event) => {
+        if (event.target === codesOverlay) hideCodesOverlay();
+      });
+    }
 
     window.addEventListener("keydown", (e) => {
       const key = e.key.toLowerCase();
@@ -276,8 +401,6 @@
       }
 
       // Secuencia 2 (ahora 1 0 0 1)
-      // Acepta teclas numéricas y también las del keypad
-      const normalizedKey = (e.key === 'Unidentified') ? key : key; // placeholder (compat)
       if (key === secret2[idx2]) {
         idx2++;
         if (idx2 === secret2.length) {
@@ -288,8 +411,22 @@
         idx2 = (key === secret2[0]) ? 1 : 0;
       }
 
-      // Cerrar overlay con ESC
-      if (e.key === "Escape") stopMatrixOverlay();
+      // Secuencia 3 (2806)
+      if (key === secret3[idx3]) {
+        idx3++;
+        if (idx3 === secret3.length) {
+          showCodesOverlay();
+          idx3 = 0;
+        }
+      } else {
+        idx3 = (key === secret3[0]) ? 1 : 0;
+      }
+
+      // Cerrar overlays con ESC
+      if (e.key === "Escape") {
+        stopMatrixOverlay();
+        hideCodesOverlay();
+      }
     });
   </script>
 

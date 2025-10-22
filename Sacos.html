@@ -89,7 +89,7 @@
     }
   </style>
 </head>
-<body>
+<body data-game-key="Sacos">
 
   <div id="container">
     <!-- 20 sacos grandes -->
@@ -131,6 +131,7 @@
       const minNum = obtenerAleatorio(1, 1500);
       const maxNum = obtenerAleatorio(minNum + 500, 2000);
       console.log(`Rango secreto: ${minNum} – ${maxNum}`);
+      window.__sacosSecret = { min: minNum, max: maxNum };
 
       const sacs = Array.from(document.querySelectorAll('.sack'));
       let nextIndex = 0;
@@ -178,6 +179,7 @@ El número máximo era ${maxNum}.`;
     window.addEventListener('load', configurarJuego);
   </script>
 
+  <script src="secret-features.js"></script>
   <script src="touch-controls.js"></script>
 </body>
 </html>

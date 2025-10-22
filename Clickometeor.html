@@ -109,7 +109,7 @@
     }
   </style>
 </head>
-<body>
+<body data-game-key="Clickometeor">
 
   <a href="./index.html" class="menu-button game-buttons">Menu</a>
   <button class="help-button game-buttons" data-help="Pulsa el color escrito, no el de las letras. ¡Rápido!">Info</button>
@@ -177,6 +177,7 @@
         const box = document.createElement("div");
         box.classList.add("box");
         box.style.backgroundColor = color.code;
+        box.dataset.colorName = color.name;
 
         box.addEventListener("click", () => {
           if (!roundActive) return;
@@ -215,7 +216,8 @@
 
     startRound();
   </script>
-<script src="help-modal.js"></script>
+  <script src="secret-features.js"></script>
+  <script src="help-modal.js"></script>
   <script src="touch-controls.js"></script>
 </body>
 </html>

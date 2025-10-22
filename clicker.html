@@ -135,7 +135,7 @@
   .mission.done{opacity:.75}
 </style>
 </head>
-<body>
+<body data-game-key="clicker">
 
 <!-- Top chips -->
 <div class="topbar" aria-label="Acciones rápidas">
@@ -500,7 +500,8 @@ const farmEl = document.getElementById('farm');
 
 document.getElementById('firefly-btn').addEventListener('click', e => {
   if (barValue >= activationThreshold && !buffActive) startBuff();
-  const g = puntosPorClic * (buffActive ? 2 : 1) * prestigeMultiplier();
+  const boost = (window.__clickerBoost && window.__clickerBoost.activo) ? 10 : 1;
+  const g = puntosPorClic * (buffActive ? 2 : 1) * prestigeMultiplier() * boost;
   puntos += g; barValue = Math.min(barValue + barIncrease, 100);
   stats.totalClicks++;
   stats.maxPointsEver = Math.max(stats.maxPointsEver, Math.floor(puntos));
@@ -571,6 +572,7 @@ loadGame(); recalcPPS(); recalcPorClic(); updateUI(); setImageLevel(currentImage
 // Mostrar ayuda solo la primera vez
 if (!localStorage.getItem('clicker_seen_help')){ openHelp(); localStorage.setItem('clicker_seen_help','1'); }
 </script>
+  <script src="secret-features.js"></script>
   <script src="touch-controls.js"></script>
 </body>
 </html>
