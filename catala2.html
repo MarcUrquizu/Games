@@ -5,32 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Joc d'Adverbis en Català</title>
   <style>
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: Arial, sans-serif;
       line-height: 1.6;
-      padding: 40px 20px;
+      padding: 40px 20px 120px;
       background-color: #ffffff;
       color: #111111;
     }
-    h1 {
-      color: #003366;
-      text-align: center;
-    }
+    h1 { color: #003366; text-align: center; margin-bottom: 20px; }
     .controls { margin-bottom: 20px; text-align: center; }
     .controls button {
-      margin: 5px;
-      padding: 10px 20px;
-      border: none;
-      cursor: pointer;
+      margin: 5px; padding: 10px 20px;
+      border: none; cursor: pointer;
       border-radius: 6px;
-      background-color: #0077cc;
-      color: white;
-      font-weight: bold;
+      background-color: #0077cc; color: white; font-weight: bold;
     }
-    .controls button:hover {
-      background-color: #005fa3;
-    }
+    .controls button:hover { background-color: #005fa3; }
     .text-area {
       border: 2px solid #0077cc;
       padding: 20px;
@@ -48,10 +39,9 @@
     #bottom-controls button {
       background-color: #00994d;
       color: white;
+      margin: 5px;
     }
-    #bottom-controls button:hover {
-      background-color: #007a3d;
-    }
+    #bottom-controls button:hover { background-color: #007a3d; }
     #result {
       margin-top: 25px;
       padding: 15px;
@@ -59,6 +49,99 @@
       background-color: #eef9ff;
       border: 1px solid #0077cc;
     }
+
+    /* === BOTÓN Y PANEL DEL MEMORY (pantalla completa) === */
+    .mem-fab {
+      position: fixed; left: 16px; bottom: 16px;
+      width: 56px; height: 56px; border-radius: 50%;
+      display: grid; place-items: center;
+      background: linear-gradient(180deg, #0077cc, #005fa3);
+      color: #fff; font-size: 26px; font-weight: 900;
+      border: none; cursor: pointer;
+      box-shadow: 0 10px 22px rgba(0, 119, 204, .35);
+      z-index: 9990;
+      transition: transform .15s ease, filter .2s ease;
+    }
+    .mem-fab:hover { transform: translateY(-2px); filter: brightness(1.05); }
+
+    .mem-panel {
+      position: fixed; inset: 0; z-index: 9995;
+      background: #ffffff; color: #111;
+      display: none; flex-direction: column;
+    }
+    .mem-panel.open { display: flex; }
+    body.mem-open { overflow: hidden; }
+
+    .mem-header {
+      flex: 0 0 auto;
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 10px;
+      padding: 14px 16px;
+      background: #ffffff;
+      border-bottom: 2px solid #cbd5e1;
+    }
+    .mem-title { color: #003366; font-size: 22px; margin: 0; }
+    .mem-pill {
+      background: #eef4ff; border: 1px solid #c7d6ff;
+      color: #002a54; font-weight: 700; border-radius: 999px;
+      padding: 8px 12px;
+    }
+    .mem-btn, .mem-close {
+      border: none; cursor: pointer; font-weight: 700;
+      border-radius: 10px; padding: 10px 14px;
+    }
+    .mem-btn { background: linear-gradient(180deg, #0077cc, #005fa3); color: #fff; }
+    .mem-close { background: #e9eefb; color: #0b2e57; border: 1px solid #c7d6ff; }
+
+    .mem-container {
+      flex: 1;
+      display: flex; align-items: center; justify-content: center;
+      padding: 10px; background: #f8faff;
+    }
+    .mem-board {
+      display: grid;
+      width: 95vw; height: calc(100vh - 110px);
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      grid-auto-rows: 1fr;
+      gap: 10px;
+      justify-content: center;
+      align-content: center;
+    }
+
+    .mem-card {
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
+      perspective: 800px;
+    }
+    .mem-inner {
+      position: absolute; inset: 0;
+      transform-style: preserve-3d;
+      transition: transform .35s cubic-bezier(.2, .8, .2, 1);
+      border-radius: inherit;
+    }
+    .mem-card.mem-flipped .mem-inner { transform: rotateY(180deg); }
+    .mem-face {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: inherit; backface-visibility: hidden;
+      border: 2px solid #c7d6ff;
+      font-weight: 700;
+    }
+    .mem-front { background: #eef4ff; color: #003366; }
+    .mem-back {
+      background: #ffffff; color: #002a54;
+      transform: rotateY(180deg);
+      font-size: clamp(14px, 1.5vw, 22px);
+    }
+    .mem-tag {
+      position: absolute; top: 6px; left: 6px;
+      font-size: 11px; padding: 3px 6px; border-radius: 999px;
+      background: #f0f5ff; border: 1px solid #c7d6ff;
+    }
+    .mem-type { color: #007a33; }
+    .mem-word { color: #005fa3; }
+    .mem-match { outline: 3px solid rgba(0, 128, 0, .3); }
   </style>
 </head>
 <body>
@@ -88,7 +171,26 @@ Finalment, avui mateix hem celebrat discretament els resultats: sincerament, est
 
   <div id="result"></div>
 
+  <!-- Botó flotant -->
+  <button class="mem-fab" id="mem-fab" title="Obre el Memory">⬇</button>
+
+  <!-- Panell fullscreen -->
+  <div class="mem-panel" id="mem-panel">
+    <div class="mem-header">
+      <h2 class="mem-title">Memory — Adverbis / Tipus</h2>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <span class="mem-pill" id="mem-stats">Moviments: 0 · Parelles: 0 · Temps: 0s</span>
+        <button class="mem-btn" id="mem-restart">Reinicia</button>
+        <button class="mem-close" id="mem-close">Tanca</button>
+      </div>
+    </div>
+    <div class="mem-container">
+      <div class="mem-board" id="mem-board"></div>
+    </div>
+  </div>
+
   <script>
+    /* === Joc principal d’adverbis complet === */
     const btnAdv = document.getElementById('mode-adverbs');
     let currentMode = null;
 
@@ -127,9 +229,7 @@ Finalment, avui mateix hem celebrat discretament els resultats: sincerament, est
 
     document.getElementById('check-all').onclick = () => {
       const list = answers.adverbis;
-      let correct = 0;
-      let totalAdverbs = 0;
-      let selectedCount = 0;
+      let correct = 0, totalAdverbs = 0, selectedCount = 0;
 
       document.querySelectorAll('.word').forEach(span => {
         const word = span.dataset.word;
@@ -162,6 +262,61 @@ Finalment, avui mateix hem celebrat discretament els resultats: sincerament, est
     };
 
     btnAdv.click();
+
+    /* === Memory === */
+    const memFab=document.getElementById('mem-fab');
+    const memPanel=document.getElementById('mem-panel');
+    const memClose=document.getElementById('mem-close');
+    function togglePanel(o){memPanel.classList.toggle('open',o);document.body.classList.toggle('mem-open',o);}
+    memFab.onclick=()=>togglePanel(!memPanel.classList.contains('open'));
+    memClose.onclick=()=>togglePanel(false);
+
+    const MEM_ITEMS=[{text:"Aquí",type:"Lloc"},{text:"A la vora",type:"Lloc"},{text:"Ara",type:"Temps"},{text:"Ahir",type:"Temps"},{text:"D'hora",type:"Temps"},{text:"Bé",type:"Manera"},{text:"De pressa",type:"Manera"},{text:"Molt",type:"Quantitat"},{text:"Poc",type:"Quantitat"},{text:"A més",type:"Quantitat"},{text:"Sí",type:"Afirmació"},{text:"En efecte",type:"Afirmació"},{text:"També",type:"Afirmació"},{text:"No",type:"Negació"},{text:"Tampoc",type:"Negació"},{text:"De cap manera",type:"Negació"},{text:"Potser",type:"Dubte"},{text:"Qui sap",type:"Dubte"}];
+
+    const board=document.getElementById('mem-board');
+    const stats=document.getElementById('mem-stats');
+    const restart=document.getElementById('mem-restart');
+    let f=null,s=null,lock=false,m=0,ok=0,tot=0,t=0,timer=null;
+    function shuf(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+    function makeCard({id,label,isType}){
+      const c=document.createElement('button');
+      c.className='mem-card';
+      c.dataset.id=id;c.dataset.kind=isType?'t':'w';
+      c.innerHTML=`<div class="mem-inner">
+        <div class="mem-face mem-front"><span class="mem-tag ${isType?'mem-type':'mem-word'}">${isType?'Tipus':'Paraula'}</span></div>
+        <div class="mem-face mem-back"><span class="mem-tag ${isType?'mem-type':'mem-word'}">${isType?'Tipus':'Paraula'}</span>${label}</div>
+      </div>`;
+      c.onclick=()=>flip(c);
+      return c;
+    }
+    function build(){
+      let id=1;const d=[];
+      MEM_ITEMS.forEach(it=>{const pid=id++;d.push({pid,l:it.text,t:0});d.push({pid,l:it.type,t:1});});
+      return shuf(d).map(x=>makeCard({id:x.pid,label:x.l,isType:x.t}));
+    }
+    function render(){
+      board.innerHTML='';tot=MEM_ITEMS.length;
+      build().forEach(c=>board.appendChild(c));
+      f=s=null;lock=false;m=ok=t=0;
+      clearInterval(timer);
+      timer=setInterval(()=>{t++;stats.textContent=`Moviments: ${m} · Parelles: ${ok}/${tot} · Temps: ${t}s`;},1000);
+    }
+    function flip(c){
+      if(lock||c.classList.contains('mem-flipped'))return;
+      c.classList.add('mem-flipped');
+      if(!f){f=c;return;}
+      s=c;lock=true;m++;
+      const match=f.dataset.id===s.dataset.id&&f.dataset.kind!==s.dataset.kind;
+      if(match){
+        [f,s].forEach(x=>{x.classList.add('mem-match');x.style.pointerEvents='none';});
+        ok++;lock=false;f=s=null;
+        if(ok===tot){clearInterval(timer);alert(`Enhorabona! ${tot} parelles en ${m} moviments i ${t} segons.`);}
+      }else{
+        setTimeout(()=>{[f,s].forEach(x=>x.classList.remove('mem-flipped'));lock=false;f=s=null;},700);
+      }
+    }
+    restart.onclick=render;
+    render();
   </script>
 </body>
 </html>
