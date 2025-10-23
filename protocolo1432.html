@@ -412,7 +412,8 @@
         vx: 0,
         vy: 0,
         size: 18,
-        angle: 0,
+        angle: -Math.PI / 2,
+        facingAngle: -Math.PI / 2,
         fireCooldown: 0,
         shieldTimer: 0,
         phaseTimer: 0,
@@ -485,6 +486,7 @@
         player.vx = 0;
         player.vy = 0;
         player.angle = -Math.PI / 2;
+        player.facingAngle = -Math.PI / 2;
         player.fireCooldown = 0;
         player.shieldTimer = 0;
         player.phaseTimer = 0;
@@ -745,13 +747,11 @@
         if (player.pulseCooldown > 0) player.pulseCooldown -= dt;
 
         if ((keys[' '] || keys['space']) && player.fireCooldown <= 0) {
-          const aimAngle = Math.atan2((keys['arrowdown'] ? 1 : 0) - (keys['arrowup'] ? 1 : 0),
-                                      (keys['arrowright'] ? 1 : 0) - (keys['arrowleft'] ? 1 : 0));
-          let angle = aimAngle;
-          if (!isFinite(angle) || angle === 0) {
-            angle = -Math.PI / 2;
-          }
-          fireBullet(player.x, player.y - 8, angle, 420, true);
+          const angle = player.facingAngle || -Math.PI / 2;
+          const offset = 16;
+          const originX = player.x + Math.cos(angle) * offset;
+          const originY = player.y + Math.sin(angle) * offset;
+          fireBullet(originX, originY, angle, 420, true);
           emitParticles(player.x, player.y, 'rgba(0, 255, 230, 0.35)', 6, 120);
           player.fireCooldown = 0.25;
           state.score += 1.5;
@@ -765,7 +765,10 @@
         player.x = Math.max(padding, Math.min(canvas.width - padding, player.x));
         player.y = Math.max(padding, Math.min(canvas.height - padding, player.y));
 
-        player.angle = Math.atan2(player.vy, player.vx) || -Math.PI / 2;
+        if (player.vx !== 0 || player.vy !== 0) {
+          player.facingAngle = Math.atan2(player.vy, player.vx);
+        }
+        player.angle = player.facingAngle;
 
         if (player.shieldTimer > 0) {
           player.shieldTimer -= dt;
