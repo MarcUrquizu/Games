@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-Q25WGL1GDZ"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-Q25WGL1GDZ');
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="responsive.css">
+  <title>Conway's Game of Life</title>
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: 'Press Start 2P', system-ui, sans-serif;
+      background: radial-gradient(circle at top, #1a1f2b 0%, #0a0d14 55%, #05070c 100%);
+      color: #f0f6ff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 1.5rem;
+      padding: 1.5rem 1rem 3rem;
+      box-sizing: border-box;
+      position: relative;
+      overflow: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        180deg,
+        rgba(255,255,255,0.05) 0px,
+        rgba(255,255,255,0.05) 1px,
+        transparent 1px,
+        transparent 3px
+      );
+      opacity: 0.25;
+      pointer-events: none;
+    }
+
+    h1 {
+      font-size: clamp(1.8rem, 2.6vw, 2.8rem);
+      text-align: center;
+      text-shadow: 0 0 10px #45f0ff;
+      margin: 2rem 0 1rem;
+      letter-spacing: 3px;
+    }
+
+    .game-area {
+      width: min(90vw, 720px);
+      display: grid;
+      gap: 1.25rem;
+      justify-items: center;
+      background: rgba(10, 16, 27, 0.65);
+      border: 1px solid rgba(69, 240, 255, 0.3);
+      border-radius: 18px;
+      padding: clamp(1rem, 3vw, 1.75rem);
+      box-shadow: 0 0 25px rgba(69, 240, 255, 0.2);
+      backdrop-filter: blur(6px);
+    }
+
+    canvas {
+      width: min(80vw, 600px);
+      aspect-ratio: 1 / 1;
+      border: 2px solid rgba(69, 240, 255, 0.65);
+      background: rgba(0, 0, 0, 0.85);
+      image-rendering: pixelated;
+      touch-action: none;
+    }
+
+    .controls {
+      display: grid;
+      gap: 0.75rem;
+      width: min(80vw, 600px);
+    }
+
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      justify-content: center;
+    }
+
+    button, .buttons button {
+      font-family: inherit;
+      border: 2px solid #45f0ff;
+      background: rgba(25, 38, 56, 0.7);
+      color: #45f0ff;
+      padding: 0.55rem 0.9rem;
+      border-radius: 10px;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 12px rgba(69, 240, 255, 0.4);
+      background: rgba(69, 240, 255, 0.18);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    .status-bar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1rem;
+      align-items: center;
+      font-size: 0.85rem;
+      color: #9fe8ff;
+    }
+
+    .speed-control {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    input[type="range"] {
+      accent-color: #45f0ff;
+      cursor: pointer;
+    }
+
+    .menu-button, .help-button {
+      position: absolute;
+      top: 1rem;
+      padding: 0.45rem 0.9rem;
+      font-size: 0.75rem;
+      text-decoration: none;
+      color: #0a0d14;
+      background: #45f0ff;
+      border-radius: 8px;
+      border: none;
+      font-weight: bold;
+      letter-spacing: 1px;
+      box-shadow: 0 2px 8px rgba(69, 240, 255, 0.4);
+    }
+
+    .menu-button {
+      right: 1rem;
+    }
+
+    .help-button {
+      left: 1rem;
+    }
+
+    @media (max-width: 600px) {
+      body {
+        padding-top: 3.5rem;
+      }
+
+      .menu-button, .help-button {
+        position: fixed;
+        top: 0.8rem;
+      }
+
+      h1 {
+        margin-top: 1.25rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <a href="./index.html" class="menu-button">Menú</a>
+  <button class="help-button" data-help="Conway's Game of Life es un autómata celular. Activa y desactiva células en la cuadrícula y pulsa Iniciar para ver cómo evolucionan siguiendo las reglas clásicas: una célula vive si tiene 2 o 3 vecinas vivas; una célula muerta nace si tiene exactamente 3 vecinas.">Info</button>
+
+  <h1>Conway's Game of Life</h1>
+
+  <div class="game-area">
+    <canvas id="lifeCanvas" width="600" height="600" aria-label="Tablero del Juego de la Vida"></canvas>
+
+    <div class="controls">
+      <div class="buttons">
+        <button id="playPause">▶️ Iniciar</button>
+        <button id="step">⏭️ Paso</button>
+        <button id="clear">🧹 Limpiar</button>
+        <button id="random">🎲 Aleatorio</button>
+      </div>
+
+      <div class="status-bar">
+        <span id="generation">Generación: 0</span>
+        <div class="speed-control">
+          <label for="speed">Velocidad</label>
+          <input type="range" id="speed" min="50" max="600" step="10" value="200">
+          <span id="speedValue">200 ms</span>
+        </div>
+        <span id="living">Vivas: 0</span>
+      </div>
+    </div>
+  </div>
+
+  <script src="help-modal.js"></script>
+  <script>
+    (function() {
+      const canvas = document.getElementById('lifeCanvas');
+      const ctx = canvas.getContext('2d');
+      const playPauseBtn = document.getElementById('playPause');
+      const stepBtn = document.getElementById('step');
+      const clearBtn = document.getElementById('clear');
+      const randomBtn = document.getElementById('random');
+      const speedInput = document.getElementById('speed');
+      const speedValue = document.getElementById('speedValue');
+      const generationLabel = document.getElementById('generation');
+      const livingLabel = document.getElementById('living');
+
+      const size = 60;
+      const cellSize = canvas.width / size;
+      let grid = createEmptyGrid();
+      let buffer = createEmptyGrid();
+      let generation = 0;
+      let living = 0;
+      let running = false;
+      let intervalId = null;
+      let painting = false;
+      let paintState = 1;
+
+      drawGrid();
+      updateStats();
+
+      function createEmptyGrid() {
+        return Array.from({ length: size }, () => Array(size).fill(0));
+      }
+
+      function drawGrid() {
+        ctx.fillStyle = 'rgba(5, 9, 18, 0.95)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.strokeStyle = 'rgba(69, 240, 255, 0.1)';
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= size; i++) {
+          const pos = i * cellSize;
+          ctx.beginPath();
+          ctx.moveTo(pos, 0);
+          ctx.lineTo(pos, canvas.height);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(0, pos);
+          ctx.lineTo(canvas.width, pos);
+          ctx.stroke();
+        }
+
+        ctx.fillStyle = '#45f0ff';
+        for (let r = 0; r < size; r++) {
+          for (let c = 0; c < size; c++) {
+            if (grid[r][c]) {
+              ctx.fillRect(c * cellSize + 1, r * cellSize + 1, cellSize - 2, cellSize - 2);
+            }
+          }
+        }
+      }
+
+      function updateStats() {
+        living = grid.reduce((acc, row) => acc + row.reduce((a, cell) => a + cell, 0), 0);
+        generationLabel.textContent = `Generación: ${generation}`;
+        livingLabel.textContent = `Vivas: ${living}`;
+      }
+
+      function computeNext() {
+        let changes = 0;
+        for (let r = 0; r < size; r++) {
+          for (let c = 0; c < size; c++) {
+            const neighbors = countNeighbors(r, c);
+            const alive = grid[r][c] === 1;
+            let next = 0;
+            if (alive) {
+              next = (neighbors === 2 || neighbors === 3) ? 1 : 0;
+            } else {
+              next = (neighbors === 3) ? 1 : 0;
+            }
+            buffer[r][c] = next;
+            if (next !== grid[r][c]) {
+              changes++;
+            }
+          }
+        }
+
+        const tmp = grid;
+        grid = buffer;
+        buffer = tmp;
+        generation += 1;
+        updateStats();
+        drawGrid();
+        if (changes === 0) {
+          stop();
+        }
+      }
+
+      function countNeighbors(row, col) {
+        let count = 0;
+        for (let r = -1; r <= 1; r++) {
+          for (let c = -1; c <= 1; c++) {
+            if (r === 0 && c === 0) continue;
+            const nr = row + r;
+            const nc = col + c;
+            if (nr >= 0 && nr < size && nc >= 0 && nc < size) {
+              count += grid[nr][nc];
+            }
+          }
+        }
+        return count;
+      }
+
+      function play() {
+        if (running) return;
+        running = true;
+        playPauseBtn.textContent = '⏸️ Pausar';
+        const delay = Number(speedInput.value);
+        intervalId = setInterval(() => computeNext(), delay);
+      }
+
+      function stop() {
+        running = false;
+        playPauseBtn.textContent = '▶️ Iniciar';
+        if (intervalId) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
+      }
+
+      playPauseBtn.addEventListener('click', () => {
+        running ? stop() : play();
+      });
+
+      stepBtn.addEventListener('click', () => {
+        if (running) {
+          stop();
+        }
+        computeNext();
+      });
+
+      clearBtn.addEventListener('click', () => {
+        stop();
+        grid = createEmptyGrid();
+        buffer = createEmptyGrid();
+        generation = 0;
+        drawGrid();
+        updateStats();
+      });
+
+      randomBtn.addEventListener('click', () => {
+        stop();
+        const density = 0.32;
+        for (let r = 0; r < size; r++) {
+          for (let c = 0; c < size; c++) {
+            grid[r][c] = Math.random() < density ? 1 : 0;
+          }
+        }
+        generation = 0;
+        drawGrid();
+        updateStats();
+      });
+
+      speedInput.addEventListener('input', () => {
+        speedValue.textContent = `${speedInput.value} ms`;
+        if (running) {
+          stop();
+          play();
+        }
+      });
+
+      function pointerEventToCell(ev) {
+        const rect = canvas.getBoundingClientRect();
+        const x = ev.clientX - rect.left;
+        const y = ev.clientY - rect.top;
+        const col = Math.floor((x / rect.width) * size);
+        const row = Math.floor((y / rect.height) * size);
+        return { row: clamp(row, 0, size - 1), col: clamp(col, 0, size - 1) };
+      }
+
+      function clamp(value, min, max) {
+        return Math.min(Math.max(value, min), max);
+      }
+
+      function setCell(row, col, state) {
+        if (grid[row][col] !== state) {
+          grid[row][col] = state;
+          drawGrid();
+          updateStats();
+        }
+      }
+
+      canvas.addEventListener('pointerdown', (ev) => {
+        ev.preventDefault();
+        if (running) {
+          stop();
+        }
+        const { row, col } = pointerEventToCell(ev);
+        paintState = grid[row][col] ? 0 : 1;
+        painting = true;
+        setCell(row, col, paintState);
+        canvas.setPointerCapture(ev.pointerId);
+      });
+
+      canvas.addEventListener('pointermove', (ev) => {
+        if (!painting) return;
+        const { row, col } = pointerEventToCell(ev);
+        setCell(row, col, paintState);
+      });
+
+      canvas.addEventListener('pointerup', (ev) => {
+        painting = false;
+        canvas.releasePointerCapture(ev.pointerId);
+      });
+
+      canvas.addEventListener('pointercancel', () => {
+        painting = false;
+      });
+
+      canvas.addEventListener('pointerleave', () => {
+        painting = false;
+      });
+
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden && running) {
+          stop();
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
