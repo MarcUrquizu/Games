@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Protocolo 1432</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      font-family: 'Press Start 2P', monospace;
+      background: radial-gradient(circle at center, #05131f 0%, #020910 42%, #010308 100%);
+      color: #b8f6ff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 24px 12px 40px;
+      gap: 20px;
+      overflow-x: hidden;
+    }
+    header {
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      text-shadow: 0 0 12px rgba(0, 255, 255, 0.8);
+    }
+    header h1 {
+      margin: 0;
+      font-size: clamp(20px, 3vw, 36px);
+    }
+    main {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
+      width: min(1080px, 100%);
+    }
+    #game-wrapper {
+      position: relative;
+      flex: 1 1 640px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, rgba(0, 40, 80, 0.45), rgba(0, 20, 40, 0.25));
+      border: 2px solid rgba(0, 212, 255, 0.35);
+      border-radius: 20px;
+      box-shadow: 0 0 32px rgba(0, 200, 255, 0.25);
+      padding: 12px;
+      backdrop-filter: blur(6px);
+    }
+    canvas#game {
+      width: min(92vw, 720px);
+      height: auto;
+      aspect-ratio: 16 / 10;
+      border-radius: 16px;
+      border: 2px solid rgba(0, 180, 255, 0.28);
+      background: #030913;
+    }
+    aside#hud {
+      flex: 0 1 280px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 18px;
+      border-radius: 16px;
+      border: 2px solid rgba(0, 212, 255, 0.25);
+      background: rgba(1, 18, 34, 0.6);
+      box-shadow: inset 0 0 18px rgba(0, 200, 255, 0.2);
+    }
+    .hud-section h2 {
+      font-size: 14px;
+      margin-bottom: 10px;
+      color: #5ef6ff;
+      text-shadow: 0 0 6px rgba(46, 226, 255, 0.8);
+    }
+    .stat-line {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+    .bars {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .bar-label {
+      font-size: 10px;
+      margin-bottom: 4px;
+    }
+    .bar-bg {
+      position: relative;
+      width: 100%;
+      height: 12px;
+      border-radius: 40px;
+      background: rgba(5, 25, 45, 0.8);
+      overflow: hidden;
+      border: 1px solid rgba(0, 190, 255, 0.35);
+    }
+    .bar-fill {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, rgba(0, 255, 196, 0.85), rgba(0, 120, 255, 0.9));
+      width: 0%;
+      transition: width 0.2s ease-out;
+    }
+    #energy-fill {
+      background: linear-gradient(90deg, rgba(255, 214, 0, 0.85), rgba(255, 120, 0, 0.9));
+    }
+    #shield-fill {
+      background: linear-gradient(90deg, rgba(138, 92, 255, 0.85), rgba(60, 0, 255, 0.9));
+    }
+    #log {
+      min-height: 120px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 10px;
+      line-height: 1.5;
+      background: rgba(0, 12, 26, 0.65);
+      border: 1px solid rgba(0, 200, 255, 0.22);
+      border-radius: 12px;
+      padding: 12px;
+      overflow: hidden;
+    }
+    .log-entry {
+      color: #9be9ff;
+      opacity: 0.85;
+    }
+    .overlay {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 10, 18, 0.92);
+      z-index: 999;
+      padding: 20px;
+      transition: opacity 0.3s ease;
+    }
+    .overlay.hidden {
+      pointer-events: none;
+      opacity: 0;
+    }
+    .panel {
+      width: min(480px, 100%);
+      padding: 28px 24px;
+      border-radius: 18px;
+      border: 2px solid rgba(0, 225, 255, 0.35);
+      background: linear-gradient(135deg, rgba(0, 40, 80, 0.35), rgba(0, 10, 22, 0.75));
+      box-shadow: 0 0 40px rgba(0, 224, 255, 0.2);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      text-align: center;
+    }
+    .panel h2 {
+      margin: 0;
+      font-size: 18px;
+      color: #73f7ff;
+      letter-spacing: 2px;
+    }
+    .panel p {
+      font-size: 12px;
+      line-height: 1.6;
+      opacity: 0.82;
+    }
+    button {
+      font-family: inherit;
+      font-size: 12px;
+      padding: 12px 18px;
+      border-radius: 12px;
+      border: 2px solid rgba(0, 230, 255, 0.45);
+      background: rgba(0, 180, 255, 0.25);
+      color: #e9feff;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+    }
+    button:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 24px rgba(0, 220, 255, 0.25);
+      background: rgba(0, 190, 255, 0.4);
+    }
+    #banner {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 12px 18px;
+      border-radius: 12px;
+      background: rgba(0, 200, 255, 0.18);
+      border: 1px solid rgba(0, 235, 255, 0.6);
+      font-size: 12px;
+      letter-spacing: 2px;
+      box-shadow: 0 0 24px rgba(0, 200, 255, 0.25);
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      opacity: 0;
+      pointer-events: none;
+    }
+    #banner.show {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+    #status-tag {
+      font-size: 11px;
+      color: rgba(0, 255, 255, 0.75);
+      text-align: right;
+      letter-spacing: 1px;
+    }
+    #controls {
+      font-size: 9px;
+      line-height: 1.6;
+      opacity: 0.75;
+    }
+    .result-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      font-size: 11px;
+    }
+    .result-block {
+      border: 1px solid rgba(0, 210, 255, 0.35);
+      border-radius: 14px;
+      padding: 12px 10px;
+      background: rgba(0, 40, 66, 0.35);
+    }
+    @media (max-width: 820px) {
+      aside#hud {
+        order: -1;
+        flex: 1 1 100%;
+      }
+      canvas#game {
+        width: min(96vw, 640px);
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Protocolo 1432 &mdash; Zona de Contención</h1>
+    <div id="status-tag">Operador: activo | enlace neural estable</div>
+  </header>
+
+  <main>
+    <section id="game-wrapper">
+      <canvas id="game" width="960" height="600" aria-label="Zona de juego del Protocolo 1432"></canvas>
+    </section>
+
+    <aside id="hud" aria-live="polite">
+      <div class="hud-section">
+        <h2>Telemetría</h2>
+        <div class="stat-line"><span>Salud</span><span id="health-text">100</span></div>
+        <div class="stat-line"><span>Energía</span><span id="energy-text">100</span></div>
+        <div class="stat-line"><span>Escudo</span><span id="shield-text">0</span></div>
+        <div class="stat-line"><span>Nivel</span><span id="level-text">1</span></div>
+        <div class="stat-line"><span>Puntuación</span><span id="score-text">000000</span></div>
+        <div class="stat-line"><span>Tiempo</span><span id="time-text">0.0s</span></div>
+      </div>
+      <div class="hud-section bars">
+        <div>
+          <div class="bar-label">Salud</div>
+          <div class="bar-bg"><div class="bar-fill" id="health-fill"></div></div>
+        </div>
+        <div>
+          <div class="bar-label">Energía</div>
+          <div class="bar-bg"><div class="bar-fill" id="energy-fill"></div></div>
+        </div>
+        <div>
+          <div class="bar-label">Escudo</div>
+          <div class="bar-bg"><div class="bar-fill" id="shield-fill"></div></div>
+        </div>
+      </div>
+      <div class="hud-section">
+        <h2>Eventos</h2>
+        <div id="log" aria-live="polite"></div>
+      </div>
+      <div class="hud-section">
+        <h2>Controles</h2>
+        <div id="controls">
+          <p>WASD / Flechas &mdash; Navegar</p>
+          <p>Espacio &mdash; Proyectil pulsar</p>
+          <p>Mayús &mdash; Fase defensiva (consume energía)</p>
+          <p>E &mdash; Pulso de dispersión (consume 35 energía)</p>
+          <p>P / Esc &mdash; Pausa</p>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <div id="overlay" class="overlay">
+    <div class="panel" role="dialog" aria-modal="true">
+      <h2>Bienvenido, Operador</h2>
+      <p>
+        Has accedido al Protocolo 1432. Penetra en el archivo cuantizado, reúne fragmentos de datos y repele a los drones guardianes.
+        Mantén la integridad del núcleo y adapta tu estrategia a cada fase del confinamiento.
+      </p>
+      <p>
+        Tu módulo dispone de escudo reactivo, proyectiles pulsar y un pulso de dispersión capaz de desintegrar proyectiles cercanos. Cada nivel modifica los patrones de ataque enemigos.
+      </p>
+      <button id="start-btn">Iniciar misión</button>
+      <button id="back-btn" onclick="window.location.href='index.html'">Extraer agente</button>
+    </div>
+  </div>
+
+  <div id="result" class="overlay hidden">
+    <div class="panel" role="dialog" aria-modal="true">
+      <h2 id="result-title">Informe de misión</h2>
+      <p id="result-text"></p>
+      <div class="result-stats">
+        <div class="result-block">Puntuación total<br><strong id="result-score">0</strong></div>
+        <div class="result-block">Datos recolectados<br><strong id="result-shards">0</strong></div>
+        <div class="result-block">Tiempo activo<br><strong id="result-time">0s</strong></div>
+        <div class="result-block">Niveles completados<br><strong id="result-levels">0</strong></div>
+      </div>
+      <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
+        <button id="retry-btn">Reintentar</button>
+        <button onclick="window.location.href='index.html'">Volver al hub</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="banner">Fase iniciada</div>
+
+  <script>
+    (function() {
+      const canvas = document.getElementById('game');
+      const ctx = canvas.getContext('2d');
+      const overlay = document.getElementById('overlay');
+      const resultOverlay = document.getElementById('result');
+      const banner = document.getElementById('banner');
+      const startBtn = document.getElementById('start-btn');
+      const retryBtn = document.getElementById('retry-btn');
+      const logContainer = document.getElementById('log');
+
+      const hud = {
+        healthText: document.getElementById('health-text'),
+        energyText: document.getElementById('energy-text'),
+        shieldText: document.getElementById('shield-text'),
+        levelText: document.getElementById('level-text'),
+        scoreText: document.getElementById('score-text'),
+        timeText: document.getElementById('time-text'),
+        healthFill: document.getElementById('health-fill'),
+        energyFill: document.getElementById('energy-fill'),
+        shieldFill: document.getElementById('shield-fill'),
+      };
+
+      const resultHud = {
+        title: document.getElementById('result-title'),
+        text: document.getElementById('result-text'),
+        score: document.getElementById('result-score'),
+        shards: document.getElementById('result-shards'),
+        time: document.getElementById('result-time'),
+        levels: document.getElementById('result-levels'),
+      };
+
+      const logs = [];
+      function logEvent(message) {
+        logs.unshift({ message, time: performance.now() });
+        if (logs.length > 8) logs.length = 8;
+        logContainer.innerHTML = logs
+          .map(entry => `<div class="log-entry">${entry.message}</div>`)
+          .join('');
+      }
+
+      const keys = {};
+      window.addEventListener('keydown', (e) => {
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
+          e.preventDefault();
+        }
+        if (state.status === 'running' && (e.key === 'p' || e.key === 'P')) {
+          togglePause();
+        }
+        if (e.key === 'Escape') {
+          if (state.status === 'running') {
+            togglePause();
+          } else if (state.status === 'paused') {
+            togglePause();
+          }
+        }
+        keys[e.key.toLowerCase()] = true;
+      });
+      window.addEventListener('keyup', (e) => {
+        keys[e.key.toLowerCase()] = false;
+      });
+
+      const state = {
+        status: 'ready',
+        health: 100,
+        energy: 100,
+        shield: 0,
+        score: 0,
+        levelIndex: 0,
+        shards: 0,
+        time: 0,
+        levelTime: 0,
+        difficulty: 1,
+        paused: false,
+      };
+
+      const player = {
+        x: canvas.width / 2,
+        y: canvas.height * 0.65,
+        vx: 0,
+        vy: 0,
+        size: 18,
+        angle: -Math.PI / 2,
+        facingAngle: -Math.PI / 2,
+        fireCooldown: 0,
+        shieldTimer: 0,
+        phaseTimer: 0,
+        pulseCooldown: 0,
+      };
+
+      const shards = [];
+      const drones = [];
+      const bullets = [];
+      const particles = [];
+
+      const levels = [
+        {
+          name: 'Umbral Delta',
+          intro: 'Recolecta fragmentos mientras drones exploradores patrullan patrones circulares.',
+          duration: 45,
+          spawn: {
+            shard: [2.5, 4.5],
+            drone: [4, 6],
+            sentry: [999, 999],
+          },
+          droneHP: 28,
+          allowSentries: false,
+          allowPhantoms: false,
+        },
+        {
+          name: 'Nido Vectorial',
+          intro: 'Torretas centinela han triangulado tu señal. Suprime el fuego entrante.',
+          duration: 60,
+          spawn: {
+            shard: [2, 3.5],
+            drone: [3, 4.2],
+            sentry: [9, 13],
+          },
+          droneHP: 38,
+          allowSentries: true,
+          allowPhantoms: false,
+        },
+        {
+          name: 'Horizonte Fantasma',
+          intro: 'Enjambres fantasma acechan desde pliegues de fase. Mantén el núcleo estable.',
+          duration: 70,
+          spawn: {
+            shard: [1.6, 2.6],
+            drone: [2.2, 3.2],
+            sentry: [6, 9],
+          },
+          droneHP: 52,
+          allowSentries: true,
+          allowPhantoms: true,
+        },
+      ];
+
+      const spawnTimers = { shard: 2, drone: 4, sentry: 12, phantom: 18 };
+
+      function resetGame() {
+        state.status = 'running';
+        state.health = 100;
+        state.energy = 100;
+        state.shield = 0;
+        state.score = 0;
+        state.levelIndex = 0;
+        state.shards = 0;
+        state.time = 0;
+        state.levelTime = 0;
+        state.difficulty = 1;
+        state.paused = false;
+        player.x = canvas.width / 2;
+        player.y = canvas.height * 0.65;
+        player.vx = 0;
+        player.vy = 0;
+        player.angle = -Math.PI / 2;
+        player.facingAngle = -Math.PI / 2;
+        player.fireCooldown = 0;
+        player.shieldTimer = 0;
+        player.phaseTimer = 0;
+        player.pulseCooldown = 0;
+        shards.length = 0;
+        drones.length = 0;
+        bullets.length = 0;
+        particles.length = 0;
+        spawnTimers.shard = 2;
+        spawnTimers.drone = 4;
+        spawnTimers.sentry = 12;
+        spawnTimers.phantom = 18;
+        logs.length = 0;
+        logEvent('Sistema en línea. Operador sincronizado.');
+        beginLevel(0, true);
+      }
+
+      function beginLevel(index, initial = false) {
+        if (!levels[index]) {
+          handleMissionComplete(true);
+          return;
+        }
+        state.levelIndex = index;
+        state.levelTime = 0;
+        const level = levels[index];
+        showBanner(`Fase ${index + 1}: ${level.name}`);
+        logEvent(level.intro);
+        if (!initial) {
+          state.health = Math.min(100, state.health + 12);
+          state.energy = Math.min(100, state.energy + 20);
+          logEvent('Se aplican refuerzos de integridad y energía.');
+        }
+      }
+
+      function showBanner(text) {
+        banner.textContent = text;
+        banner.classList.add('show');
+        setTimeout(() => banner.classList.remove('show'), 2800);
+      }
+
+      function togglePause() {
+        if (state.status !== 'running' && state.status !== 'paused') return;
+        state.paused = !state.paused;
+        if (state.paused) {
+          state.status = 'paused';
+          logEvent('Protocolo en pausa. Pulsa P o Esc para reanudar.');
+        } else {
+          state.status = 'running';
+          logEvent('Reanudando enlace neural.');
+        }
+      }
+
+      function handleMissionComplete(success) {
+        state.status = 'ended';
+        resultHud.title.textContent = success ? 'Informe de misión: ÉXITO' : 'Informe de misión: FALLÓ';
+        resultHud.text.textContent = success
+          ? 'Has atravesado todas las fases del Protocolo 1432. Los datos recolectados estabilizarán la red de resistencia.'
+          : 'El núcleo ha sido comprometido. El Protocolo 1432 se reiniciará cuando estés listo.';
+        resultHud.score.textContent = Math.round(state.score);
+        resultHud.shards.textContent = state.shards;
+        resultHud.time.textContent = `${state.time.toFixed(1)}s`;
+        resultHud.levels.textContent = state.levelIndex + (success ? 1 : 0);
+        resultOverlay.classList.remove('hidden');
+      }
+
+      function spawnShard() {
+        const margin = 60;
+        const x = margin + Math.random() * (canvas.width - margin * 2);
+        const y = margin + Math.random() * (canvas.height - margin * 2);
+        shards.push({
+          x,
+          y,
+          pulse: 0,
+          value: 12 + Math.random() * 18,
+          radius: 10,
+          spin: Math.random() * Math.PI * 2,
+          life: 12 + Math.random() * 5,
+        });
+      }
+
+      function spawnDrone(type = 'drone') {
+        const level = levels[state.levelIndex];
+        const angle = Math.random() * Math.PI * 2;
+        const radius = Math.max(canvas.width, canvas.height) / 2 + 80;
+        const x = canvas.width / 2 + Math.cos(angle) * radius;
+        const y = canvas.height / 2 + Math.sin(angle) * radius;
+        const targetAngle = Math.atan2(player.y - y, player.x - x);
+        const speed = type === 'phantom' ? 160 : 80 + Math.random() * 30;
+        drones.push({
+          x,
+          y,
+          vx: Math.cos(targetAngle) * speed,
+          vy: Math.sin(targetAngle) * speed,
+          hp: type === 'phantom' ? 24 : level.droneHP,
+          type,
+          timer: 0,
+          fireTimer: 1.2 + Math.random(),
+          waveOffset: Math.random() * Math.PI * 2,
+        });
+      }
+
+      function spawnSentry() {
+        const side = Math.random() < 0.5 ? -60 : canvas.width + 60;
+        const y = 80 + Math.random() * (canvas.height - 160);
+        drones.push({
+          x: side,
+          y,
+          vx: side < 0 ? 35 : -35,
+          vy: 0,
+          hp: 36 + state.levelIndex * 10,
+          type: 'sentry',
+          timer: 0,
+          fireTimer: 0.8,
+          waveOffset: Math.random() * Math.PI * 2,
+        });
+      }
+
+      function spawnPhantom() {
+        drones.push({
+          x: Math.random() * canvas.width,
+          y: -40,
+          vx: 0,
+          vy: 160 + Math.random() * 60,
+          hp: 22,
+          type: 'phantom',
+          timer: 0,
+          fireTimer: 1.4,
+          waveOffset: Math.random() * Math.PI * 2,
+        });
+      }
+
+      function fireBullet(x, y, angle, speed, friendly) {
+        bullets.push({
+          x,
+          y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          friendly,
+          life: 3,
+          radius: friendly ? 6 : 5,
+        });
+      }
+
+      function emitParticles(x, y, color, count, speed = 60) {
+        for (let i = 0; i < count; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          particles.push({
+            x,
+            y,
+            vx: Math.cos(angle) * (speed * (0.4 + Math.random() * 0.6)),
+            vy: Math.sin(angle) * (speed * (0.4 + Math.random() * 0.6)),
+            life: 0.6 + Math.random() * 0.6,
+            color,
+            size: 3 + Math.random() * 3,
+          });
+        }
+      }
+
+      function update(dt) {
+        if (state.status !== 'running' || state.paused) return;
+
+        state.time += dt;
+        state.levelTime += dt;
+        const level = levels[state.levelIndex];
+
+        spawnTimers.shard -= dt;
+        spawnTimers.drone -= dt;
+        spawnTimers.sentry -= dt;
+        spawnTimers.phantom -= dt;
+
+        if (spawnTimers.shard <= 0) {
+          spawnShard();
+          const [minS, maxS] = level.spawn.shard;
+          spawnTimers.shard = minS + Math.random() * (maxS - minS);
+        }
+        if (spawnTimers.drone <= 0) {
+          spawnDrone('drone');
+          const [minD, maxD] = level.spawn.drone;
+          spawnTimers.drone = minD + Math.random() * (maxD - minD);
+        }
+        if (level.allowSentries && spawnTimers.sentry <= 0) {
+          spawnSentry();
+          const [minT, maxT] = level.spawn.sentry;
+          spawnTimers.sentry = minT + Math.random() * (maxT - minT);
+        }
+        if (level.allowPhantoms && spawnTimers.phantom <= 0) {
+          spawnPhantom();
+          spawnTimers.phantom = 14 + Math.random() * 6;
+        }
+
+        updatePlayer(dt);
+        updateShards(dt);
+        updateDrones(dt);
+        updateBullets(dt);
+        updateParticles(dt);
+
+        updateHud();
+
+        if (state.levelTime >= level.duration) {
+          beginLevel(state.levelIndex + 1);
+        }
+      }
+
+      function updatePlayer(dt) {
+        const accel = 180;
+        const maxSpeed = 210;
+        const damping = 0.88;
+
+        let inputX = 0;
+        let inputY = 0;
+        if (keys['w'] || keys['arrowup']) inputY -= 1;
+        if (keys['s'] || keys['arrowdown']) inputY += 1;
+        if (keys['a'] || keys['arrowleft']) inputX -= 1;
+        if (keys['d'] || keys['arrowright']) inputX += 1;
+
+        if (inputX !== 0 || inputY !== 0) {
+          const length = Math.hypot(inputX, inputY) || 1;
+          inputX /= length;
+          inputY /= length;
+          player.vx += inputX * accel * dt;
+          player.vy += inputY * accel * dt;
+        }
+
+        player.vx *= (inputX === 0 ? damping : 1);
+        player.vy *= (inputY === 0 ? damping : 1);
+
+        const speed = Math.hypot(player.vx, player.vy);
+        if (speed > maxSpeed) {
+          const scale = maxSpeed / speed;
+          player.vx *= scale;
+          player.vy *= scale;
+        }
+
+        if ((keys['shift'] || keys['shiftleft']) && state.energy > 0) {
+          player.phaseTimer += dt;
+          state.energy = Math.max(0, state.energy - 25 * dt);
+        } else {
+          player.phaseTimer = Math.max(0, player.phaseTimer - dt * 2);
+          state.energy = Math.min(100, state.energy + 10 * dt);
+        }
+
+        if ((keys['e']) && state.energy >= 35 && player.pulseCooldown <= 0) {
+          state.energy -= 35;
+          player.pulseCooldown = 6;
+          emitParticles(player.x, player.y, 'rgba(255, 200, 40, 0.8)', 40, 220);
+          for (let i = bullets.length - 1; i >= 0; i--) {
+            const b = bullets[i];
+            if (!b.friendly) {
+              const dist = Math.hypot(b.x - player.x, b.y - player.y);
+              if (dist < 140) {
+                bullets.splice(i, 1);
+                state.score += 12;
+              }
+            }
+          }
+          logEvent('Pulso de dispersión emitido.');
+        }
+        if (player.pulseCooldown > 0) player.pulseCooldown -= dt;
+
+        if ((keys[' '] || keys['space']) && player.fireCooldown <= 0) {
+          const angle = player.facingAngle || -Math.PI / 2;
+          const offset = 16;
+          const originX = player.x + Math.cos(angle) * offset;
+          const originY = player.y + Math.sin(angle) * offset;
+          fireBullet(originX, originY, angle, 420, true);
+          emitParticles(player.x, player.y, 'rgba(0, 255, 230, 0.35)', 6, 120);
+          player.fireCooldown = 0.25;
+          state.score += 1.5;
+        }
+        if (player.fireCooldown > 0) player.fireCooldown -= dt;
+
+        player.x += player.vx * dt;
+        player.y += player.vy * dt;
+
+        const padding = 26;
+        player.x = Math.max(padding, Math.min(canvas.width - padding, player.x));
+        player.y = Math.max(padding, Math.min(canvas.height - padding, player.y));
+
+        if (player.vx !== 0 || player.vy !== 0) {
+          player.facingAngle = Math.atan2(player.vy, player.vx);
+        }
+        player.angle = player.facingAngle;
+
+        if (player.shieldTimer > 0) {
+          player.shieldTimer -= dt;
+          if (player.shieldTimer <= 0) {
+            state.shield = 0;
+          }
+        }
+      }
+
+      function updateShards(dt) {
+        for (let i = shards.length - 1; i >= 0; i--) {
+          const shard = shards[i];
+          shard.spin += dt * 2;
+          shard.pulse += dt * 3;
+          shard.life -= dt;
+          if (shard.life <= 0) {
+            shards.splice(i, 1);
+            continue;
+          }
+          const dist = Math.hypot(player.x - shard.x, player.y - shard.y);
+          if (dist < player.size + shard.radius) {
+            shards.splice(i, 1);
+            state.score += shard.value * 5;
+            state.energy = Math.min(100, state.energy + shard.value * 0.6);
+            state.shield = Math.min(60, state.shield + 15);
+            player.shieldTimer = 6;
+            state.shards += 1;
+            logEvent('Fragmento asegurado. Escudo regenerado temporalmente.');
+            emitParticles(shard.x, shard.y, 'rgba(0, 255, 196, 0.8)', 24, 160);
+          }
+        }
+      }
+
+      function updateDrones(dt) {
+        for (let i = drones.length - 1; i >= 0; i--) {
+          const drone = drones[i];
+          drone.timer += dt;
+          drone.fireTimer -= dt;
+
+          if (drone.type === 'drone') {
+            const sway = Math.sin(drone.timer * 1.6 + drone.waveOffset) * 60;
+            const targetAngle = Math.atan2(player.y - drone.y, player.x - (drone.x + sway));
+            drone.vx = Math.cos(targetAngle) * (90 + state.levelIndex * 8);
+            drone.vy = Math.sin(targetAngle) * (90 + state.levelIndex * 8);
+            drone.x += drone.vx * dt;
+            drone.y += drone.vy * dt;
+            if (drone.fireTimer <= 0) {
+              const angle = Math.atan2(player.y - drone.y, player.x - drone.x);
+              fireBullet(drone.x, drone.y, angle, 190 + state.levelIndex * 10, false);
+              drone.fireTimer = 2.6 - state.levelIndex * 0.2;
+            }
+          } else if (drone.type === 'sentry') {
+            drone.x += drone.vx * dt;
+            const oscillation = Math.sin(drone.timer * 1.8) * 30;
+            drone.y += oscillation * dt * 0.6;
+            if (drone.fireTimer <= 0) {
+              const spread = 0.3;
+              const baseAngle = Math.atan2(player.y - drone.y, player.x - drone.x);
+              fireBullet(drone.x, drone.y, baseAngle - spread, 220, false);
+              fireBullet(drone.x, drone.y, baseAngle, 230, false);
+              fireBullet(drone.x, drone.y, baseAngle + spread, 220, false);
+              drone.fireTimer = 1.5 - Math.min(0.8, state.levelIndex * 0.2);
+            }
+          } else if (drone.type === 'phantom') {
+            drone.y += drone.vy * dt;
+            const wiggle = Math.sin(drone.timer * 8) * 70;
+            drone.x += wiggle * dt;
+            if (drone.fireTimer <= 0) {
+              const angle = Math.atan2(player.y - drone.y, player.x - drone.x);
+              fireBullet(drone.x, drone.y, angle, 260, false);
+              drone.fireTimer = 1.1;
+            }
+          }
+
+          if (drone.x < -120 || drone.x > canvas.width + 120 || drone.y < -120 || drone.y > canvas.height + 120) {
+            drones.splice(i, 1);
+            continue;
+          }
+
+          const dist = Math.hypot(player.x - drone.x, player.y - drone.y);
+          if (dist < player.size + 18) {
+            damagePlayer(18);
+            drones.splice(i, 1);
+            emitParticles(drone.x, drone.y, 'rgba(255, 80, 60, 0.9)', 26, 200);
+            continue;
+          }
+        }
+      }
+
+      function updateBullets(dt) {
+        for (let i = bullets.length - 1; i >= 0; i--) {
+          const bullet = bullets[i];
+          bullet.x += bullet.vx * dt;
+          bullet.y += bullet.vy * dt;
+          bullet.life -= dt;
+          if (bullet.life <= 0 || bullet.x < -40 || bullet.x > canvas.width + 40 || bullet.y < -40 || bullet.y > canvas.height + 40) {
+            bullets.splice(i, 1);
+            continue;
+          }
+
+          if (bullet.friendly) {
+            for (let j = drones.length - 1; j >= 0; j--) {
+              const drone = drones[j];
+              const dist = Math.hypot(bullet.x - drone.x, bullet.y - drone.y);
+              if (dist < bullet.radius + 20) {
+                drones[j].hp -= 20;
+                emitParticles(bullet.x, bullet.y, 'rgba(0, 255, 255, 0.6)', 12, 140);
+                bullets.splice(i, 1);
+                if (drone.hp <= 0) {
+                  emitParticles(drone.x, drone.y, 'rgba(255, 120, 0, 0.9)', 32, 220);
+                  state.score += 45 + state.levelIndex * 15;
+                  drones.splice(j, 1);
+                }
+                break;
+              }
+            }
+          } else {
+            const dist = Math.hypot(bullet.x - player.x, bullet.y - player.y);
+            if (dist < bullet.radius + player.size) {
+              if (state.shield > 0) {
+                state.shield = Math.max(0, state.shield - 18);
+                emitParticles(player.x, player.y, 'rgba(120, 180, 255, 0.8)', 18, 180);
+              } else {
+                damagePlayer(12);
+              }
+              bullets.splice(i, 1);
+            }
+          }
+        }
+      }
+
+      function damagePlayer(amount) {
+        if (state.shield > 0) {
+          state.shield = Math.max(0, state.shield - amount * 1.2);
+          emitParticles(player.x, player.y, 'rgba(120, 200, 255, 0.9)', 12, 140);
+          return;
+        }
+        state.health -= amount;
+        emitParticles(player.x, player.y, 'rgba(255, 60, 80, 0.9)', 22, 200);
+        logEvent('Integridad comprometida.');
+        if (state.health <= 0) {
+          state.health = 0;
+          handleMissionComplete(false);
+        }
+      }
+
+      function updateParticles(dt) {
+        for (let i = particles.length - 1; i >= 0; i--) {
+          const p = particles[i];
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          p.life -= dt;
+          if (p.life <= 0) {
+            particles.splice(i, 1);
+          }
+        }
+      }
+
+      function updateHud() {
+        hud.healthText.textContent = Math.round(state.health);
+        hud.energyText.textContent = Math.round(state.energy);
+        hud.shieldText.textContent = Math.round(state.shield);
+        hud.levelText.textContent = state.levelIndex + 1;
+        hud.scoreText.textContent = state.score.toFixed(0).padStart(6, '0');
+        hud.timeText.textContent = `${state.time.toFixed(1)}s`;
+
+        hud.healthFill.style.width = `${state.health}%`;
+        hud.energyFill.style.width = `${state.energy}%`;
+        hud.shieldFill.style.width = `${Math.min(100, state.shield)}%`;
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawBackground();
+        drawShards();
+        drawPlayer();
+        drawDrones();
+        drawBullets();
+        drawParticles();
+        requestAnimationFrame(draw);
+      }
+
+      function drawBackground() {
+        const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+        gradient.addColorStop(0, '#031829');
+        gradient.addColorStop(1, '#010a16');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const gridSpacing = 60;
+        ctx.strokeStyle = 'rgba(0, 80, 120, 0.25)';
+        ctx.lineWidth = 1;
+        const offset = (performance.now() / 600) % gridSpacing;
+        ctx.beginPath();
+        for (let x = -gridSpacing; x < canvas.width + gridSpacing; x += gridSpacing) {
+          ctx.moveTo(x + offset, 0);
+          ctx.lineTo(x + offset, canvas.height);
+        }
+        for (let y = -gridSpacing; y < canvas.height + gridSpacing; y += gridSpacing) {
+          ctx.moveTo(0, y + offset);
+          ctx.lineTo(canvas.width, y + offset);
+        }
+        ctx.stroke();
+      }
+
+      function drawPlayer() {
+        ctx.save();
+        ctx.translate(player.x, player.y);
+        ctx.rotate(player.angle + Math.PI / 2);
+        const gradient = ctx.createLinearGradient(0, -24, 0, 16);
+        gradient.addColorStop(0, '#7ff3ff');
+        gradient.addColorStop(1, '#0b1c33');
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.moveTo(0, -24);
+        ctx.lineTo(16, 18);
+        ctx.lineTo(-16, 18);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = 'rgba(0, 255, 255, 0.8)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, -20);
+        ctx.lineTo(0, 10);
+        ctx.stroke();
+
+        if (state.shield > 0) {
+          ctx.strokeStyle = `rgba(120, 200, 255, ${0.4 + 0.3 * Math.sin(performance.now() / 120)})`;
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(0, 0, 28 + Math.sin(performance.now() / 160) * 2, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      function drawShards() {
+        for (const shard of shards) {
+          ctx.save();
+          ctx.translate(shard.x, shard.y);
+          ctx.rotate(shard.spin);
+          const pulse = 0.7 + Math.sin(shard.pulse) * 0.3;
+          ctx.fillStyle = `rgba(0, 255, 200, ${0.5 + 0.5 * pulse})`;
+          ctx.beginPath();
+          ctx.moveTo(0, -12 * pulse);
+          ctx.lineTo(10 * pulse, 0);
+          ctx.lineTo(0, 12 * pulse);
+          ctx.lineTo(-10 * pulse, 0);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
+      function drawDrones() {
+        for (const drone of drones) {
+          ctx.save();
+          ctx.translate(drone.x, drone.y);
+          if (drone.type === 'drone') {
+            ctx.fillStyle = '#ff6540';
+            ctx.beginPath();
+            ctx.arc(0, 0, 18, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#210000';
+            ctx.beginPath();
+            ctx.arc(0, 0, 10, 0, Math.PI * 2);
+            ctx.fill();
+          } else if (drone.type === 'sentry') {
+            ctx.fillStyle = '#ffa600';
+            ctx.beginPath();
+            ctx.rect(-18, -12, 36, 24);
+            ctx.fill();
+            ctx.fillStyle = '#461f00';
+            ctx.fillRect(-6, -6, 12, 12);
+          } else if (drone.type === 'phantom') {
+            ctx.fillStyle = '#a76bff';
+            ctx.beginPath();
+            ctx.moveTo(0, -20);
+            ctx.lineTo(16, 20);
+            ctx.lineTo(-16, 20);
+            ctx.closePath();
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+      }
+
+      function drawBullets() {
+        for (const bullet of bullets) {
+          ctx.save();
+          ctx.translate(bullet.x, bullet.y);
+          ctx.fillStyle = bullet.friendly ? 'rgba(0, 255, 224, 0.9)' : 'rgba(255, 120, 60, 0.9)';
+          ctx.beginPath();
+          ctx.arc(0, 0, bullet.radius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
+      function drawParticles() {
+        for (const p of particles) {
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, p.life);
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
+      let last = performance.now();
+      function step(now) {
+        const dt = Math.min(0.08, (now - last) / 1000);
+        if (state.status === 'running') {
+          update(dt);
+        }
+        last = now;
+        requestAnimationFrame(step);
+      }
+
+      startBtn.addEventListener('click', () => {
+        overlay.classList.add('hidden');
+        resetGame();
+      });
+
+      retryBtn.addEventListener('click', () => {
+        resultOverlay.classList.add('hidden');
+        overlay.classList.add('hidden');
+        resetGame();
+      });
+
+      draw();
+      requestAnimationFrame(step);
+    })();
+  </script>
+</body>
+</html>
