@@ -1,25 +1,22 @@
-/* RESET Y BOX-SIZING */
-*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-html, body { min-height: 100%; overflow-y: auto; }
-body {
+/* RESET scoped to OLAP-themed pages */
+body.olap-theme, body.olap-theme *::before, body.olap-theme *::after {
+  box-sizing: border-box;
+}
+body.olap-theme {
+  margin: 0;
+  min-height: 100vh;
   font-family: 'Press Start 2P', cursive;
   background: #111;
   color: #0ff;
-  text-align: center;
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  zoom: 1.1;
   position: relative;
+  overflow-x: hidden;
 }
-/* SCANLINES */
-body::before {
+
+/* Scanline overlay */
+body.olap-theme::before {
   content: '';
   position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
+  inset: 0;
   pointer-events: none;
   background: repeating-linear-gradient(
     0deg,
@@ -29,33 +26,50 @@ body::before {
     rgba(0,0,0,0.1) 4px
   );
 }
-/* STARS CANVAS, fijo en viewport */
-#stars {
+
+/* Starfield canvas (when present) */
+body.olap-theme #stars {
   position: fixed;
-  top: 0; left: 0;
+  inset: 0;
   width: 100%;
   height: 100%;
   z-index: -1;
 }
-/* HEADER ESTÁTICO CON GLOW */
-header { margin-bottom: 20px; z-index: 1; }
-header h1 {
+
+/* Home specific layout helpers */
+body.olap-theme.olap-home {
+  text-align: center;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+body.olap-theme.olap-home header {
+  margin-bottom: 20px;
+  z-index: 1;
+}
+body.olap-theme.olap-home header h1 {
   font-size: 48px;
   color: #fff;
   text-shadow: 0 0 8px #0ff, 0 0 16px #0ff;
 }
-/* GRID DE BOTONES */
-.btn-container {
+
+body.olap-theme.olap-home .btn-container {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 140px));
   gap: 16px;
-  width: 100%; max-width: 1000px;
+  width: 100%;
+  max-width: 1000px;
   z-index: 1;
   padding-bottom: 20px;
   justify-content: center;
 }
-.btn {
-  width: 140px; height: 60px;
+
+body.olap-theme.olap-home .btn {
+  width: 140px;
+  height: 60px;
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -70,29 +84,30 @@ header h1 {
   text-shadow: 0 0 4px #0ff;
   transition: transform 0.2s, box-shadow 0.2s;
 }
-.btn:hover {
+
+body.olap-theme.olap-home .btn:hover {
   transform: perspective(100px) rotateX(5deg) scale(1.05);
   box-shadow: 0 0 12px #0ff, 0 0 20px #0ff;
 }
 
-/* ===== Overlay Matrix (segundo código secreto) ===== */
-#matrixOverlay {
+/* Matrix overlay styling (used on homepage secret) */
+body.olap-theme #matrixOverlay {
   position: fixed;
   inset: 0;
   background: #000;
-  display: none;          /* hidden por defecto */
+  display: none;
   align-items: center;
   justify-content: center;
   flex-direction: column;
   z-index: 9999;
 }
-#matrixCanvas {
+body.olap-theme #matrixCanvas {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
 }
-.download-ui {
+body.olap-theme .download-ui {
   position: relative;
   z-index: 1;
   display: flex;
@@ -105,12 +120,12 @@ header h1 {
   background: rgba(0, 0, 0, 0.4);
   box-shadow: 0 0 12px #0f0, inset 0 0 12px #0f0;
 }
-.download-title {
+body.olap-theme .download-title {
   color: #0f0;
   text-shadow: 0 0 8px #0f0;
   font-size: 18px;
 }
-.bar {
+body.olap-theme .bar {
   width: 280px;
   height: 18px;
   border: 2px solid #0f0;
@@ -119,22 +134,22 @@ header h1 {
   box-shadow: inset 0 0 8px #0f0;
   background: rgba(0,255,0,0.1);
 }
-.fill {
+body.olap-theme .fill {
   height: 100%;
   width: 0%;
   background: #0f0;
   box-shadow: 0 0 16px #0f0;
   transition: width 0.2s linear;
 }
-.small {
+body.olap-theme .small,
+body.olap-theme .close-hint {
   color: #0f0;
   font-size: 10px;
-  opacity: 0.85;
+  opacity: 0.75;
 }
-.close-hint {
+body.olap-theme .close-hint {
   margin-top: 6px;
-  font-size: 10px;
-  color: #0f0;
-  opacity: 0.6;
 }
-.show { display: flex !important; }
+body.olap-theme .show {
+  display: flex !important;
+}
