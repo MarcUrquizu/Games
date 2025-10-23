@@ -1,437 +1,268 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <!-- Google tag (gtag.js) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-Q25WGL1GDZ"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-
-    gtag('config', 'G-Q25WGL1GDZ');
-  </script>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="responsive.css">
-  <title>Conway's Game of Life</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Juego de la Vida de Conway — Mapa infinito + Pan con click derecho</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
   <style>
-    :root {
-      color-scheme: dark;
-    }
-    body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: 'Press Start 2P', system-ui, sans-serif;
-      background: radial-gradient(circle at top, #1a1f2b 0%, #0a0d14 55%, #05070c 100%);
-      color: #f0f6ff;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-      gap: 1.5rem;
-      padding: 1.5rem 1rem 3rem;
-      box-sizing: border-box;
-      position: relative;
-      overflow: hidden;
-    }
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
 
-    body::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: repeating-linear-gradient(
-        180deg,
-        rgba(255,255,255,0.05) 0px,
-        rgba(255,255,255,0.05) 1px,
-        transparent 1px,
-        transparent 3px
-      );
-      opacity: 0.25;
-      pointer-events: none;
-    }
+    body { margin: 0; height: 100vh; overflow: hidden; font-family: 'Press Start 2P', system-ui, sans-serif; background: radial-gradient(circle at top, #1a1f2b 0%, #0a0d14 55%, #05070c 100%); color: #f0f6ff; }
 
-    h1 {
-      font-size: clamp(1.8rem, 2.6vw, 2.8rem);
-      text-align: center;
-      text-shadow: 0 0 10px #45f0ff;
-      margin: 2rem 0 1rem;
-      letter-spacing: 3px;
-    }
+    /* Canvas a pantalla completa */
+    #lifeCanvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; background: rgba(0,0,0,0.92); image-rendering: pixelated; touch-action: none; }
 
-    .game-area {
-      width: min(90vw, 720px);
-      display: grid;
-      gap: 1.25rem;
-      justify-items: center;
-      background: rgba(10, 16, 27, 0.65);
-      border: 1px solid rgba(69, 240, 255, 0.3);
-      border-radius: 18px;
-      padding: clamp(1rem, 3vw, 1.75rem);
-      box-shadow: 0 0 25px rgba(69, 240, 255, 0.2);
-      backdrop-filter: blur(6px);
-    }
+    /* HUD fijo */
+    .hud { position: fixed; z-index: 10; left: 0; right: 0; top: 0; display: grid; gap: .5rem; padding: .6rem 1rem .8rem; background: linear-gradient(to bottom, rgba(10,16,27,.85), rgba(10,16,27,.35)); backdrop-filter: blur(6px); border-bottom: 1px solid rgba(69,240,255,.25); }
+    .hud .row { display: flex; flex-wrap: wrap; gap: .5rem .75rem; align-items: center; justify-content: center; }
+    .chip, .hud button { padding: .45rem .9rem; font-size: .75rem; color: #0a0d14; background: #45f0ff; border-radius: 8px; border: none; font-weight: bold; letter-spacing: 1px; box-shadow: 0 2px 8px rgba(69, 240, 255, 0.4); text-decoration: none; cursor: pointer; }
+    .btn { border: 2px solid #45f0ff; background: rgba(25,38,56,0.7); color: #45f0ff; border-radius: 10px; }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 0 10px rgba(69,240,255,.35); }
 
-    canvas {
-      width: min(80vw, 600px);
-      aspect-ratio: 1 / 1;
-      border: 2px solid rgba(69, 240, 255, 0.65);
-      background: rgba(0, 0, 0, 0.85);
-      image-rendering: pixelated;
-      touch-action: none;
-    }
+    .status { display: flex; flex-wrap: wrap; gap: .8rem 1rem; align-items: center; justify-content: center; color: #9fe8ff; font-size: .85rem; }
+    .control { display: flex; align-items: center; gap: .5rem; }
+    input[type="range"] { accent-color: #45f0ff; cursor: pointer; }
 
-    .controls {
-      display: grid;
-      gap: 0.75rem;
-      width: min(80vw, 600px);
-    }
-
-    .buttons {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.75rem;
-      justify-content: center;
-    }
-
-    button, .buttons button {
-      font-family: inherit;
-      border: 2px solid #45f0ff;
-      background: rgba(25, 38, 56, 0.7);
-      color: #45f0ff;
-      padding: 0.55rem 0.9rem;
-      border-radius: 10px;
-      cursor: pointer;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
-    }
-
-    button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 0 12px rgba(69, 240, 255, 0.4);
-      background: rgba(69, 240, 255, 0.18);
-    }
-
-    button:active {
-      transform: translateY(0);
-    }
-
-    .status-bar {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 1rem;
-      align-items: center;
-      font-size: 0.85rem;
-      color: #9fe8ff;
-    }
-
-    .speed-control {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-    }
-
-    input[type="range"] {
-      accent-color: #45f0ff;
-      cursor: pointer;
-    }
-
-    .menu-button, .help-button {
-      position: absolute;
-      top: 1rem;
-      padding: 0.45rem 0.9rem;
-      font-size: 0.75rem;
-      text-decoration: none;
-      color: #0a0d14;
-      background: #45f0ff;
-      border-radius: 8px;
-      border: none;
-      font-weight: bold;
-      letter-spacing: 1px;
-      box-shadow: 0 2px 8px rgba(69, 240, 255, 0.4);
-    }
-
-    .menu-button {
-      right: 1rem;
-    }
-
-    .help-button {
-      left: 1rem;
-    }
-
-    @media (max-width: 600px) {
-      body {
-        padding-top: 3.5rem;
-      }
-
-      .menu-button, .help-button {
-        position: fixed;
-        top: 0.8rem;
-      }
-
-      h1 {
-        margin-top: 1.25rem;
-      }
-    }
+    details.testlog { position: fixed; right: .5rem; bottom: .5rem; z-index: 11; width: min(86vw, 460px); background: rgba(69,240,255,.06); border: 1px dashed rgba(69,240,255,.3); border-radius: 10px; padding: .4rem .6rem; }
+    details.testlog summary { cursor: pointer; }
+    .pass { color: #7fffb0; }
+    .fail { color: #ff8080; }
   </style>
 </head>
 <body>
-  <a href="./index.html" class="menu-button">Menú</a>
-  <button class="help-button" data-help="Conway's Game of Life es un autómata celular. Activa y desactiva células en la cuadrícula y pulsa Iniciar para ver cómo evolucionan siguiendo las reglas clásicas: una célula vive si tiene 2 o 3 vecinas vivas; una célula muerta nace si tiene exactamente 3 vecinas.">Info</button>
-
-  <h1>Conway's Game of Life</h1>
-
-  <div class="game-area">
-    <canvas id="lifeCanvas" width="600" height="600" aria-label="Tablero del Juego de la Vida"></canvas>
-
-    <div class="controls">
-      <div class="buttons">
-        <button id="playPause">▶️ Iniciar</button>
-        <button id="step">⏭️ Paso</button>
-        <button id="clear">🧹 Limpiar</button>
-        <button id="random">🎲 Aleatorio</button>
-      </div>
-
-      <div class="status-bar">
-        <span id="generation">Generación: 0</span>
-        <div class="speed-control">
-          <label for="speed">Velocidad</label>
-          <input type="range" id="speed" min="50" max="600" step="10" value="200">
-          <span id="speedValue">200 ms</span>
-        </div>
-        <span id="living">Vivas: 0</span>
-      </div>
+  <!-- HUD superior -->
+  <div class="hud" role="toolbar" aria-label="Controles del Juego de la Vida">
+    <div class="row">
+      <a href="./index.html" class="chip" aria-label="Volver al menú">Menú</a>
+      <button class="chip" id="helpBtn" aria-haspopup="dialog" aria-controls="helpDialog">Info</button>
+    </div>
+    <div class="row">
+      <button id="playPause" class="btn" aria-pressed="false">▶️ Iniciar</button>
+      <button id="step" class="btn">⏭️ Paso</button>
+      <button id="clear" class="btn">🧹 Limpiar</button>
+      <button id="random" class="btn">🎲 Aleatorio</button>
+    </div>
+    <div class="row status">
+      <span id="generation" aria-live="polite">Generación: 0</span>
+      <div class="control"><label for="speed">Velocidad</label><input type="range" id="speed" min="50" max="600" step="10" value="200" /><span id="speedValue">200 ms</span></div>
+      <div class="control"><label for="zoom">Zoom</label><input type="range" id="zoom" min="50" max="300" step="5" value="100" /><span id="zoomValue">100%</span></div>
+      <span id="living" aria-live="polite">Vivas: 0</span>
     </div>
   </div>
 
-  <script src="help-modal.js"></script>
+  <canvas id="lifeCanvas" width="600" height="600" aria-label="Tablero del Juego de la Vida"></canvas>
+
+  <details class="testlog"><summary>Ver resultados de pruebas</summary>
+    <ul id="testResults" style="margin:.5rem 0 0 1rem"></ul>
+  </details>
+
+  <dialog id="helpDialog">
+    <div class="modal-header">
+      <h2 style="margin: .5rem 0">¿Cómo funciona?</h2>
+      <form method="dialog"><button>✖</button></form>
+    </div>
+    <div class="modal-body">
+      <p>El <strong>Juego de la Vida</strong> ahora usa un <em>mapa infinito</em>. Haz click izquierdo para activar/desactivar células. Mantén <strong>click derecho</strong> para <strong>moverte (pan)</strong>. Rueda para zoom.</p>
+      <ul>
+        <li>Una célula viva sobrevive con 2 o 3 vecinas vivas.</li>
+        <li>Una célula muerta nace con exactamente 3 vecinas vivas.</li>
+        <li>La simulación se detiene si el patrón se estabiliza.</li>
+      </ul>
+    </div>
+  </dialog>
+
   <script>
-    (function() {
-      const canvas = document.getElementById('lifeCanvas');
-      const ctx = canvas.getContext('2d');
-      const playPauseBtn = document.getElementById('playPause');
-      const stepBtn = document.getElementById('step');
-      const clearBtn = document.getElementById('clear');
-      const randomBtn = document.getElementById('random');
-      const speedInput = document.getElementById('speed');
-      const speedValue = document.getElementById('speedValue');
-      const generationLabel = document.getElementById('generation');
-      const livingLabel = document.getElementById('living');
+  'use strict';
+  (function(){
+    // ===== DOM =====
+    var canvas = document.getElementById('lifeCanvas');
+    var ctx = canvas.getContext('2d', {alpha:false});
+    var playPauseBtn = document.getElementById('playPause');
+    var stepBtn = document.getElementById('step');
+    var clearBtn = document.getElementById('clear');
+    var randomBtn = document.getElementById('random');
+    var speedInput = document.getElementById('speed');
+    var speedValue = document.getElementById('speedValue');
+    var zoomInput = document.getElementById('zoom');
+    var zoomValue = document.getElementById('zoomValue');
+    var generationLabel = document.getElementById('generation');
+    var livingLabel = document.getElementById('living');
+    var helpBtn = document.getElementById('helpBtn'); var helpDialog = document.getElementById('helpDialog');
+    helpBtn.addEventListener('click', function(){ helpDialog.showModal(); });
 
-      const size = 60;
-      const cellSize = canvas.width / size;
-      let grid = createEmptyGrid();
-      let buffer = createEmptyGrid();
-      let generation = 0;
-      let living = 0;
-      let running = false;
-      let intervalId = null;
-      let painting = false;
-      let paintState = 1;
+    // ===== Estado infinito (sparse set) =====
+    // set de claves "x,y" para celdas vivas en coordenadas enteras
+    var live = new Set();
+    var generation = 0;
+    var running = false; var timer = null;
+    var painting = false; var paintState = 1;
 
-      drawGrid();
-      updateStats();
+    // Vista (pan/zoom)
+    var baseCell = 22; // px a 100%
+    var zoom = 1; // 1 = 100%
+    var cellPx = baseCell * zoom;
+    var originX = 0; // coordenada de celda en el borde izquierdo de pantalla
+    var originY = 0; // coordenada de celda en el borde superior
 
-      function createEmptyGrid() {
-        return Array.from({ length: size }, () => Array(size).fill(0));
+    // Pan con click derecho
+    var panning = false; var panStartX = 0; var panStartY = 0; var originStartX = 0; var originStartY = 0;
+
+    // ===== Utilidades =====
+    function key(x,y){ return x+','+y; }
+    function has(x,y){ return live.has(key(x,y)); }
+    function add(x,y){ live.add(key(x,y)); }
+    function del(x,y){ live.delete(key(x,y)); }
+
+    function clamp(v,min,max){ return Math.min(Math.max(v,min),max); }
+
+    function fitCanvas(){
+      var dpr = Math.max(1, Math.min(3, window.devicePixelRatio||1));
+      var w = Math.round(window.innerWidth), h = Math.round(window.innerHeight);
+      canvas.style.width = w+'px'; canvas.style.height = h+'px';
+      if(canvas.width !== w*dpr || canvas.height !== h*dpr){ canvas.width = w*dpr; canvas.height = h*dpr; ctx.setTransform(1,0,0,1,0,0); ctx.scale(dpr,dpr); }
+    }
+
+    function screenToWorld(xPx,yPx){
+      return { x: Math.floor(originX + xPx / cellPx), y: Math.floor(originY + yPx / cellPx) };
+    }
+
+    function worldToScreen(x,y){
+      return { x: Math.round((x - originX) * cellPx), y: Math.round((y - originY) * cellPx) };
+    }
+
+    function draw(){
+      ctx.imageSmoothingEnabled = false;
+      var w = window.innerWidth, h = window.innerHeight;
+      ctx.fillStyle = 'rgba(5,9,18,0.95)'; ctx.fillRect(0,0,w,h);
+
+      // rejilla
+      ctx.strokeStyle = 'rgba(69,240,255,0.12)'; ctx.lineWidth = 1;
+      var startX = Math.floor(originX), startY = Math.floor(originY);
+      var endX = Math.ceil(originX + w/cellPx), endY = Math.ceil(originY + h/cellPx);
+      var i, px;
+      for(i=startX;i<=endX;i++){ px = Math.round((i-originX)*cellPx)+0.5; ctx.beginPath(); ctx.moveTo(px,0); ctx.lineTo(px,h); ctx.stroke(); }
+      for(i=startY;i<=endY;i++){ px = Math.round((i-originY)*cellPx)+0.5; ctx.beginPath(); ctx.moveTo(0,px); ctx.lineTo(w,px); ctx.stroke(); }
+
+      // células vivas visibles
+      ctx.fillStyle = '#45f0ff';
+      var pad = Math.max(1, Math.floor(cellPx*0.12));
+      var size = Math.max(0, Math.round(cellPx - pad*2));
+      live.forEach(function(k){
+        var parts = k.split(','); var x = parseInt(parts[0],10), y = parseInt(parts[1],10);
+        if(x>=startX-1 && x<=endX+1 && y>=startY-1 && y<=endY+1){
+          var sp = worldToScreen(x,y);
+          ctx.fillRect(sp.x + pad, sp.y + pad, size, size);
+        }
+      });
+
+      // stats
+      livingLabel.textContent = 'Vivas: ' + live.size;
+      generationLabel.textContent = 'Generación: ' + generation;
+    }
+
+    function step(){
+      // Conteo de vecinos para mapa infinito
+      var counts = new Map();
+      live.forEach(function(k){
+        var p = k.split(','); var x = parseInt(p[0],10), y = parseInt(p[1],10);
+        var dx, dy, nk;
+        for(dx=-1;dx<=1;dx++) for(dy=-1;dy<=1;dy++){
+          if(dx===0 && dy===0) continue;
+          nk = (x+dx)+','+(y+dy);
+          counts.set(nk, (counts.get(nk)||0)+1);
+        }
+      });
+      var next = new Set();
+      // Sobreviven vivas con 2 o 3; nacen muertas con 3
+      // Añadir también vivas que quizá no aparezcan en counts (sin vecinos -> mueren)
+      live.forEach(function(k){ var n = counts.get(k)||0; if(n===2 || n===3) next.add(k); });
+      counts.forEach(function(n, k){ if(n===3) next.add(k); });
+
+      var changed = (next.size !== live.size);
+      if(!changed){ // tamaños iguales, comprobar diferencias
+        live.forEach(function(k){ if(!next.has(k)) changed = true; });
       }
+      live = next; generation++;
+      draw();
+      if(!changed) stop();
+    }
 
-      function drawGrid() {
-        ctx.fillStyle = 'rgba(5, 9, 18, 0.95)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    function play(){ if(running) return; running=true; playPauseBtn.textContent='⏸️ Pausar'; playPauseBtn.setAttribute('aria-pressed','true'); timer=setInterval(step, currentDelay()); }
+    function stop(){ if(!running) return; running=false; playPauseBtn.textContent='▶️ Iniciar'; playPauseBtn.setAttribute('aria-pressed','false'); if(timer){clearInterval(timer); timer=null;} }
+    function currentDelay(){ var min=Number(speedInput.min)||50, max=Number(speedInput.max)||600, raw=Number(speedInput.value)||200; return min + max - raw; }
 
-        ctx.strokeStyle = 'rgba(69, 240, 255, 0.1)';
-        ctx.lineWidth = 1;
-        for (let i = 0; i <= size; i++) {
-          const pos = i * cellSize;
-          ctx.beginPath();
-          ctx.moveTo(pos, 0);
-          ctx.lineTo(pos, canvas.height);
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.moveTo(0, pos);
-          ctx.lineTo(canvas.width, pos);
-          ctx.stroke();
-        }
+    // ===== Interacción =====
+    // Evitar menú contextual al usar click derecho para pan
+    canvas.addEventListener('contextmenu', function(e){ e.preventDefault(); });
 
-        ctx.fillStyle = '#45f0ff';
-        for (let r = 0; r < size; r++) {
-          for (let c = 0; c < size; c++) {
-            if (grid[r][c]) {
-              ctx.fillRect(c * cellSize + 1, r * cellSize + 1, cellSize - 2, cellSize - 2);
-            }
-          }
-        }
+    canvas.addEventListener('pointerdown', function(ev){
+      var rect = canvas.getBoundingClientRect(); var x = ev.clientX - rect.left; var y = ev.clientY - rect.top;
+      if(ev.button === 2){ // pan
+        panning = true; panStartX = x; panStartY = y; originStartX = originX; originStartY = originY; return;
       }
+      var cell = screenToWorld(x,y);
+      paintState = has(cell.x, cell.y) ? 0 : 1;
+      painting = true; setCell(cell.x, cell.y, paintState);
+      canvas.setPointerCapture(ev.pointerId);
+    });
 
-      function updateStats() {
-        living = grid.reduce((acc, row) => acc + row.reduce((a, cell) => a + cell, 0), 0);
-        generationLabel.textContent = `Generación: ${generation}`;
-        livingLabel.textContent = `Vivas: ${living}`;
+    canvas.addEventListener('pointermove', function(ev){
+      var rect = canvas.getBoundingClientRect(); var x = ev.clientX - rect.left; var y = ev.clientY - rect.top;
+      if(panning){
+        var dx = (x - panStartX) / cellPx; var dy = (y - panStartY) / cellPx;
+        originX = originStartX - dx; originY = originStartY - dy; draw(); return;
       }
+      if(!painting) return; var cell = screenToWorld(x,y); setCell(cell.x, cell.y, paintState);
+    });
 
-      function computeNext() {
-        let changes = 0;
-        for (let r = 0; r < size; r++) {
-          for (let c = 0; c < size; c++) {
-            const neighbors = countNeighbors(r, c);
-            const alive = grid[r][c] === 1;
-            let next = 0;
-            if (alive) {
-              next = (neighbors === 2 || neighbors === 3) ? 1 : 0;
-            } else {
-              next = (neighbors === 3) ? 1 : 0;
-            }
-            buffer[r][c] = next;
-            if (next !== grid[r][c]) {
-              changes++;
-            }
-          }
-        }
+    function endPointer(){ painting=false; panning=false; }
+    canvas.addEventListener('pointerup', endPointer); canvas.addEventListener('pointercancel', endPointer); canvas.addEventListener('pointerleave', endPointer);
 
-        const tmp = grid;
-        grid = buffer;
-        buffer = tmp;
-        generation += 1;
-        updateStats();
-        drawGrid();
-        if (changes === 0) {
-          stop();
-        }
-      }
+    // Zoom
+    function applyZoom(){ var percent = Number(zoomInput.value)||100; zoom = clamp(percent/100, 0.5, 3); cellPx = baseCell * zoom; zoomValue.textContent = Math.round(zoom*100)+'%'; draw(); }
+    zoomInput.addEventListener('input', applyZoom);
+    canvas.addEventListener('wheel', function(ev){ ev.preventDefault(); var cur = Number(zoomInput.value)||100; var next = clamp(cur + (ev.deltaY>0?-5:5), Number(zoomInput.min)||50, Number(zoomInput.max)||300); zoomInput.value = String(next); applyZoom(); }, {passive:false});
 
-      function countNeighbors(row, col) {
-        let count = 0;
-        for (let r = -1; r <= 1; r++) {
-          for (let c = -1; c <= 1; c++) {
-            if (r === 0 && c === 0) continue;
-            const nr = row + r;
-            const nc = col + c;
-            if (nr >= 0 && nr < size && nc >= 0 && nc < size) {
-              count += grid[nr][nc];
-            }
-          }
-        }
-        return count;
-      }
+    // Controladores HUD
+    playPauseBtn.addEventListener('click', function(){ running?stop():play(); });
+    stepBtn.addEventListener('click', function(){ if(running) stop(); step(); });
+    clearBtn.addEventListener('click', function(){ stop(); live.clear(); generation=0; draw(); });
+    randomBtn.addEventListener('click', function(){
+      stop(); // rellena aleatorio en el área visible
+      var w = window.innerWidth, h = window.innerHeight; var startX = Math.floor(originX), startY = Math.floor(originY); var endX = Math.ceil(originX + w/cellPx), endY = Math.ceil(originY + h/cellPx);
+      var density = 0.25; // un poco menos denso para infinito
+      for(var y=startY; y<=endY; y++) for(var x=startX; x<=endX; x++) if(Math.random()<density) add(x,y); generation=0; draw();
+    });
 
-      function play() {
-        if (running) return;
-        running = true;
-        playPauseBtn.textContent = '⏸️ Pausar';
-        const delay = Number(speedInput.value);
-        intervalId = setInterval(() => computeNext(), delay);
-      }
+    speedInput.addEventListener('input', function(){ var del = currentDelay(); speedValue.textContent = del + ' ms'; if(running){ clearInterval(timer); timer=setInterval(step, del); } });
 
-      function stop() {
-        running = false;
-        playPauseBtn.textContent = '▶️ Iniciar';
-        if (intervalId) {
-          clearInterval(intervalId);
-          intervalId = null;
-        }
-      }
+    function setCell(x,y,state){ if(state){ add(x,y); } else { del(x,y); } draw(); }
 
-      playPauseBtn.addEventListener('click', () => {
-        running ? stop() : play();
-      });
+    // Layout básico
+    function relayout(){ fitCanvas(); draw(); }
+    window.addEventListener('resize', relayout, {passive:true});
+    document.addEventListener('visibilitychange', function(){ if(document.hidden) stop(); });
 
-      stepBtn.addEventListener('click', () => {
-        if (running) {
-          stop();
-        }
-        computeNext();
-      });
+    // Init
+    (function init(){ var del = currentDelay(); speedValue.textContent = del + ' ms'; applyZoom(); relayout(); })();
 
-      clearBtn.addEventListener('click', () => {
-        stop();
-        grid = createEmptyGrid();
-        buffer = createEmptyGrid();
-        generation = 0;
-        drawGrid();
-        updateStats();
-      });
-
-      randomBtn.addEventListener('click', () => {
-        stop();
-        const density = 0.32;
-        for (let r = 0; r < size; r++) {
-          for (let c = 0; c < size; c++) {
-            grid[r][c] = Math.random() < density ? 1 : 0;
-          }
-        }
-        generation = 0;
-        drawGrid();
-        updateStats();
-      });
-
-      speedInput.addEventListener('input', () => {
-        speedValue.textContent = `${speedInput.value} ms`;
-        if (running) {
-          stop();
-          play();
-        }
-      });
-
-      function pointerEventToCell(ev) {
-        const rect = canvas.getBoundingClientRect();
-        const x = ev.clientX - rect.left;
-        const y = ev.clientY - rect.top;
-        const col = Math.floor((x / rect.width) * size);
-        const row = Math.floor((y / rect.height) * size);
-        return { row: clamp(row, 0, size - 1), col: clamp(col, 0, size - 1) };
-      }
-
-      function clamp(value, min, max) {
-        return Math.min(Math.max(value, min), max);
-      }
-
-      function setCell(row, col, state) {
-        if (grid[row][col] !== state) {
-          grid[row][col] = state;
-          drawGrid();
-          updateStats();
-        }
-      }
-
-      canvas.addEventListener('pointerdown', (ev) => {
-        ev.preventDefault();
-        if (running) {
-          stop();
-        }
-        const { row, col } = pointerEventToCell(ev);
-        paintState = grid[row][col] ? 0 : 1;
-        painting = true;
-        setCell(row, col, paintState);
-        canvas.setPointerCapture(ev.pointerId);
-      });
-
-      canvas.addEventListener('pointermove', (ev) => {
-        if (!painting) return;
-        const { row, col } = pointerEventToCell(ev);
-        setCell(row, col, paintState);
-      });
-
-      canvas.addEventListener('pointerup', (ev) => {
-        painting = false;
-        canvas.releasePointerCapture(ev.pointerId);
-      });
-
-      canvas.addEventListener('pointercancel', () => {
-        painting = false;
-      });
-
-      canvas.addEventListener('pointerleave', () => {
-        painting = false;
-      });
-
-      document.addEventListener('visibilitychange', () => {
-        if (document.hidden && running) {
-          stop();
-        }
-      });
-    })();
+    // ===== PRUEBAS (no modificadas + extra) =====
+    function deepEqual(a,b){ return JSON.stringify(a) === JSON.stringify(b); }
+    function emptyGrid(r,c){ var A=[], i; for(i=0;i<r;i++){ A.push(Array(c).fill(0)); } return A; }
+    function stepOnce(g){ var r=g.length, c=g[0].length; var out=emptyGrid(r,c); function nb(i,j){ var k=0; for(var di=-1;di<=1;di++) for(var dj=-1;dj<=1;dj++){ if(!di&&!dj) continue; var ii=i+di,jj=j+dj; if(ii>=0&&ii<r&&jj>=0&&jj<c) k+=g[ii][jj]; } return k; } for(var i=0;i<r;i++) for(var j=0;j<c;j++){ var n=nb(i,j); var alive=g[i][j]===1; out[i][j]=alive?(n===2||n===3?1:0):(n===3?1:0);} return out; }
+    var tests=[];
+    tests.push({name:'Vacío estable', run:function(){ var g=[[0,0],[0,0]]; return deepEqual(g, stepOnce(g)); }});
+    tests.push({name:'Bloque 2x2 estable', run:function(){ var g=[[0,0,0],[0,1,1],[0,1,1]]; return deepEqual(g, stepOnce(g)); }});
+    tests.push({name:'Blinker oscila', run:function(){ var g=[[0,0,0,0,0],[0,0,0,0,0],[0,1,1,1,0],[0,0,0,0,0],[0,0,0,0,0]]; var g1=stepOnce(g); var g2=stepOnce(g1); return deepEqual(g,g2); }});
+    tests.push({name:'Nacimiento con 3', run:function(){ var g=[[1,1,0],[1,0,0],[0,0,0]]; var g1=stepOnce(g); return g1[1][1]===1; }});
+    tests.push({name:'Toad oscila', run:function(){ var g=[[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,1,1,1,0],[0,1,1,1,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0]]; var g1=stepOnce(g); var g2=stepOnce(g1); return deepEqual(g,g2); }});
+    tests.push({name:'Boat estable', run:function(){ var g=[[0,1,0,0],[1,0,1,0],[0,1,0,1],[0,0,1,0]]; return deepEqual(g, stepOnce(g)); }});
+    // Extra: Glider se desplaza 1 celda diagonal cada 4 pasos (en mundo finito ideal). Aquí validamos que no desaparece tras 4 pasos.
+    tests.push({name:'Glider persiste 4 pasos', run:function(){ var g=[[0,1,0],[0,0,1],[1,1,1]]; var s=g; for(var t=0;t<4;t++){ s=stepOnce(s);} var sum=0; for(var i=0;i<s.length;i++) for(var j=0;j<s[0].length;j++) sum+=s[i][j]; return sum>0; }});
+    var resultsEl=document.getElementById('testResults'); tests.forEach(function(t){ var ok=false; try{ ok=!!t.run(); }catch(_){ ok=false; } var li=document.createElement('li'); li.className=ok?'pass':'fail'; li.textContent=(ok?'✔':'✘')+' '+t.name; resultsEl.appendChild(li); });
+  })();
   </script>
 </body>
 </html>
