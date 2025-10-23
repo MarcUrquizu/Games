@@ -364,6 +364,11 @@
     const secret3 = ["2", "8", "0", "6"];
     let idx3 = 0;
 
+     // Código secreto 3: 1 4 3 2 -> juego "Protocolo 1432"
+    const secret4 = ["1","4","3","2"];
+    let idx4 = 0;
+
+
     const codesOverlay = document.getElementById('codesOverlay');
     const codesList = document.getElementById('codesList');
     const closeCodesBtn = document.getElementById('closeCodes');
@@ -437,6 +442,19 @@
         }
       } else {
         idx3 = (key === secret3[0]) ? 1 : 0;
+      }
+
+
+          // Secuencia 3 (1 4 3 2) -> abre el juego secreto
+      if (key === secret4[idx4]) {
+        idx4++;
+        if (idx4 === secret4.length) {
+          window.location.href = "protocolo1432.html";
+          idx4 = 0;
+        }
+        
+      } else {
+        idx4 = (key === secret4[0]) ? 1 : 0;
       }
 
       // Cerrar overlays con ESC
