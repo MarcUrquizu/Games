@@ -278,27 +278,30 @@ Finalment, avui mateix hem celebrat discretament els resultats: sincerament, est
     const restart=document.getElementById('mem-restart');
     let f=null,s=null,lock=false,m=0,ok=0,tot=0,t=0,timer=null;
     function shuf(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
-    function makeCard({id,label,isType}){
+    function makeCard({id,label,isType,adverbType}){
       const c=document.createElement('button');
       c.className='mem-card';
-      c.dataset.id=id;c.dataset.kind=isType?'t':'w';
+      c.dataset.id=id;
+      c.dataset.kind=isType?'type':'word';
+      c.dataset.type=adverbType;
       c.innerHTML=`<div class="mem-inner">
-        <div class="mem-face mem-front"><span class="mem-tag ${isType?'mem-type':'mem-word'}">${isType?'':''}</span></div>
-        <div class="mem-face mem-back"><span class="mem-tag ${isType?'mem-type':'mem-word'}">${isType?'':''}</span>${label}</div>
+        <div class="mem-face mem-front"><span class="mem-tag ${isType?'mem-type':'mem-word'}">${isType?'':' '}</span></div>
+        <div class="mem-face mem-back"><span class="mem-tag ${isType?'mem-type':'mem-word'}">${isType?'Tipus':'Paraula'}</span>${label}</div>
       </div>`;
       c.onclick=()=>flip(c);
       return c;
     }
     function build(){
       let id=1;const d=[];
-      MEM_ITEMS.forEach(it=>{const pid=id++;d.push({pid,l:it.text,t:0});d.push({pid,l:it.type,t:1});});
-      return shuf(d).map(x=>makeCard({id:x.pid,label:x.l,isType:x.t}));
+      MEM_ITEMS.forEach(it=>{const pid=id++;d.push({pid,l:it.text,t:0,tp:it.type});d.push({pid,l:it.type,t:1,tp:it.type});});
+      return shuf(d).map(x=>makeCard({id:x.pid,label:x.l,isType:x.t,adverbType:x.tp}));
     }
     function render(){
       board.innerHTML='';tot=MEM_ITEMS.length;
       build().forEach(c=>board.appendChild(c));
       f=s=null;lock=false;m=ok=t=0;
       clearInterval(timer);
+      stats.textContent=`Moviments: ${m} · Parelles: ${ok}/${tot} · Temps: ${t}s`;
       timer=setInterval(()=>{t++;stats.textContent=`Moviments: ${m} · Parelles: ${ok}/${tot} · Temps: ${t}s`;},1000);
     }
     function flip(c){
@@ -306,7 +309,9 @@ Finalment, avui mateix hem celebrat discretament els resultats: sincerament, est
       c.classList.add('mem-flipped');
       if(!f){f=c;return;}
       s=c;lock=true;m++;
-      const match=f.dataset.id===s.dataset.id&&f.dataset.kind!==s.dataset.kind;
+      const differentKinds=f.dataset.kind!==s.dataset.kind;
+      const sameType=f.dataset.type===s.dataset.type;
+      const match=differentKinds&&sameType;
       if(match){
         [f,s].forEach(x=>{x.classList.add('mem-match');x.style.pointerEvents='none';});
         ok++;lock=false;f=s=null;
