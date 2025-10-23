@@ -261,6 +261,10 @@
     const secret2 = ["1","0","0","1"];
     let idx2 = 0;
 
+    // Código secreto 3: 1 4 3 2 -> juego "Protocolo 1432"
+    const secret3 = ["1","4","3","2"];
+    let idx3 = 0;
+
     window.addEventListener("keydown", (e) => {
       const key = e.key.toLowerCase();
 
@@ -286,6 +290,17 @@
         }
       } else {
         idx2 = (key === secret2[0]) ? 1 : 0;
+      }
+
+      // Secuencia 3 (1 4 3 2) -> abre el juego secreto
+      if (key === secret3[idx3]) {
+        idx3++;
+        if (idx3 === secret3.length) {
+          window.location.href = "protocolo1432.html";
+          idx3 = 0;
+        }
+      } else {
+        idx3 = (key === secret3[0]) ? 1 : 0;
       }
 
       // Cerrar overlay con ESC
