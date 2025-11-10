@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Irregular Verbs · Easy Past Simple Trainer</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background:#0f172a; color:#e5e7eb; display:flex; justify-content:center; align-items:center; min-height:100vh; }
+    .app { background:#1e293b; padding:24px; border-radius:16px; max-width:600px; width:100%; box-shadow:0 10px 40px rgba(0,0,0,0.4); text-align:center; }
+    h1 { font-size:22px; margin-bottom:8px; }
+    p { color:#9ca3af; font-size:14px; margin-bottom:20px; }
+    .infinitive { font-size:40px; font-weight:700; text-align:center; margin:20px 0; }
+    input { width:100%; padding:12px; border-radius:8px; border:1px solid #334155; background:#0f172a; color:white; font-size:18px; }
+    button { margin-top:10px; padding:10px 16px; border:none; border-radius:8px; background:#3b82f6; color:white; font-weight:600; cursor:pointer; }
+    .feedback { margin-top:10px; min-height:20px; }
+    .ok { color:#22c55e; }
+    .bad { color:#ef4444; }
+    .stats { margin-top:15px; font-size:16px; color:#9ca3af; }
+    .stats span { margin:0 10px; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>Easy Irregular Verbs — Past Simple</h1>
+    <p>Write the past simple form of the verb shown below (English only).</p>
+    <div class="infinitive" id="verb">go</div>
+    <input type="text" id="answer" placeholder="Type past simple..." autocomplete="off" />
+    <button id="check">Check</button>
+    <div class="feedback" id="feedback"></div>
+    <div class="stats">
+      ✅ Correct: <span id="correctCount">0</span>
+      ❌ Wrong: <span id="wrongCount">0</span>
+    </div>
+  </div>
+  <script>
+    const verbs = [
+      { base: 'be', past: ['was', 'were'] },
+      { base: 'buy', past: ['bought'] },
+      { base: 'come', past: ['came'] },
+      { base: 'do', past: ['did'] },
+      { base: 'eat', past: ['ate'] },
+      { base: 'find', past: ['found'] },
+      { base: 'get', past: ['got'] },
+      { base: 'give', past: ['gave'] },
+      { base: 'go', past: ['went'] },
+      { base: 'have', past: ['had'] },
+      { base: 'make', past: ['made'] },
+      { base: 'read', past: ['read'] },
+      { base: 'run', past: ['ran'] },
+      { base: 'say', past: ['said'] },
+      { base: 'see', past: ['saw'] },
+      { base: 'sit', past: ['sat'] },
+      { base: 'sleep', past: ['slept'] },
+      { base: 'speak', past: ['spoke'] },
+      { base: 'take', past: ['took'] },
+      { base: 'tell', past: ['told'] },
+      { base: 'think', past: ['thought'] },
+      { base: 'understand', past: ['understood'] },
+      { base: 'wear', past: ['wore'] },
+      { base: 'write', past: ['wrote'] }
+    ];
+
+    let current;
+    let correct = 0;
+    let wrong = 0;
+    let failedOnce = false;
+
+    function updateStats(){
+      document.getElementById('correctCount').textContent = correct;
+      document.getElementById('wrongCount').textContent = wrong;
+    }
+
+    function newVerb(){
+      current = verbs[Math.floor(Math.random()*verbs.length)];
+      document.getElementById('verb').textContent = current.base;
+      document.getElementById('answer').value='';
+      document.getElementById('feedback').textContent='';
+      failedOnce = false;
+    }
+
+    function check(){
+      const val = document.getElementById('answer').value.trim().toLowerCase();
+      const fb = document.getElementById('feedback');
+      if(current.past.includes(val)){
+        if(!failedOnce){
+          correct++;
+          updateStats();
+        }
+        fb.innerHTML = `<span class='ok'>✅ Correct! ${current.base} → ${current.past.join('/')}</span>`;
+        setTimeout(newVerb,700);
+      } else {
+        fb.innerHTML = `<span class='bad'>❌ Try again</span>`;
+        wrong++;
+        failedOnce = true;
+        updateStats();
+      }
+    }
+
+    document.getElementById('check').addEventListener('click', check);
+    document.getElementById('answer').addEventListener('keydown', e=>{ if(e.key==='Enter') check(); });
+
+    newVerb();
+  </script>
+</body>
+</html>
