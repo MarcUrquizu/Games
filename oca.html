@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Juego de la Oca</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background:#111;
+      color:#0ff;
+      font-family:'Press Start 2P', cursive;
+      text-align:center;
+      padding:20px;
+    }
+    #board {
+      display:grid;
+      grid-template-columns:repeat(9,50px);
+      grid-template-rows:repeat(7,50px);
+      gap:2px;
+      margin:20px auto;
+      width:454px;
+    }
+    .cell {
+      border:1px solid #0ff;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:12px;
+      position:relative;
+    }
+    .player {
+      background:#ff0;
+      color:#000;
+    }
+    button {
+      padding:10px 20px;
+      font-family:'Press Start 2P', cursive;
+      margin-top:10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Juego de la Oca</h1>
+  <div id="board"></div>
+  <button id="roll">Tirar dados</button>
+  <p id="info"></p>
+  <script>
+    const board=document.getElementById('board');
+    const info=document.getElementById('info');
+    const cells=[];
+    let numbers=[];
+    for(let r=0;r<7;r++){
+      const row=[];
+      for(let c=0;c<9;c++){
+        row.push(63-(r*9+c));
+      }
+      if(r%2===1) row.reverse();
+      numbers=numbers.concat(row);
+    }
+    numbers.forEach(n=>{
+      const div=document.createElement('div');
+      div.className='cell';
+      div.textContent=n;
+      board.appendChild(div);
+      cells[n]=div;
+    });
+    let position=1;
+    let skip=0;
+    const geese=[5,9,14,18,23,27,32,36,41,45,50,54,59];
+    function update(){
+      for(let i=1;i<cells.length;i++){
+        cells[i].classList.remove('player');
+      }
+      cells[position].classList.add('player');
+    }
+    function move(steps){
+      position+=steps;
+      if(position>63) position=63-(position-63);
+      if(position===6){position=12;info.textContent='Puente a 12';}
+      else if(position===12){position=6;info.textContent='Puente a 6';}
+      else if(position===19){skip=1;info.textContent='Posada: pierdes un turno';}
+      else if(position===31){skip=1;info.textContent='Pozo: pierdes un turno';}
+      else if(position===42){position=30;info.textContent='Laberinto: vuelve a 30';}
+      else if(position===52){skip=2;info.textContent='Cárcel: pierdes dos turnos';}
+      else if(position===58){position=1;info.textContent='Muerte: vuelves al inicio';}
+      else if(position===63){info.textContent='¡Has ganado!';document.getElementById('roll').disabled=true;}
+      else if(geese.includes(position)){
+        info.textContent='De oca a oca y tiro porque me toca';
+        move(steps);
+        return;
+      }
+      update();
+    }
+    document.getElementById('roll').addEventListener('click',()=>{
+      if(skip>0){info.textContent='Pierdes turno';skip--;return;}
+      const d1=Math.floor(Math.random()*6)+1;
+      const d2=Math.floor(Math.random()*6)+1;
+      const steps=d1+d2;
+      info.textContent='Dados: '+d1+' + '+d2+' = '+steps;
+      move(steps);
+    });
+    update();
+  </script>
+</body>
+</html>
