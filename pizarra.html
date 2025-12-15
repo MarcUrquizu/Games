@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pizarra Blanca</title>
+  <style>
+    :root { --bg:#f5f7fb; --panel:#ffffff; --accent:#5b8cff; --shadow:0 4px 12px rgba(0,0,0,.1); }
+    *{ box-sizing:border-box }
+    html,body{ height:100%; margin:0; background:var(--bg); overflow:hidden }
+    header{ background:var(--panel); box-shadow:var(--shadow); padding:10px 16px; display:flex; align-items:center; justify-content:space-between; font-family:system-ui,sans-serif; font-weight:600; z-index:5; position:relative }
+
+    #workspace{ position:relative; width:100%; height:calc(100vh - 60px); display:flex; align-items:center; justify-content:center; overflow:hidden; padding:10px }
+
+    /* Marco externo para evitar desfases por borde */
+    #board{ width:100%; height:100%; max-width:calc(100vw - 170px); max-height:calc(100vh - 80px); border:2px solid #e2e4eb; border-radius:12px; box-shadow:var(--shadow); background:#fff; display:flex }
+    #canvas{ flex:1; width:100%; height:100%; display:block; cursor:crosshair; touch-action:none; background:#fff; border:none }
+
+    /* === Barra derecha === */
+    #toolbar{ position:fixed; top:80px; right:10px; width:160px; max-height:calc(100% - 100px); background:var(--panel); box-shadow:var(--shadow); border-radius:20px; padding:12px; display:flex; flex-direction:column; align-items:stretch; gap:12px; transition:transform .3s ease,opacity .3s ease; overflow:hidden; z-index:10 }
+    #toolbar.minimized{ transform:translateX(110%); opacity:.4 }
+    #minimize-btn{ position:fixed; top:80px; right:182px; background:var(--panel); border:none; box-shadow:var(--shadow); border-radius:50%; width:42px; height:42px; cursor:pointer; font-size:18px; transition:background .3s; z-index:11 }
+    #minimize-btn:hover{ background:#e8ebf8 }
+
+    .group{ background:#fff; border:1px solid #eceff7; border-radius:14px; padding:10px; box-shadow:var(--shadow); }
+    .group .title{ font-size:12px; font-weight:700; color:#667; margin-bottom:8px }
+
+    .tool,.size{ width:36px; height:36px; border:none; background:#fff; border-radius:10px; box-shadow:var(--shadow); font-size:18px; cursor:pointer; transition:background .2s; display:flex; align-items:center; justify-content:center }
+    .tool.active,.size.active{ outline:3px solid var(--accent) }
+    .tool:hover,.size:hover{ background:#eef2ff }
+
+    .tool-grid{ display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; justify-items:center }
+
+    .colors{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; width:100%; align-items:center }
+    .swatch{ width:24px; height:24px; border-radius:6px; border:1px solid #ddd; cursor:pointer; outline:2px solid transparent }
+    .swatch.selected{ outline:3px solid #000 }
+
+    .sizes{ display:grid; grid-template-columns:repeat(5,1fr); gap:6px; width:100% }
+    .dot{ display:block; border-radius:50%; background:#000; margin:auto }
+
+    .wide-btn{ width:100%; height:36px; border:none; background:#fff; border-radius:10px; box-shadow:var(--shadow); cursor:pointer; font-weight:700 }
+  </style>
+</head>
+<body>
+  <header>
+    <span>🧑🏻‍🏫 Pizarra Blanca</span>
+    <div>
+      <button id="save">📥 Guardar PNG</button>
+    </div>
+  </header>
+
+  <div id="workspace">
+    <div id="board"><canvas id="canvas"></canvas></div>
+  </div>
+
+  <button id="minimize-btn">⇤</button>
+
+  <aside id="toolbar">
+    <div class="group">
+      <div class="title">Herramientas</div>
+      <div class="tool-grid">
+        <button class="tool" data-tool="brush" title="Pincel">🖌️</button>
+        <button class="tool" data-tool="eraser" title="Borrador">🧽</button>
+        <button class="tool" data-tool="line" title="Línea">／</button>
+        <button class="tool" data-tool="rect" title="Rectángulo">▭</button>
+        <button class="tool" data-tool="circle" title="Círculo">◯</button>
+        <button class="tool" data-tool="text" title="Texto">T</button>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="title">Colores</div>
+      <div class="colors" id="palette">
+        <div class="swatch selected" style="background:#000" data-color="#000"></div>
+        <div class="swatch" style="background:#ff0000" data-color="#ff0000"></div>
+        <div class="swatch" style="background:#00ff00" data-color="#00ff00"></div>
+        <div class="swatch" style="background:#0000ff" data-color="#0000ff"></div>
+        <div class="swatch" style="background:#ffff00" data-color="#ffff00"></div>
+        <div class="swatch" style="background:#ff00ff" data-color="#ff00ff"></div>
+        <div class="swatch" style="background:#00ffff" data-color="#00ffff"></div>
+        <div class="swatch" style="background:#808080" data-color="#808080"></div>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="title">Tamaño</div>
+      <div class="sizes">
+        <button class="size active" data-size="2"><span class="dot" style="width:4px;height:4px"></span></button>
+        <button class="size" data-size="6"><span class="dot" style="width:8px;height:8px"></span></button>
+        <button class="size" data-size="12"><span class="dot" style="width:14px;height:14px"></span></button>
+        <button class="size" data-size="18"><span class="dot" style="width:18px;height:18px"></span></button>
+        <button class="size" data-size="24"><span class="dot" style="width:22px;height:22px"></span></button>
+      </div>
+      <div style="margin-top:10px">
+        <div class="title" style="margin:0 0 6px 0">Opacidad</div>
+        <input id="alpha" type="range" min="0.1" max="1" step="0.05" value="1" style="width:100%" />
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="title">Páginas</div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px">
+        <button id="prevPage" class="wide-btn">◀</button>
+        <button id="nextPage" class="wide-btn">▶</button>
+      </div>
+    </div>
+
+    <div class="group">
+      <button id="clear" class="wide-btn">🧹 Limpiar</button>
+    </div>
+  </aside>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    let drawing=false, tool='brush', color='#000', size=6, alpha=1;
+
+    // HiDPI sizing
+    function resizeCanvas(){
+      // Guardar contenido actual (incluido cuando se pulsa F11 y cambia el tamaño)
+      let snapshotURL = null;
+      if (canvas.width && canvas.height) {
+        try { snapshotURL = canvas.toDataURL('image/png'); } catch(_) {}
+      }
+
+      const rect = document.getElementById('board').getBoundingClientRect();
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+
+      // Ajustar tamaño CSS
+      canvas.style.width = rect.width + 'px';
+      canvas.style.height = rect.height + 'px';
+
+      // Ajustar tamaño interno en píxeles
+      canvas.width = Math.round(rect.width * dpr);
+      canvas.height = Math.round(rect.height * dpr);
+
+      // Resetear transformaciones y escalar para dibujar en px CSS
+      ctx.setTransform(1,0,0,1,0,0);
+      ctx.scale(dpr, dpr);
+
+      // Restaurar contenido previo si existía
+      if (snapshotURL) {
+        const img = new Image();
+        img.onload = () => {
+          // Dibujamos usando dimensiones CSS (el contexto ya está escalado a DPR)
+          ctx.drawImage(img, 0, 0, rect.width, rect.height);
+        };
+        img.src = snapshotURL;
+      }
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    function getPos(e){ const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+
+    function start(e){ e.preventDefault(); drawing=true; const p=getPos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); }
+    function move(e){ if(!drawing) return; const p=getPos(e); ctx.globalAlpha=alpha; ctx.lineCap='round'; ctx.lineWidth=size; if(tool==='brush'){ ctx.strokeStyle=color; ctx.lineTo(p.x,p.y); ctx.stroke(); } else if(tool==='eraser'){ ctx.save(); ctx.globalCompositeOperation='destination-out'; ctx.beginPath(); ctx.arc(p.x,p.y,size/2,0,Math.PI*2); ctx.fill(); ctx.restore(); } }
+    function stop(){ drawing=false; }
+
+    canvas.addEventListener('pointerdown', start);
+    canvas.addEventListener('pointermove', move);
+    canvas.addEventListener('pointerup', stop);
+    canvas.addEventListener('pointercancel', stop);
+
+    // Tools UI
+    document.querySelectorAll('.tool').forEach(b=>{ b.onclick=()=>{ document.querySelectorAll('.tool').forEach(x=>x.classList.remove('active')); b.classList.add('active'); tool=b.dataset.tool; }; });
+    const palette = document.getElementById('palette');
+    palette.querySelectorAll('.swatch').forEach(s=>{ s.onclick=()=>{ color=s.dataset.color; palette.querySelectorAll('.swatch').forEach(x=>x.classList.remove('selected')); s.classList.add('selected'); }; });
+    document.querySelectorAll('.size').forEach(s=>s.onclick=()=>{ document.querySelectorAll('.size').forEach(x=>x.classList.remove('active')); s.classList.add('active'); size=parseInt(s.dataset.size); });
+    document.getElementById('alpha').oninput=e=>alpha=parseFloat(e.target.value);
+
+    document.getElementById('clear').onclick=()=>ctx.clearRect(0,0,canvas.width,canvas.height);
+    document.getElementById('save').onclick=()=>{ const a=document.createElement('a'); a.download='pizarra.png'; a.href=canvas.toDataURL('image/png'); a.click(); };
+
+    const toolbar=document.getElementById('toolbar');
+    document.getElementById('minimize-btn').onclick=()=>toolbar.classList.toggle('minimized');
+
+    // Paginado
+    const pages = []; let pageIndex = 0;
+    const snapshot = ()=>canvas.toDataURL('image/png');
+    const render = (url)=>new Promise(res=>{ if(!url){ ctx.clearRect(0,0,canvas.width,canvas.height); return res(); } const img=new Image(); img.onload=()=>{ const r=canvas.getBoundingClientRect(); ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0,r.width,r.height); res(); }; img.src=url; });
+
+    document.getElementById('nextPage').onclick = async ()=>{ pages[pageIndex]=snapshot(); pageIndex++; if(pageIndex>=pages.length){ pages.push(null); ctx.clearRect(0,0,canvas.width,canvas.height); } else { await render(pages[pageIndex]); } };
+    document.getElementById('prevPage').onclick = async ()=>{ if(pageIndex===0) return; pages[pageIndex]=snapshot(); pageIndex--; await render(pages[pageIndex]); };
+  </script>
+</body>
+</html>
