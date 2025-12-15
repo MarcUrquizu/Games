@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Noticias OLAP</title>
+  <link rel="icon" type="image/png" href="img/favicon.png">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { min-height: 100%; }
+    body {
+      background: #0a0a0a;
+      color: #0ff;
+      font-family: 'Press Start 2P', cursive;
+      text-align: center;
+      padding: 28px 16px 40px;
+      position: relative;
+      overflow: hidden;
+    }
+    #stars {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+    }
+    header h1 {
+      font-size: 28px;
+      margin-bottom: 12px;
+      text-shadow: 0 0 8px #0ff, 0 0 18px #0ff;
+    }
+    header p {
+      font-size: 12px;
+      color: #bff;
+      margin-bottom: 24px;
+      line-height: 1.6;
+    }
+    .news-list {
+      max-width: 820px;
+      margin: 0 auto;
+      display: grid;
+      gap: 18px;
+    }
+    .card {
+      background: rgba(0, 0, 0, 0.6);
+      border: 2px solid #0ff;
+      border-radius: 12px;
+      padding: 18px 16px;
+      box-shadow: 0 0 18px rgba(0, 255, 255, 0.35);
+      text-align: left;
+    }
+    .card h2 {
+      font-size: 16px;
+      margin-bottom: 10px;
+      color: #fff;
+      text-shadow: 0 0 6px #0ff;
+    }
+    .card time {
+      display: block;
+      font-size: 10px;
+      color: #9ef;
+      margin-bottom: 12px;
+    }
+    .card p {
+      font-size: 11px;
+      line-height: 1.6;
+      color: #cff;
+    }
+    .back-link {
+      display: inline-block;
+      margin-top: 26px;
+      padding: 12px 18px;
+      font-size: 12px;
+      color: #0a0a0a;
+      background: #0ff;
+      border: 2px solid #0ff;
+      border-radius: 10px;
+      text-decoration: none;
+      text-shadow: 0 0 4px #0ff;
+    }
+    .back-link:hover {
+      box-shadow: 0 0 12px #0ff, 0 0 20px #0ff;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="stars"></canvas>
+  <header>
+    <h1>Noticias OLAP</h1>
+    <p>Últimas novedades, cambios y lanzamientos para los exploradores de OLAP.</p>
+  </header>
+
+  <section class="news-list" aria-label="Novedades de OLAP">
+    <article class="card">
+      <h2>IA en camino</h2>
+      <time datetime="2024-12-01">1 de diciembre de 2024</time>
+      <p>Estamos puliendo la próxima experiencia de IA en OLAP. Muy pronto podrás probarla desde la página principal.</p>
+    </article>
+    <article class="card">
+      <h2>Nuevos minijuegos</h2>
+      <time datetime="2024-11-20">20 de noviembre de 2024</time>
+      <p>Se añadieron Null's Breakout y Sonic al catálogo retro. Si encuentras un bug, envíanos tus comentarios.</p>
+    </article>
+    <article class="card">
+      <h2>Secretos actualizados</h2>
+      <time datetime="2024-11-05">5 de noviembre de 2024</time>
+      <p>Las combinaciones ocultas ahora muestran un panel con todos los códigos. Explora y encuentra cada easter egg.</p>
+    </article>
+  </section>
+
+  <a class="back-link" href="index.html">Volver al inicio</a>
+
+  <script>
+    // Fondo de estrellas reutilizado
+    const canvas = document.getElementById('stars');
+    const ctx = canvas.getContext('2d');
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    let stars = [];
+    function initStars() {
+      stars = Array.from({ length: 420 }).map(() => ({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        r: Math.random() * 1.6 + 0.4,
+        d: Math.random() * 0.7 + 0.3
+      }));
+    }
+    function drawStars() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#fff';
+      stars.forEach(s => {
+        ctx.globalAlpha = s.d;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+    }
+    function loop() {
+      drawStars();
+      requestAnimationFrame(loop);
+    }
+    window.addEventListener('load', () => {
+      resizeCanvas();
+      initStars();
+      loop();
+    });
+    window.addEventListener('resize', () => {
+      resizeCanvas();
+      initStars();
+    });
+  </script>
+</body>
+</html>
