@@ -1,0 +1,23 @@
+/* style.css */
+@layer utilities {
+  .message-user {
+    @apply bg-primary-500 text-white rounded-3xl rounded-br-md px-5 py-3 max-w-[85%] ml-auto;
+  }
+  .message-ai {
+    @apply bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-3xl rounded-bl-md px-5 py-3 max-w-[85%];
+  }
+}
+
+/* Mejorar bloques de código */
+pre[class*="language-"] {
+  @apply rounded-lg !my-3 !p-4 !text-sm;
+}
+
+code[class*="language-"] {
+  @apply text-sm;
+}
+
+/* Animación de escritura */
+.typing-indicator {
+  @apply bg-gray-100 dark:bg-gray-800 rounded-3xl rounded-bl-md px-5 py-3 max-w-[85%];
+}

@@ -1,235 +1,98 @@
-<!DOCTYPE html> 
-<html lang="es">
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
 <head>
-  <!-- Google tag (gtag.js) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-Q25WGL1GDZ"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gemini Chat</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/9.0.0/themes/prism-tomorrow.min.css" integrity="sha512-..." crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/9.0.0/components/prism-core.min.js" integrity="sha512-..." crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/9.0.0/plugins/autoloader/prism-autoloader.min.js" integrity="sha512-..." crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-
-    gtag('config', 'G-Q25WGL1GDZ');
-  </script>
-  <link rel="stylesheet" href="responsive.css">
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>IA Olap</title>
-  <link rel="stylesheet" href="style.css">
-  <style>
-    .game-buttons {
-      background-color: #1e1e1e;
-      color: #fff;
-    }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { display: flex; justify-content: center; align-items: center; height: 100vh; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f7f7f8; }
-    .card { background: #fff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 640px; padding: 32px; display: flex; flex-direction: column; gap: 16px; }
-    .header { display: flex; justify-content: space-between; align-items: center; }
-    .reset-btn { padding: 4px 8px; background: #e53e3e; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 0.875rem; }
-    .reset-btn:hover { background: #c53030; }
-    .lang-select { text-align: right; }
-    h2#promptHeader { font-size: 1.75rem; color: #111; }
-    .conversation { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 0 8px; max-height: 300px; }
-    .message { max-width: 70%; padding: 12px 16px; border-radius: 20px; line-height: 1.4; position: relative; }
-    .user { align-self: flex-end; background: #e5e7eb; color: #111; }
-    .bot { align-self: flex-start; background: #00d66a; color: #fff; }
-    .bot::before { content: ''; position: absolute; top: 50%; left: -20px; transform: translateY(-50%); border: 10px solid transparent; border-right-color: #00d66a; }
-    .input-area { display: flex; gap: 8px; }
-    .input-area input { flex: 1; padding: 10px 16px; border: 1px solid #d1d5db; border-radius: 9999px; font-size: 1rem; }
-    .input-area button { padding: 0 16px; border: none; background: #111; color: #fff; border-radius: 9999px; cursor: pointer; font-size: 1rem; }
-  </style>
-</head>
-<body>
-
-  <a href="./index.html" class="menu-button game-buttons">Menu</a>
-  <button class="help-button game-buttons" data-help="Próximamente">Info</button>
-
-  <div class="card">
-    <div class="header">
-      <h2 id="promptHeader">¿En qué puedo ayudarte?</h2>
-      <button id="resetBtn" class="reset-btn">Reiniciar chat</button>
-    </div>
-    <div class="lang-select">
-      <label for="langSelect">Idioma:</label>
-      <select id="langSelect">
-        <option value="es">Español</option>
-        <option value="ca">Català</option>
-        <option value="en">English</option>
-        <option value="fr">Français</option>
-        <option value="it">Italiano</option>
-        <option value="de">Deutsch</option>
-      </select>
-    </div>
-    <div id="conversation" class="conversation"></div>
-    <div class="input-area">
-      <input id="userInput" type="text" placeholder="Escribe aquí" autocomplete="off">
-      <button id="sendBtn">Enviar</button>
-    </div>
-  </div>
-
-  <script>
-    // referencias DOM
-    const langSelect   = document.getElementById('langSelect');
-    const sendBtn      = document.getElementById('sendBtn');
-    const resetBtn     = document.getElementById('resetBtn');
-    const userInput    = document.getElementById('userInput');
-    const conv         = document.getElementById('conversation');
-    const promptHeader = document.getElementById('promptHeader');
-    const langLabel    = document.querySelector('label[for="langSelect"]');
-
-    // ==== Textos UI por idioma ====
-    const uiTexts = {
-      es: { promptHeader: '¿En qué puedo ayudarte?', placeholder: 'Escribe aquí', languageLabel: 'Idioma:', reset: 'Reiniciar chat', send: 'Enviar' },
-      ca: { promptHeader: 'En què et puc ajudar?', placeholder: 'Escriu aquí', languageLabel: 'Idioma:', reset: 'Reiniciar xat',    send: 'Envia' },
-      en: { promptHeader: 'How can I help you?',   placeholder: 'Type here',   languageLabel: 'Language:', reset: 'Reset chat',   send: 'Send' },
-      fr: { promptHeader: 'Comment puis-je vous aider ?', placeholder: 'Écrivez ici', languageLabel: 'Langue :', reset: 'Réinitialiser chat', send: 'Envoyer' },
-      it: { promptHeader: 'Come posso aiutarti?',   placeholder: 'Digita qui',  languageLabel: 'Lingua:',   reset: 'Reimposta chat', send: 'Invia' },
-      de: { promptHeader: 'Wie kann ich dir helfen?', placeholder: 'Hier eingeben', languageLabel: 'Sprache:', reset: 'Chat zurücksetzen', send: 'Senden' }
-    };
-
-    function updateUI() {
-      const lang = langSelect.value;
-      const txt  = uiTexts[lang];
-      promptHeader.textContent  = txt.promptHeader;
-      userInput.placeholder     = txt.placeholder;
-      langLabel.textContent     = txt.languageLabel;
-      resetBtn.textContent      = txt.reset;
-      sendBtn.textContent       = txt.send;
-    }
-
-    // ==== Lógica de conversación ====
-    const greetingKeywords = {
-      es: ['hola','buenas','buenos días','buenas tardes','holi'],
-      ca: ['hola','bon dia','bona tarda','salut'],
-      en: ['hello','hi','hey'],
-      fr: ['bonjour','salut','coucou'],
-      it: ['ciao','salve'],
-      de: ['hallo','guten tag','moin']
-    };
-    const statusKeywords = {
-      es: ['cómo estás','qué tal','cómo va'],
-      ca: ['com estàs','què tal','com va'],
-      en: ['how are you','how are u','how r you'],
-      fr: ['comment ça va','ça va'],
-      it: ['come stai','come va'],
-      de: ['wie geht es','wie gehts']
-    };
-    const wellSynonyms = {
-      es: ['Genial','Fantástico','Muy bien','Perfecto'],
-      ca: ['Genial','Fantàstic','Molt bé','Perfecte'],
-      en: ['Great','Good','Fine','Well'],
-      fr: ['Bien','Super','Génial','Parfait'],
-      it: ['Bene','Ottimo','Fantastico','Perfetto'],
-      de: ['Gut','Toll','Prima','Perfekt']
-    };
-
-    const templates = {
-      es: {
-        greetings: ['Hola, ¿cómo puedo ayudarte?','¡Hola! ¿Qué necesitas?'],
-        status:    ['Estoy {well}, ¿y tú?','Me siento {well}, gracias por preguntar.'],
-        default:   ['Lo siento, no lo entiendo.']
-      },
-      ca: {
-        greetings: ['Hola! En què et puc ajudar?','¡Hola! Què necessites?'],
-        status:    ['Estic {well}, i tu?','Em trobo {well}, gràcies per preguntar.'],
-        default:   ['Ho sento, no ho entenc.']
-      },
-      en: {
-        greetings: ['Hello, how can I help you?','Hello! What do you need?'],
-        status:    ["I'm {well}, how about you?","Feeling {well}, thanks for asking."],
-        default:   ["Sorry, I don't understand."]
-      },
-      fr: {
-        greetings: ['Bonjour, comment puis-je vous aider?','Bonjour! Que voulez-vous?'],
-        status:    ['Je suis {well}, et vous?','Je me sens {well}, merci de demander.'],
-        default:   ['Désolé, je ne comprends pas.']
-      },
-      it: {
-        greetings: ['Ciao, come posso aiutarti?','Ciao! Di cosa hai bisogno?'],
-        status:    ['Sto {well}, e tu?','Mi sento {well}, grazie per aver chiesto.'],
-        default:   ['Mi dispiace, non capisco.']
-      },
-      de: {
-        greetings: ["Hallo, wie kann ich dir helfen?","Hallo! Was brauchst du?"],
-        status:    ["Mir geht's {well}, und dir?","Ich fühle mich {well}, danke der Nachfrage."],
-        default:   ['Entschuldigung, ich verstehe nicht.']
-      }
-    };
-    const texts = {
-      es: { result: 'El resultado es', error: 'No pude calcular eso. Asegúrate de usar una expresión matemática válida.' },
-      ca: { result: 'El resultat és', error: 'No he pogut calcular-ho. Assegura’t d’utilitzar una expressió vàlida.' },
-      en: { result: 'The result is',  error: 'I couldn\'t calculate that. Make sure to use a valid mathematical expression.' },
-      fr: { result: 'Le résultat est', error: 'Je n\'ai pas pu calculer cela. Assurez-vous d\'utiliser une expression mathématique valide.' },
-      it: { result: 'Il risultato è',  error: 'Non sono riuscito a calcolarlo. Assicurati di utilizzare un\'espressione matematica valida.' },
-      de: { result: 'Das Ergebnis ist', error: 'Ich konnte das nicht berechnen. Stelle sicher, dass du einen gültigen mathematischen Ausdruck verwendest.' }
-    };
-    const insultPatterns = /(puta|idiota|mierda|maric[oó]n|zorra|gilipollas|imb[eé]cil|racista|machista|homof[oó]bo|homosexual|tont[oa])/i;
-
-    function safeEvaluate(input) {
-      if (!/^[0-9+\-*/().\s^√]+$/.test(input)) throw new Error('Expresión no válida');
-      let expr = input.replace(/\^/g, '**').replace(/√\s*\(([^)]+)\)/g, 'Math.sqrt($1)');
-      return new Function('return ' + expr)();
-    }
-
-    function appendMessage(text, cls) {
-      const msg = document.createElement('div');
-      msg.className = 'message ' + cls;
-      msg.textContent = text;
-      conv.appendChild(msg);
-      conv.scrollTop = conv.scrollHeight;
-    }
-
-    function resetChat() {
-      conv.innerHTML = '';
-      userInput.value = '';
-      userInput.focus();
-    }
-
-    function handleInput() {
-      const raw = userInput.value.trim();
-      if (!raw) return;
-      if (insultPatterns.test(raw)) { resetChat(); return; }
-      appendMessage(raw, 'user');
-
-      const lang  = langSelect.value;
-      const clean = raw.toLowerCase().replace(/[^\p{L}\d\s]/gu, '').trim();
-      const token = clean.split(/\s+/)[0];
-      let reply;
-
-      if (/^[0-9+\-*/().\s^√]+$/.test(raw)) {
-        try {
-          const result = safeEvaluate(raw);
-          reply = `${texts[lang].result} ${result}`;
-        } catch {
-          reply = texts[lang].error;
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: { 500: '#10a37f' },
+            dark: { 800: '#1f2937', 900: '#111827' }
+          }
         }
       }
-      else if (greetingKeywords[lang].includes(token)) {
-        reply = templates[lang].greetings[0];
-      }
-      else if (statusKeywords[lang].some(s => clean.includes(s))) {
-        const well = wellSynonyms[lang][Math.floor(Math.random()*wellSynonyms[lang].length)];
-        reply = templates[lang].status[0].replace('{well}', well);
-      }
-      else {
-        reply = templates[lang].default[0];
-      }
-
-      appendMessage(reply, 'bot');
-      userInput.value = '';
-      userInput.focus();
     }
-
-    // --- inicialización ---
-    updateUI();
-    langSelect.addEventListener('change', () => {
-      updateUI();
-      resetChat();
-    });
-    sendBtn.addEventListener('click', handleInput);
-    resetBtn.addEventListener('click', resetChat);
-    userInput.addEventListener('keydown', e => { if (e.key === 'Enter') handleInput(); });
   </script>
-<script src="help-modal.js"></script>
-  <script src="touch-controls.js"></script>
+  <link rel="stylesheet" href="ia.css" />
+</head>
+<body class="bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100 transition-colors duration-300">
+  <div class="flex h-screen overflow-hidden">
+    <!-- Sidebar -->
+    <aside id="sidebar" class="w-64 bg-white dark:bg-gray-800 flex flex-col border-r border-gray-200 dark:border-gray-700 transition-transform duration-300 md:translate-x-0 -translate-x-full">
+      <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+        <h1 class="text-xl font-bold text-primary-500">Gemini Chat</h1>
+        <div class="mt-4 flex justify-between items-center">
+          <button id="new-chat-btn" class="px-3 py-1.5 bg-primary-500 text-white rounded-md text-sm hover:bg-primary-600 transition">+ Nueva conversación</button>
+          <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-700 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="flex-1 overflow-y-auto p-2">
+        <h2 class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Historial</h2>
+        <div id="history-list" class="space-y-1">
+          <!-- Historial dinámico -->
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Chat Area -->
+    <main class="flex-1 flex flex-col">
+      <!-- Mobile sidebar toggle -->
+      <div class="md:hidden p-3 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <button id="mobile-menu-btn" class="p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Chat messages -->
+      <div id="chat-container" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+        <div class="max-w-3xl mx-auto w-full">
+          <!-- Mensajes se insertan aquí -->
+        </div>
+      </div>
+
+      <!-- Input area -->
+      <div class="border-t border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800">
+        <div class="max-w-3xl mx-auto">
+          <form id="chat-form" class="relative">
+            <textarea
+              id="user-input"
+              placeholder="Escribe tu mensaje..."
+              class="w-full min-h-[60px] max-h-32 p-4 pr-12 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none focus:outline-none focus:ring-2 focus:ring-primary-500"
+            ></textarea>
+            <button
+              type="submit"
+              class="absolute right-3 bottom-3 bg-primary-500 text-white p-2 rounded-full hover:bg-primary-600 transition"
+              aria-label="Enviar"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+              </svg>
+            </button>
+          </form>
+          <div class="flex justify-between mt-2 text-xs text-gray-500 dark:text-gray-400">
+            <button id="clear-chat" class="hover:underline">Borrar conversación</button>
+            <span>Presiona Enter para enviar</span>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="ia.js"></script>
 </body>
 </html>
