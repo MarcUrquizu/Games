@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Synth Runner</title>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: 'Share Tech Mono', monospace;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      background: linear-gradient(135deg, #020510 0%, #0f0638 45%, #350b56 100%);
+      color: #f0f4ff;
+      padding: 24px;
+      gap: 20px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(28px, 4vw, 44px);
+      text-transform: uppercase;
+      letter-spacing: 8px;
+      text-shadow: 0 0 18px rgba(255, 0, 204, 0.5);
+    }
+
+    .hud {
+      display: flex;
+      gap: clamp(12px, 4vw, 28px);
+      font-size: clamp(14px, 3vw, 20px);
+      letter-spacing: 2px;
+      text-shadow: 0 0 6px rgba(0, 255, 204, 0.4);
+    }
+
+    canvas {
+      width: min(92vw, 900px);
+      aspect-ratio: 16 / 7;
+      border-radius: 18px;
+      border: 4px solid rgba(0, 255, 204, 0.4);
+      background: linear-gradient(180deg, rgba(4, 10, 22, 0.9) 0%, rgba(15, 4, 24, 0.95) 100%);
+      box-shadow: 0 0 28px rgba(255, 0, 204, 0.3);
+    }
+
+    .panel {
+      max-width: 900px;
+      background: rgba(8, 12, 28, 0.75);
+      border: 1px solid rgba(0, 255, 204, 0.2);
+      padding: 20px 24px;
+      border-radius: 14px;
+      line-height: 1.6;
+      font-size: 14px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .panel strong {
+      color: #56ffe1;
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 20px;
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(6px);
+      transition: opacity 0.3s ease;
+    }
+
+    .overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    button {
+      font-family: inherit;
+      letter-spacing: 3px;
+      padding: 12px 28px;
+      border-radius: 999px;
+      border: 2px solid rgba(0, 255, 204, 0.5);
+      background: rgba(255, 0, 204, 0.25);
+      color: #f0f4ff;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 18px rgba(0, 255, 204, 0.5);
+    }
+  </style>
+</head>
+<body>
+  <h1>Synth Runner</h1>
+  <div class="hud">
+    <div>Distancia: <span id="distance">0</span> m</div>
+    <div>Puntos: <span id="score">0</span></div>
+    <div>Velocidad: <span id="speed">120</span> u/s</div>
+    <div>Escudos: <span id="shields">3</span></div>
+  </div>
+  <div style="position: relative;">
+    <canvas id="game" width="900" height="400"></canvas>
+    <div id="overlay" class="overlay">
+      <p>Corre por la autopista de neón. Evita drones y abismos, captura chips para aumentar tu combo.</p>
+      <button id="start">Iniciar Carrera</button>
+      <small>Controles: ↑ Salto · ↓ Deslizar · → Turbo · Barra espaciadora usar dron asistente</small>
+    </div>
+  </div>
+  <div class="panel">
+    <div><strong>Objetivo:</strong> Mantente vivo el máximo tiempo posible mientras acumulas puntos con combos perfectos. Cada 500 metros se incrementa la velocidad y aparecen amenazas nuevas.</div>
+    <div><strong>Power-ups:</strong> <em>Chip</em> (+150 puntos y +1 combo), <em>Orbe de escudo</em> (recupera un escudo), <em>Drone asistente</em> (elimina el próximo obstáculo).</div>
+    <div><strong>Consejo:</strong> combina salto y turbo para atravesar lagunas imposibles. El deslizar recarga energía del dron.</div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const overlay = document.getElementById('overlay');
+    const startBtn = document.getElementById('start');
+    const distanceEl = document.getElementById('distance');
+    const scoreEl = document.getElementById('score');
+    const speedEl = document.getElementById('speed');
+    const shieldsEl = document.getElementById('shields');
+
+    const keys = new Set();
+
+    const player = {
+      x: 160,
+      y: 300,
+      width: 44,
+      height: 68,
+      vy: 0,
+      gravity: 1400,
+      jumpForce: -560,
+      slide: false,
+      slideTimer: 0,
+      invulnerable: 0,
+      droneEnergy: 0,
+    };
+
+    const state = {
+      running: false,
+      lastTime: 0,
+      speed: 280,
+      distance: 0,
+      score: 0,
+      shields: 3,
+      combo: 0,
+      obstacles: [],
+      pickups: [],
+      parallax: 0,
+    };
+
+    function resetGame() {
+      state.speed = 280;
+      state.distance = 0;
+      state.score = 0;
+      state.shields = 3;
+      state.combo = 0;
+      state.obstacles = [];
+      state.pickups = [];
+      state.parallax = 0;
+      player.y = 300;
+      player.vy = 0;
+      player.slide = false;
+      player.invulnerable = 0;
+      player.droneEnergy = 0.5;
+      updateHUD();
+    }
+
+    function updateHUD() {
+      distanceEl.textContent = Math.floor(state.distance / 10);
+      scoreEl.textContent = Math.floor(state.score);
+      speedEl.textContent = Math.floor(state.speed);
+      shieldsEl.textContent = state.shields;
+    }
+
+    function spawnObstacle() {
+      const type = Math.random();
+      if (type < 0.45) {
+        state.obstacles.push({ type: 'drone', x: canvas.width + 40, y: 240, width: 60, height: 42, passed: false });
+      } else if (type < 0.75) {
+        state.obstacles.push({ type: 'barrier', x: canvas.width + 40, y: 320, width: 48, height: 70, passed: false });
+      } else {
+        state.obstacles.push({ type: 'gap', x: canvas.width + 40, y: 340, width: 160, height: 200, passed: false });
+      }
+    }
+
+    function spawnPickup() {
+      const type = Math.random();
+      if (type < 0.5) {
+        state.pickups.push({ type: 'chip', x: canvas.width + 40, y: 230, radius: 14 });
+      } else if (type < 0.8) {
+        state.pickups.push({ type: 'shield', x: canvas.width + 40, y: 220, radius: 16 });
+      } else {
+        state.pickups.push({ type: 'drone', x: canvas.width + 40, y: 260, radius: 18 });
+      }
+    }
+
+    function activateDrone() {
+      if (player.droneEnergy < 1) return;
+      if (state.obstacles.length) {
+        const first = state.obstacles[0];
+        createBurst(first.x, first.y, '#56ffe1');
+        state.obstacles.shift();
+        state.score += 400;
+        player.droneEnergy = 0;
+        updateHUD();
+      }
+    }
+
+    const bursts = [];
+    function createBurst(x, y, color) {
+      for (let i = 0; i < 20; i++) {
+        bursts.push({
+          x,
+          y,
+          vx: (Math.random() - 0.5) * 240,
+          vy: (Math.random() - 0.5) * 240,
+          life: 0.6,
+          color,
+        });
+      }
+    }
+
+    let obstacleTimer = 0;
+    let pickupTimer = 2;
+
+    function update(dt) {
+      state.distance += state.speed * dt;
+      state.parallax += state.speed * dt * 0.3;
+      player.invulnerable = Math.max(0, player.invulnerable - dt);
+
+      if (keys.has('ArrowUp') && player.y >= 300) {
+        player.vy = player.jumpForce;
+        player.y = 299;
+      }
+
+      if (keys.has('ArrowRight')) {
+        state.speed = Math.min(520, state.speed + 320 * dt);
+      } else {
+        state.speed = Math.max(280, state.speed - 260 * dt);
+      }
+
+      if (keys.has('ArrowDown') && player.y >= 300) {
+        player.slide = true;
+        player.slideTimer = 0.6;
+      }
+
+      if (player.slide) {
+        player.slideTimer -= dt;
+        if (player.slideTimer <= 0) player.slide = false;
+      }
+
+      player.vy += player.gravity * dt;
+      player.y += player.vy * dt;
+      if (player.y >= 300) {
+        player.y = 300;
+        player.vy = 0;
+      }
+
+      obstacleTimer -= dt;
+      pickupTimer -= dt;
+      if (obstacleTimer <= 0) {
+        spawnObstacle();
+        obstacleTimer = 1.6 - Math.min(0.9, state.distance / 5000);
+      }
+      if (pickupTimer <= 0) {
+        spawnPickup();
+        pickupTimer = 2.4 - Math.min(1.4, state.distance / 6000);
+      }
+
+      for (const obstacle of state.obstacles) {
+        obstacle.x -= state.speed * dt;
+        if (!obstacle.passed && obstacle.x + obstacle.width < player.x) {
+          obstacle.passed = true;
+          state.combo = Math.min(10, state.combo + 1);
+          state.score += 50 * state.combo;
+        }
+      }
+      state.obstacles = state.obstacles.filter((obstacle) => obstacle.x + obstacle.width > -40);
+
+      for (const pickup of state.pickups) {
+        pickup.x -= state.speed * dt * 1.1;
+        if (Math.abs(pickup.x - player.x) < 40 && Math.abs(pickup.y - (player.y + (player.slide ? 30 : 0))) < 50) {
+          collectPickup(pickup);
+          pickup.collected = true;
+        }
+      }
+      state.pickups = state.pickups.filter((pickup) => !pickup.collected && pickup.x > -60);
+
+      for (const b of bursts) {
+        b.x += b.vx * dt;
+        b.y += b.vy * dt;
+        b.life -= dt;
+      }
+      while (bursts.length && bursts[0].life <= 0) bursts.shift();
+
+      checkCollisions();
+
+      if (state.distance % 5000 < state.speed * dt) {
+        state.speed += 30;
+        state.shields = Math.min(5, state.shields + 1);
+        player.droneEnergy = Math.min(1, player.droneEnergy + 0.3);
+      }
+
+      state.score += dt * (50 + state.speed * 0.12 + state.combo * 10);
+      player.droneEnergy = Math.min(1, player.droneEnergy + dt * (player.slide ? 0.8 : 0.3));
+
+      updateHUD();
+    }
+
+    function collectPickup(pickup) {
+      if (pickup.type === 'chip') {
+        state.score += 150;
+        state.combo = Math.min(10, state.combo + 2);
+        createBurst(pickup.x, pickup.y, '#ff53f3');
+      } else if (pickup.type === 'shield') {
+        state.shields = Math.min(5, state.shields + 1);
+        createBurst(pickup.x, pickup.y, '#56ffe1');
+      } else if (pickup.type === 'drone') {
+        player.droneEnergy = 1;
+        createBurst(pickup.x, pickup.y, '#ffe45c');
+      }
+    }
+
+    function checkCollisions() {
+      const hitboxHeight = player.slide ? player.height * 0.6 : player.height;
+      const hitboxY = player.slide ? player.y + player.height * 0.4 : player.y;
+      for (const obstacle of state.obstacles) {
+        if (obstacle.type === 'gap') {
+          if (player.x > obstacle.x && player.x < obstacle.x + obstacle.width && player.y + hitboxHeight >= obstacle.y) {
+            crash();
+            break;
+          }
+          continue;
+        }
+        if (player.invulnerable > 0) continue;
+        const overlapX = Math.abs(player.x - (obstacle.x + obstacle.width / 2)) < (player.width / 2 + obstacle.width / 2);
+        const overlapY = Math.abs(hitboxY - (obstacle.y + obstacle.height / 2)) < (hitboxHeight / 2 + obstacle.height / 2);
+        if (overlapX && overlapY) {
+          crash();
+          obstacle.passed = true;
+          break;
+        }
+      }
+    }
+
+    function crash() {
+      if (state.shields > 0) {
+        state.shields -= 1;
+        state.combo = 0;
+        player.invulnerable = 1.2;
+        createBurst(player.x, player.y, '#ff3c7f');
+      } else {
+        endGame();
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const horizon = 220;
+      ctx.fillStyle = '#050d1c';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // parallax city
+      ctx.save();
+      ctx.translate(-state.parallax * 0.1 % canvas.width, 0);
+      ctx.fillStyle = 'rgba(138, 64, 255, 0.3)';
+      for (let i = 0; i < 3; i++) {
+        drawCityLayer(i * canvas.width);
+      }
+      ctx.restore();
+
+      ctx.save();
+      ctx.translate(-state.parallax * 0.2 % canvas.width, 0);
+      ctx.fillStyle = 'rgba(86, 255, 225, 0.35)';
+      for (let i = 0; i < 3; i++) {
+        drawCityLayer(i * canvas.width, 90);
+      }
+      ctx.restore();
+
+      // road
+      ctx.fillStyle = '#070a16';
+      ctx.fillRect(0, horizon, canvas.width, canvas.height - horizon);
+      ctx.fillStyle = '#181d3f';
+      ctx.fillRect(0, horizon + 40, canvas.width, canvas.height - horizon - 40);
+      ctx.strokeStyle = 'rgba(86,255,225,0.4)';
+      ctx.setLineDash([24, 24]);
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(-state.parallax % 48, horizon + 80);
+      ctx.lineTo(canvas.width, horizon + 80);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // player
+      ctx.save();
+      ctx.translate(player.x, player.y);
+      if (player.slide) ctx.translate(0, player.height * 0.4);
+      ctx.fillStyle = '#56ffe1';
+      ctx.shadowColor = '#56ffe1';
+      ctx.shadowBlur = 16;
+      ctx.beginPath();
+      ctx.ellipse(0, player.slide ? 26 : 20, player.width / 2, player.slide ? 20 : 24, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#ff53f3';
+      ctx.fillRect(-player.width / 4, (player.slide ? 24 : -24), player.width / 2, player.slide ? 18 : 24);
+      ctx.restore();
+
+      // drone energy bar
+      ctx.fillStyle = 'rgba(8,12,28,0.8)';
+      ctx.fillRect(canvas.width - 180, 24, 140, 12);
+      ctx.fillStyle = '#ffe45c';
+      ctx.fillRect(canvas.width - 178, 26, 136 * player.droneEnergy, 8);
+      ctx.strokeStyle = 'rgba(255,228,92,0.6)';
+      ctx.strokeRect(canvas.width - 180, 24, 140, 12);
+
+      // obstacles
+      for (const obstacle of state.obstacles) {
+        if (obstacle.type === 'drone') {
+          ctx.fillStyle = '#ff53f3';
+          ctx.shadowColor = '#ff53f3';
+          ctx.shadowBlur = 12;
+          ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+          ctx.shadowBlur = 0;
+        } else if (obstacle.type === 'barrier') {
+          ctx.fillStyle = '#20ffd9';
+          ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+          ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+          ctx.strokeRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+        } else if (obstacle.type === 'gap') {
+          ctx.fillStyle = '#020510';
+          ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+          ctx.fillStyle = 'rgba(0,0,0,0.5)';
+          ctx.fillRect(obstacle.x - 4, obstacle.y, obstacle.width + 8, obstacle.height);
+        }
+      }
+
+      // pickups
+      for (const pickup of state.pickups) {
+        const gradient = ctx.createRadialGradient(pickup.x, pickup.y, 4, pickup.x, pickup.y, pickup.radius);
+        if (pickup.type === 'chip') {
+          gradient.addColorStop(0, '#fff');
+          gradient.addColorStop(1, '#ff53f3');
+        } else if (pickup.type === 'shield') {
+          gradient.addColorStop(0, '#fff');
+          gradient.addColorStop(1, '#56ffe1');
+        } else {
+          gradient.addColorStop(0, '#fff');
+          gradient.addColorStop(1, '#ffe45c');
+        }
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(pickup.x, pickup.y, pickup.radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      for (const b of bursts) {
+        ctx.globalAlpha = Math.max(0, b.life / 0.6);
+        ctx.fillStyle = b.color;
+        ctx.fillRect(b.x, b.y, 3, 3);
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    function drawCityLayer(offset, baseHeight = 140) {
+      for (let i = 0; i < 12; i++) {
+        const width = 40 + Math.random() * 70;
+        const height = baseHeight + Math.random() * 120;
+        ctx.fillRect(offset + i * 80, 220 - height, width, height);
+      }
+    }
+
+    function loop(timestamp) {
+      if (!state.running) return;
+      const dt = Math.min(0.033, (timestamp - state.lastTime) / 1000);
+      state.lastTime = timestamp;
+      update(dt);
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    function startGame() {
+      resetGame();
+      overlay.classList.add('hidden');
+      state.running = true;
+      state.lastTime = performance.now();
+      requestAnimationFrame(loop);
+    }
+
+    function endGame() {
+      state.running = false;
+      overlay.classList.remove('hidden');
+      overlay.innerHTML = `
+        <h2>Fin de la carrera</h2>
+        <p>Distancia total: ${Math.floor(state.distance / 10)} metros</p>
+        <p>Puntuación final: ${Math.floor(state.score)}</p>
+        <button id="restart">Volver a correr</button>
+      `;
+      overlay.querySelector('#restart').addEventListener('click', startGame, { once: true });
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (['ArrowUp', 'ArrowDown', 'ArrowRight', 'Space'].includes(e.code)) {
+        e.preventDefault();
+      }
+      keys.add(e.code);
+      if (e.code === 'Space') {
+        activateDrone();
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      keys.delete(e.code);
+    });
+
+    startBtn.addEventListener('click', startGame);
+  </script>
+</body>
+</html>

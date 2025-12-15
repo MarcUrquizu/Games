@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Circuit 2048</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: 'Rajdhani', sans-serif;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      background: radial-gradient(circle at top, #051219, #04070d 75%);
+      color: #e9f7ff;
+      padding: 30px 12px;
+      gap: 24px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(32px, 6vw, 48px);
+      letter-spacing: 6px;
+      text-transform: uppercase;
+      text-shadow: 0 0 20px rgba(0, 190, 255, 0.6);
+    }
+
+    .container {
+      display: grid;
+      gap: 16px;
+      justify-items: center;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(70px, 100px));
+      gap: 12px;
+      padding: 18px;
+      background: rgba(4, 18, 32, 0.9);
+      border-radius: 20px;
+      border: 2px solid rgba(0, 190, 255, 0.4);
+      box-shadow: 0 0 24px rgba(0, 190, 255, 0.25);
+    }
+
+    .cell {
+      width: min(18vw, 100px);
+      aspect-ratio: 1;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(20px, 4vw, 32px);
+      font-weight: 600;
+      letter-spacing: 1px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      transition: transform 0.15s ease, background 0.2s ease;
+    }
+
+    .cell.new {
+      animation: pop 0.25s ease;
+    }
+
+    @keyframes pop {
+      from { transform: scale(0.4); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .panel {
+      display: grid;
+      gap: 12px;
+      padding: 18px 20px;
+      border-radius: 16px;
+      background: rgba(3, 12, 24, 0.85);
+      border: 1px solid rgba(0, 190, 255, 0.3);
+      max-width: 460px;
+      line-height: 1.6;
+      text-align: center;
+    }
+
+    .stats {
+      display: flex;
+      gap: 18px;
+      justify-content: center;
+      font-size: clamp(16px, 3vw, 22px);
+      letter-spacing: 2px;
+    }
+
+    .stats div {
+      padding: 12px 20px;
+      background: rgba(0, 190, 255, 0.08);
+      border-radius: 12px;
+      border: 1px solid rgba(0, 190, 255, 0.2);
+      min-width: 120px;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .controls button {
+      font-family: inherit;
+      font-size: 18px;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(0, 190, 255, 0.3);
+      background: rgba(0, 190, 255, 0.1);
+      color: #e9f7ff;
+      cursor: pointer;
+    }
+
+    .controls button:hover {
+      background: rgba(0, 190, 255, 0.2);
+    }
+
+    @media (max-width: 640px) {
+      .grid {
+        grid-template-columns: repeat(4, minmax(60px, 1fr));
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Circuit 2048</h1>
+  <div class="container">
+    <div class="stats">
+      <div>Puntuación<br><span id="score">0</span></div>
+      <div>Mejor<br><span id="best">0</span></div>
+      <div>Movimientos<br><span id="moves">0</span></div>
+    </div>
+    <div id="grid" class="grid"></div>
+    <div class="controls">
+      <button data-dir="ArrowUp">↑</button>
+      <button data-dir="ArrowLeft">←</button>
+      <button data-dir="ArrowRight">→</button>
+      <button data-dir="ArrowDown">↓</button>
+      <button id="restart" style="grid-column: span 3;">Reiniciar</button>
+    </div>
+    <div class="panel">
+      <strong>Objetivo:</strong> Fusiona los módulos de energía hasta alcanzar el bloque 2048. Cada fusión incrementa la intensidad de los leds.
+      <strong>Bonificación:</strong> Encadenar fusiones en un mismo movimiento otorga un multiplicador de combo.
+      <strong>Consejo:</strong> Mantén una esquina con las piezas de mayor valor y planifica los desplazamientos en zigzag.
+    </div>
+  </div>
+
+  <script>
+    const gridElement = document.getElementById('grid');
+    const scoreEl = document.getElementById('score');
+    const bestEl = document.getElementById('best');
+    const movesEl = document.getElementById('moves');
+    const restartBtn = document.getElementById('restart');
+
+    const size = 4;
+    let grid = [];
+    let score = 0;
+    let moves = 0;
+    let best = Number(localStorage.getItem('circuit-2048-best') || 0);
+    bestEl.textContent = best;
+
+    function initGrid() {
+      grid = Array.from({ length: size }, () => Array(size).fill(0));
+      score = 0;
+      moves = 0;
+      spawnTile();
+      spawnTile();
+      updateUI();
+    }
+
+    function spawnTile() {
+      const empty = [];
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          if (grid[r][c] === 0) empty.push({ r, c });
+        }
+      }
+      if (!empty.length) return;
+      const { r, c } = empty[Math.floor(Math.random() * empty.length)];
+      grid[r][c] = Math.random() < 0.9 ? 2 : 4;
+    }
+
+    function updateUI() {
+      gridElement.innerHTML = '';
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          const value = grid[r][c];
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+          if (value) {
+            cell.textContent = value;
+            cell.style.background = tileColor(value);
+            cell.style.color = value >= 8 ? '#051219' : '#e9f7ff';
+          }
+          gridElement.appendChild(cell);
+        }
+      }
+      scoreEl.textContent = score;
+      movesEl.textContent = moves;
+      bestEl.textContent = best;
+    }
+
+    function tileColor(value) {
+      const colors = {
+        2: 'rgba(0,190,255,0.18)',
+        4: 'rgba(0,190,255,0.28)',
+        8: 'rgba(0,220,180,0.3)',
+        16: 'rgba(0,255,140,0.35)',
+        32: 'rgba(255,230,120,0.4)',
+        64: 'rgba(255,180,90,0.45)',
+        128: 'rgba(255,120,120,0.5)',
+        256: 'rgba(255,90,160,0.55)',
+        512: 'rgba(200,80,255,0.6)',
+        1024: 'rgba(150,80,255,0.65)',
+        2048: 'rgba(120,60,255,0.75)',
+      };
+      return colors[value] || 'rgba(255,255,255,0.75)';
+    }
+
+    function move(dir) {
+      const clone = grid.map((row) => [...row]);
+      let gained = 0;
+      let moved = false;
+      let mergesThisMove = 0;
+
+      const traverse = [];
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          traverse.push({ r, c });
+        }
+      }
+
+      if (dir === 'ArrowRight' || dir === 'ArrowDown') {
+        traverse.reverse();
+      }
+
+      const vector = {
+        ArrowUp: { dr: -1, dc: 0 },
+        ArrowDown: { dr: 1, dc: 0 },
+        ArrowLeft: { dr: 0, dc: -1 },
+        ArrowRight: { dr: 0, dc: 1 },
+      }[dir];
+      if (!vector) return;
+
+      const merged = Array.from({ length: size }, () => Array(size).fill(false));
+
+      for (const { r, c } of traverse) {
+        let value = grid[r][c];
+        if (!value) continue;
+        let nr = r;
+        let nc = c;
+        while (true) {
+          const nextR = nr + vector.dr;
+          const nextC = nc + vector.dc;
+          if (nextR < 0 || nextR >= size || nextC < 0 || nextC >= size) break;
+          if (grid[nextR][nextC] === 0) {
+            grid[nextR][nextC] = value;
+            grid[nr][nc] = 0;
+            nr = nextR;
+            nc = nextC;
+            moved = true;
+          } else if (grid[nextR][nextC] === value && !merged[nextR][nextC]) {
+            grid[nextR][nextC] *= 2;
+            grid[nr][nc] = 0;
+            merged[nextR][nextC] = true;
+            mergesThisMove += 1;
+            const comboBonus = 1 + mergesThisMove * 0.15;
+            gained += grid[nextR][nextC] * comboBonus;
+            moved = true;
+            break;
+          } else {
+            break;
+          }
+        }
+      }
+
+      if (moved) {
+        spawnTile();
+        moves += 1;
+        score = Math.floor(score + gained);
+        if (score > best) {
+          best = score;
+          localStorage.setItem('circuit-2048-best', best);
+        }
+        updateUI();
+        if (isGameOver()) {
+          setTimeout(() => alert(`Sistema saturado. Puntuación final: ${score}`), 120);
+        }
+      } else {
+        grid = clone;
+      }
+    }
+
+    function isGameOver() {
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          if (grid[r][c] === 0) return false;
+          if (c < size - 1 && grid[r][c] === grid[r][c + 1]) return false;
+          if (r < size - 1 && grid[r][c] === grid[r + 1][c]) return false;
+        }
+      }
+      return true;
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+        e.preventDefault();
+        move(e.code);
+      }
+    });
+
+    document.querySelectorAll('.controls button[data-dir]').forEach((btn) => {
+      btn.addEventListener('click', () => move(btn.dataset.dir));
+    });
+
+    restartBtn.addEventListener('click', initGrid);
+
+    initGrid();
+  </script>
+</body>
+</html>

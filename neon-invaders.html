@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Neon Invaders</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: 'Orbitron', sans-serif;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at top, #06141f 0%, #030b12 60%, #010409 100%);
+      color: #def3ff;
+      padding: 20px;
+    }
+
+    .hud {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 32px;
+      font-size: 18px;
+      letter-spacing: 2px;
+      text-shadow: 0 0 8px rgba(0, 221, 255, 0.8);
+    }
+
+    .panel {
+      position: absolute;
+      right: 20px;
+      top: 20px;
+      max-width: 280px;
+      padding: 16px 20px;
+      background: rgba(3, 17, 32, 0.75);
+      border: 1px solid rgba(0, 221, 255, 0.3);
+      border-radius: 12px;
+      box-shadow: 0 0 18px rgba(0, 221, 255, 0.2);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .panel h2 {
+      margin: 0 0 12px;
+      font-size: 16px;
+      text-transform: uppercase;
+      text-shadow: 0 0 6px rgba(0, 221, 255, 0.8);
+    }
+
+    canvas {
+      width: min(90vw, 800px);
+      max-width: 800px;
+      aspect-ratio: 4 / 3;
+      border: 3px solid rgba(0, 221, 255, 0.6);
+      border-radius: 14px;
+      background: linear-gradient(180deg, rgba(0, 12, 25, 0.95), rgba(0, 0, 0, 0.95));
+      box-shadow: 0 0 25px rgba(0, 221, 255, 0.3);
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      text-align: center;
+      gap: 18px;
+      font-size: 18px;
+      letter-spacing: 2px;
+      transition: opacity 0.3s ease;
+    }
+
+    .overlay.hidden {
+      pointer-events: none;
+      opacity: 0;
+    }
+
+    button {
+      font-family: inherit;
+      letter-spacing: 2px;
+      padding: 12px 24px;
+      border-radius: 999px;
+      border: 2px solid rgba(0, 221, 255, 0.6);
+      background: rgba(0, 221, 255, 0.15);
+      color: #def3ff;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 16px rgba(0, 221, 255, 0.4);
+    }
+
+    @media (max-width: 1100px) {
+      .panel {
+        position: static;
+        margin-top: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="hud">
+    <div>Puntuación: <span id="score">0</span></div>
+    <div>Oleada: <span id="wave">1</span></div>
+    <div>Vidas: <span id="lives">3</span></div>
+  </div>
+
+  <div class="panel">
+    <h2>Controles</h2>
+    <p>← → Mover nave</p>
+    <p>Espacio Disparo</p>
+    <p>Mayús Mantener rayo cargado</p>
+    <p>Enter Comenzar / Pausa</p>
+    <h2>Objetivo</h2>
+    <p>Protege las ciudades iluminadas y derrota todas las oleadas de invasores. Cada quinta oleada aparece un líder con escudo.</p>
+  </div>
+
+  <canvas id="game" width="800" height="600"></canvas>
+  <div id="overlay" class="overlay">
+    <h1>Neon Invaders</h1>
+    <p>Presiona Enter para desplegar la flota.</p>
+    <button id="start">Iniciar batalla</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const overlay = document.getElementById('overlay');
+    const startBtn = document.getElementById('start');
+    const scoreEl = document.getElementById('score');
+    const waveEl = document.getElementById('wave');
+    const livesEl = document.getElementById('lives');
+
+    const keys = new Set();
+
+    const player = {
+      x: canvas.width / 2,
+      y: canvas.height - 70,
+      width: 48,
+      height: 28,
+      speed: 320,
+      cooldown: 0,
+      charge: 0,
+      maxCharge: 1.4,
+    };
+
+    const state = {
+      running: false,
+      lastTime: 0,
+      score: 0,
+      wave: 1,
+      lives: 3,
+      aliens: [],
+      shots: [],
+      bolts: [],
+      particles: [],
+      cityIntegrity: 100,
+    };
+
+    function createAlien(x, y, type) {
+      const base = {
+        x,
+        y,
+        width: 36,
+        height: 24,
+        type,
+        hp: type === 'boss' ? 8 : type === 'elite' ? 3 : 1,
+        fireCooldown: 2 + Math.random() * 3,
+        baseX: x,
+        offset: 0,
+      };
+      return base;
+    }
+
+    function spawnWave() {
+      state.aliens.length = 0;
+      const rows = 4 + Math.floor(state.wave / 2);
+      const cols = 8;
+      const padding = 60;
+      const startX = 80;
+      const startY = 80;
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          let type = 'basic';
+          if ((row + state.wave) % 5 === 0) type = 'elite';
+          if (state.wave % 5 === 0 && row === 0 && col === Math.floor(cols / 2)) type = 'boss';
+          const alien = createAlien(startX + col * padding, startY + row * 50, type);
+          state.aliens.push(alien);
+        }
+      }
+    }
+
+    function resetGame() {
+      state.score = 0;
+      state.wave = 1;
+      state.lives = 3;
+      state.cityIntegrity = 100;
+      spawnWave();
+      state.shots = [];
+      state.bolts = [];
+      state.particles = [];
+      player.x = canvas.width / 2;
+      scoreEl.textContent = state.score;
+      waveEl.textContent = state.wave;
+      livesEl.textContent = state.lives;
+    }
+
+    function fireShot() {
+      if (player.cooldown > 0) return;
+      const charged = player.charge > player.maxCharge * 0.9;
+      const speed = charged ? 620 : 480;
+      const damage = charged ? 3 : 1;
+      state.shots.push({
+        x: player.x,
+        y: player.y - player.height / 2,
+        radius: charged ? 7 : 4,
+        speed,
+        damage,
+        color: charged ? '#ff7bff' : '#45f2ff',
+      });
+      player.cooldown = charged ? 0.4 : 0.18;
+      player.charge = 0;
+    }
+
+    function spawnBolt(alien) {
+      state.bolts.push({
+        x: alien.x,
+        y: alien.y + alien.height / 2,
+        speed: 180 + Math.random() * 80,
+        radius: alien.type === 'elite' ? 8 : alien.type === 'boss' ? 12 : 5,
+        color: alien.type === 'boss' ? '#ff2f2f' : '#ff9b36',
+        damage: alien.type === 'boss' ? 25 : alien.type === 'elite' ? 15 : 8,
+      });
+    }
+
+    function createParticles(x, y, color, amount = 12) {
+      for (let i = 0; i < amount; i++) {
+        state.particles.push({
+          x,
+          y,
+          vx: (Math.random() - 0.5) * 220,
+          vy: (Math.random() - 0.5) * 220,
+          life: 0.7,
+          color,
+        });
+      }
+    }
+
+    function update(dt) {
+      // Player movement
+      if (keys.has('ArrowLeft')) player.x -= player.speed * dt;
+      if (keys.has('ArrowRight')) player.x += player.speed * dt;
+      player.x = Math.max(60, Math.min(canvas.width - 60, player.x));
+
+      if (keys.has('Space')) {
+        fireShot();
+      }
+
+      if (keys.has('ShiftLeft') || keys.has('ShiftRight')) {
+        player.charge = Math.min(player.maxCharge, player.charge + dt);
+      } else {
+        player.charge = Math.max(0, player.charge - dt * 0.4);
+      }
+
+      player.cooldown = Math.max(0, player.cooldown - dt);
+
+      // Shots
+      for (const shot of state.shots) {
+        shot.y -= shot.speed * dt;
+      }
+      state.shots = state.shots.filter((shot) => shot.y + shot.radius > 0);
+
+      // Aliens movement
+      const direction = Math.sin(performance.now() / 600) * 30;
+      const descend = 20 + state.wave * 4;
+      for (const alien of state.aliens) {
+        alien.offset = direction;
+        alien.x = alien.baseX + alien.offset;
+        alien.y += descend * dt * 0.1;
+        alien.fireCooldown -= dt;
+        if (alien.fireCooldown <= 0) {
+          if (Math.random() < 0.3 + state.wave * 0.02) {
+            spawnBolt(alien);
+          }
+          alien.fireCooldown = (alien.type === 'boss' ? 1.2 : 2) + Math.random() * 2;
+        }
+      }
+
+      // Collisions shots-alien
+      for (const shot of state.shots) {
+        for (const alien of state.aliens) {
+          if (Math.abs(shot.x - alien.x) < alien.width / 2 && Math.abs(shot.y - alien.y) < alien.height / 2) {
+            alien.hp -= shot.damage;
+            shot.y = -100;
+            createParticles(alien.x, alien.y, '#45f2ff', 6);
+            state.score += shot.damage * 10;
+            if (alien.hp <= 0) {
+              createParticles(alien.x, alien.y, alien.type === 'boss' ? '#ff2f2f' : '#ffdf6b', 24);
+              state.score += alien.type === 'boss' ? 400 : alien.type === 'elite' ? 120 : 60;
+              state.aliens.splice(state.aliens.indexOf(alien), 1);
+            }
+            scoreEl.textContent = state.score;
+            break;
+          }
+        }
+      }
+
+      // Bolts
+      for (const bolt of state.bolts) {
+        bolt.y += bolt.speed * dt;
+        if (bolt.y > canvas.height - 40) {
+          state.cityIntegrity -= bolt.damage;
+          bolt.y = canvas.height + 20;
+          createParticles(bolt.x, canvas.height - 20, '#ff5d2f', 18);
+          if (state.cityIntegrity <= 0) {
+            loseLife();
+            break;
+          }
+        }
+        if (Math.abs(bolt.x - player.x) < player.width / 2 && Math.abs(bolt.y - player.y) < player.height / 2) {
+          bolt.y = canvas.height + 20;
+          createParticles(player.x, player.y, '#ff5d2f', 18);
+          loseLife();
+          break;
+        }
+      }
+      state.bolts = state.bolts.filter((bolt) => bolt.y - bolt.radius < canvas.height + 40);
+
+      // Particles
+      for (const p of state.particles) {
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.life -= dt;
+      }
+      state.particles = state.particles.filter((p) => p.life > 0);
+
+      if (state.aliens.length === 0) {
+        state.wave += 1;
+        waveEl.textContent = state.wave;
+        state.cityIntegrity = Math.min(100, state.cityIntegrity + 25);
+        spawnWave();
+      }
+    }
+
+    function loseLife() {
+      state.lives -= 1;
+      livesEl.textContent = state.lives;
+      state.cityIntegrity = 100;
+      state.shots = [];
+      state.bolts = [];
+      player.x = canvas.width / 2;
+      player.cooldown = 1;
+      if (state.lives <= 0) {
+        endGame();
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // ground
+      ctx.fillStyle = '#02131f';
+      ctx.fillRect(0, canvas.height - 60, canvas.width, 60);
+      ctx.fillStyle = '#044769';
+      ctx.fillRect(0, canvas.height - 58, canvas.width, 2);
+
+      // city integrity bar
+      ctx.fillStyle = '#0c1f2d';
+      ctx.fillRect(40, canvas.height - 40, 260, 18);
+      ctx.fillStyle = '#11d9ff';
+      ctx.fillRect(42, canvas.height - 38, 256 * (state.cityIntegrity / 100), 14);
+      ctx.strokeStyle = 'rgba(0,221,255,0.8)';
+      ctx.strokeRect(40, canvas.height - 40, 260, 18);
+
+      // player ship
+      ctx.save();
+      ctx.translate(player.x, player.y);
+      const glow = 8 * player.charge;
+      ctx.shadowColor = 'rgba(69,242,255,0.6)';
+      ctx.shadowBlur = glow;
+      ctx.fillStyle = '#45f2ff';
+      ctx.beginPath();
+      ctx.moveTo(0, -player.height / 2);
+      ctx.lineTo(player.width / 2, player.height / 2);
+      ctx.lineTo(0, player.height / 4);
+      ctx.lineTo(-player.width / 2, player.height / 2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+
+      // aliens
+      for (const alien of state.aliens) {
+        ctx.save();
+        ctx.translate(alien.x, alien.y);
+        ctx.fillStyle = alien.type === 'boss' ? '#ff2f2f' : alien.type === 'elite' ? '#ffd75a' : '#9effff';
+        ctx.shadowColor = ctx.fillStyle;
+        ctx.shadowBlur = alien.type === 'boss' ? 24 : 14;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, alien.width / 2, alien.height / 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#031019';
+        ctx.shadowBlur = 0;
+        ctx.fillRect(-alien.width / 4, -4, alien.width / 2, 4);
+        ctx.restore();
+      }
+
+      // shots
+      for (const shot of state.shots) {
+        const gradient = ctx.createRadialGradient(shot.x, shot.y, 0, shot.x, shot.y, shot.radius * 2);
+        gradient.addColorStop(0, '#fff');
+        gradient.addColorStop(1, shot.color);
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(shot.x, shot.y, shot.radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // bolts
+      for (const bolt of state.bolts) {
+        const gradient = ctx.createLinearGradient(bolt.x, bolt.y - 10, bolt.x, bolt.y + 10);
+        gradient.addColorStop(0, 'rgba(255,255,255,0.9)');
+        gradient.addColorStop(1, bolt.color);
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(bolt.x, bolt.y, bolt.radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      for (const p of state.particles) {
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = Math.max(0, p.life);
+        ctx.fillRect(p.x, p.y, 3, 3);
+        ctx.globalAlpha = 1;
+      }
+
+      ctx.fillStyle = 'rgba(0,221,255,0.08)';
+      ctx.beginPath();
+      ctx.moveTo(0, canvas.height - 60);
+      ctx.lineTo(canvas.width, canvas.height - 60);
+      ctx.lineTo(canvas.width, canvas.height);
+      ctx.lineTo(0, canvas.height);
+      ctx.fill();
+    }
+
+    function loop(timestamp) {
+      if (!state.running) return;
+      const dt = Math.min(0.033, (timestamp - state.lastTime) / 1000);
+      state.lastTime = timestamp;
+      update(dt);
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    function startGame() {
+      resetGame();
+      overlay.classList.add('hidden');
+      state.running = true;
+      state.lastTime = performance.now();
+      requestAnimationFrame(loop);
+    }
+
+    function endGame() {
+      state.running = false;
+      overlay.classList.remove('hidden');
+      overlay.innerHTML = `
+        <h1>Invasión detenida</h1>
+        <p>Puntuación final: ${state.score}</p>
+        <p>Oleada alcanzada: ${state.wave}</p>
+        <button id="restart">Reintentar</button>
+      `;
+      overlay.querySelector('#restart').addEventListener('click', startGame, { once: true });
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (['ArrowLeft', 'ArrowRight', 'Space', 'ShiftLeft', 'ShiftRight'].includes(e.code)) {
+        e.preventDefault();
+      }
+      keys.add(e.code);
+      if (e.code === 'Enter') {
+        if (!state.running) {
+          startGame();
+        }
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      keys.delete(e.code);
+    });
+
+    startBtn.addEventListener('click', startGame);
+  </script>
+</body>
+</html>

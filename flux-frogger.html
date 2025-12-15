@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flux Frogger</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: 'Press Start 2P', cursive;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      background: radial-gradient(circle at top, #02130f, #020610 70%);
+      color: #dafbe1;
+      gap: 18px;
+      padding: 24px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(28px, 4vw, 40px);
+      letter-spacing: 4px;
+      text-shadow: 0 0 10px rgba(75, 255, 162, 0.6);
+    }
+
+    .hud {
+      display: flex;
+      gap: clamp(10px, 4vw, 20px);
+      text-transform: uppercase;
+      font-size: clamp(12px, 2.5vw, 16px);
+    }
+
+    canvas {
+      width: min(92vw, 640px);
+      aspect-ratio: 4 / 3;
+      border-radius: 18px;
+      border: 3px solid rgba(75, 255, 162, 0.5);
+      box-shadow: 0 0 20px rgba(75, 255, 162, 0.2);
+      background: linear-gradient(180deg, #00180e 0%, #001026 45%, #020610 100%);
+    }
+
+    .panel {
+      max-width: 640px;
+      padding: 18px 20px;
+      background: rgba(0, 20, 16, 0.8);
+      border-radius: 14px;
+      border: 1px solid rgba(75, 255, 162, 0.2);
+      line-height: 1.6;
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 16px;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      text-align: center;
+      transition: opacity 0.3s ease;
+      letter-spacing: 2px;
+    }
+
+    .overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    button {
+      font-family: inherit;
+      padding: 10px 20px;
+      border-radius: 999px;
+      border: 2px solid rgba(75, 255, 162, 0.6);
+      background: rgba(75, 255, 162, 0.12);
+      color: inherit;
+      cursor: pointer;
+      text-transform: uppercase;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 16px rgba(75, 255, 162, 0.4);
+    }
+  </style>
+</head>
+<body>
+  <h1>Flux Frogger</h1>
+  <div class="hud">
+    <div>Nivel: <span id="level">1</span></div>
+    <div>Vidas: <span id="lives">3</span></div>
+    <div>Puntos: <span id="score">0</span></div>
+    <div>Combo: <span id="combo">x1</span></div>
+  </div>
+  <div style="position: relative;">
+    <canvas id="game" width="640" height="480"></canvas>
+    <div id="overlay" class="overlay">
+      <p>Guía al anfibio a través de autopistas lumínicas y ríos cuánticos. Usa troncos y drones para cruzar.</p>
+      <button id="start">Iniciar salto</button>
+      <small>Controles: Flechas para moverse · Espacio para usar impulso</small>
+    </div>
+  </div>
+  <div class="panel">
+    <strong>Objetivo:</strong> Completa los cinco portales superiores para avanzar de nivel. El impulso te permite un salto doble cada 12 segundos.
+    <br><strong>Bonus:</strong> Atrapa luciérnagas para aumentar el combo y obtener vidas extra al llegar a x5.
+    <br><strong>Consejo:</strong> Memoriza el patrón de los drones en diagonal: son letales pero marcan el ritmo del río.
+  </div>
+
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const overlay = document.getElementById('overlay');
+    const startBtn = document.getElementById('start');
+    const levelEl = document.getElementById('level');
+    const livesEl = document.getElementById('lives');
+    const scoreEl = document.getElementById('score');
+    const comboEl = document.getElementById('combo');
+
+    const keys = new Set();
+
+    const gridSize = 40;
+    const rows = canvas.height / gridSize;
+    const cols = canvas.width / gridSize;
+
+    const player = {
+      x: Math.floor(cols / 2),
+      y: rows - 1,
+      lives: 3,
+      level: 1,
+      score: 0,
+      combo: 1,
+      comboTimer: 0,
+      dashCooldown: 0,
+    };
+
+    const state = {
+      running: false,
+      lastTime: 0,
+      vehicles: [],
+      logs: [],
+      homes: Array(5).fill(false),
+      fireflies: [],
+      drones: [],
+    };
+
+    function resetGame() {
+      player.x = Math.floor(cols / 2);
+      player.y = rows - 1;
+      player.lives = 3;
+      player.level = 1;
+      player.score = 0;
+      player.combo = 1;
+      player.comboTimer = 0;
+      player.dashCooldown = 0;
+      state.homes = Array(5).fill(false);
+      state.vehicles = [];
+      state.logs = [];
+      state.fireflies = [];
+      state.drones = [];
+      spawnLanes();
+      updateHUD();
+    }
+
+    function updateHUD() {
+      levelEl.textContent = player.level;
+      livesEl.textContent = player.lives;
+      scoreEl.textContent = player.score;
+      comboEl.textContent = `x${player.combo}`;
+    }
+
+    function spawnLanes() {
+      state.vehicles = [];
+      state.logs = [];
+      state.drones = [];
+      const speedBase = 60 + player.level * 12;
+      for (let row = 1; row <= 5; row++) {
+        const dir = row % 2 === 0 ? 1 : -1;
+        for (let i = 0; i < 3; i++) {
+          state.vehicles.push({
+            lane: row,
+            x: Math.random() * canvas.width,
+            width: 70 + Math.random() * 40,
+            speed: speedBase + Math.random() * 40,
+            dir,
+          });
+        }
+      }
+      for (let row = 7; row <= 10; row++) {
+        const dir = row % 2 === 0 ? -1 : 1;
+        for (let i = 0; i < 3; i++) {
+          state.logs.push({
+            lane: row,
+            x: Math.random() * canvas.width,
+            width: 80 + Math.random() * 60,
+            speed: speedBase * 0.7 + Math.random() * 30,
+            dir,
+          });
+        }
+      }
+      for (let i = 0; i < 4; i++) {
+        state.drones.push({
+          x: Math.random() * canvas.width,
+          y: 7 * gridSize + (i * gridSize) / 2,
+          speed: 90 + player.level * 10,
+          dir: i % 2 === 0 ? 1 : -1,
+        });
+      }
+    }
+
+    function spawnFirefly() {
+      const lane = 6 + Math.floor(Math.random() * 5);
+      state.fireflies.push({
+        x: Math.random() * canvas.width,
+        y: lane * gridSize + gridSize / 2,
+        timer: 6,
+      });
+    }
+
+    let fireflyTimer = 3;
+
+    function update(dt) {
+      player.comboTimer = Math.max(0, player.comboTimer - dt);
+      player.dashCooldown = Math.max(0, player.dashCooldown - dt);
+      if (player.comboTimer === 0 && player.combo > 1) {
+        player.combo = 1;
+      }
+
+      fireflyTimer -= dt;
+      if (fireflyTimer <= 0) {
+        spawnFirefly();
+        fireflyTimer = 6 - Math.min(3, player.level * 0.4);
+      }
+
+      handleInput();
+
+      moveEntities(state.vehicles, dt);
+      moveEntities(state.logs, dt);
+
+      for (const log of state.logs) {
+        log.x = wrap(log.x, canvas.width);
+      }
+
+      for (const vehicle of state.vehicles) {
+        vehicle.x = wrap(vehicle.x, canvas.width);
+      }
+
+      for (const drone of state.drones) {
+        drone.x += drone.speed * dt * drone.dir;
+        drone.y += drone.speed * dt * 0.2 * drone.dir;
+        if (drone.x < -40) drone.x = canvas.width + 40;
+        if (drone.x > canvas.width + 40) drone.x = -40;
+        if (drone.y < 6 * gridSize || drone.y > 11 * gridSize) {
+          drone.dir *= -1;
+        }
+      }
+
+      checkCollisions(dt);
+      updateFireflies(dt);
+      updateHUD();
+    }
+
+    function wrap(value, width) {
+      if (value < -80) return width + 80;
+      if (value > width + 80) return -80;
+      return value;
+    }
+
+    function moveEntities(list, dt) {
+      for (const entity of list) {
+        entity.x += entity.speed * dt * entity.dir;
+      }
+    }
+
+    function handleInput() {
+      if (keys.has('ArrowUp')) {
+        attemptMove(0, -1);
+        keys.delete('ArrowUp');
+      }
+      if (keys.has('ArrowDown')) {
+        attemptMove(0, 1);
+        keys.delete('ArrowDown');
+      }
+      if (keys.has('ArrowLeft')) {
+        attemptMove(-1, 0);
+        keys.delete('ArrowLeft');
+      }
+      if (keys.has('ArrowRight')) {
+        attemptMove(1, 0);
+        keys.delete('ArrowRight');
+      }
+      if (keys.has('Space')) {
+        if (player.dashCooldown === 0) {
+          attemptMove(0, -2);
+          player.dashCooldown = 12;
+        }
+        keys.delete('Space');
+      }
+    }
+
+    function attemptMove(dx, dy) {
+      const newX = Math.max(0, Math.min(cols - 1, Math.round(player.x + dx)));
+      const newY = Math.max(0, Math.min(rows - 1, Math.round(player.y + dy)));
+      if (newX === Math.round(player.x) && newY === Math.round(player.y)) return;
+      player.x = newX;
+      player.y = newY;
+      player.comboTimer = 4;
+      if (player.combo < 5) player.combo += 1;
+      if (player.combo === 5 && player.lives < 5) {
+        player.lives += 1;
+      }
+      if (player.y === 0) {
+        claimHome();
+      }
+    }
+
+    function updateFireflies(dt) {
+      for (const firefly of state.fireflies) {
+        firefly.timer -= dt;
+        firefly.x += Math.sin((performance.now() / 200 + firefly.y) * 0.5);
+      }
+      state.fireflies = state.fireflies.filter((f) => f.timer > 0);
+    }
+
+    function checkCollisions(dt) {
+      if (player.y >= 1 && player.y <= 5) {
+        for (const vehicle of state.vehicles) {
+          const vx = (vehicle.x % canvas.width + canvas.width) % canvas.width;
+          const dx = Math.abs(vx - (player.x * gridSize + gridSize / 2));
+          if (dx < (vehicle.width + gridSize) / 2) {
+            loseLife();
+            return;
+          }
+        }
+      } else if (player.y >= 7 && player.y <= 10) {
+        let onLog = false;
+        for (const log of state.logs) {
+          const logX = (log.x % canvas.width + canvas.width) % canvas.width;
+          const dx = Math.abs(logX - (player.x * gridSize + gridSize / 2));
+          if (dx < (log.width + gridSize) / 2) {
+            const shift = (log.dir * log.speed * dt) / gridSize;
+            player.x += shift;
+            onLog = true;
+          }
+        }
+        if (!onLog) {
+          loseLife();
+          return;
+        }
+      }
+
+      player.x = Math.max(0, Math.min(cols - 1, player.x));
+
+      for (const drone of state.drones) {
+        const dx = Math.abs(drone.x - (player.x * gridSize + gridSize / 2));
+        const dy = Math.abs(drone.y - (player.y * gridSize + gridSize / 2));
+        if (dx < 24 && dy < 24) {
+          loseLife();
+          return;
+        }
+      }
+
+      for (const firefly of state.fireflies) {
+        const dx = Math.abs(firefly.x - (player.x * gridSize + gridSize / 2));
+        const dy = Math.abs(firefly.y - (player.y * gridSize + gridSize / 2));
+        if (dx < 18 && dy < 18) {
+          player.score += Math.floor(200 * player.combo);
+          firefly.timer = 0;
+          player.combo = Math.min(5, player.combo + 1);
+        }
+      }
+    }
+
+    function loseLife() {
+      player.lives -= 1;
+      player.combo = 1;
+      player.comboTimer = 0;
+      if (player.lives <= 0) {
+        endGame();
+        return;
+      }
+      player.x = Math.floor(cols / 2);
+      player.y = rows - 1;
+    }
+
+    function claimHome() {
+      const slotWidth = canvas.width / state.homes.length;
+      const centerX = player.x * gridSize + gridSize / 2;
+      const slot = Math.max(0, Math.min(state.homes.length - 1, Math.floor(centerX / slotWidth)));
+      if (!state.homes[slot]) {
+        state.homes[slot] = true;
+        player.score += Math.floor(500 * player.combo);
+        player.combo = 1;
+        player.comboTimer = 0;
+      }
+      if (state.homes.every(Boolean)) {
+        player.level += 1;
+        player.score += 1500;
+        state.homes = Array(5).fill(false);
+        spawnLanes();
+      }
+      player.x = Math.floor(cols / 2);
+      player.y = rows - 1;
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let r = 0; r < rows; r++) {
+        ctx.fillStyle = r < 6 ? 'rgba(0, 40, 25, 0.4)' : r < 11 ? 'rgba(0, 20, 45, 0.6)' : 'rgba(0, 15, 10, 0.6)';
+        ctx.fillRect(0, r * gridSize, canvas.width, gridSize);
+      }
+
+      const homeWidth = canvas.width / state.homes.length;
+      for (let i = 0; i < state.homes.length; i++) {
+        ctx.fillStyle = state.homes[i] ? 'rgba(75,255,162,0.6)' : 'rgba(0,0,0,0.6)';
+        ctx.fillRect(i * homeWidth + 8, 0, homeWidth - 16, gridSize - 6);
+      }
+
+      for (const vehicle of state.vehicles) {
+        ctx.fillStyle = '#ff5d7d';
+        const x = (vehicle.x % canvas.width + canvas.width) % canvas.width;
+        ctx.fillRect(x - vehicle.width / 2, vehicle.lane * gridSize + 6, vehicle.width, gridSize - 12);
+      }
+
+      for (const log of state.logs) {
+        const x = (log.x % canvas.width + canvas.width) % canvas.width;
+        ctx.fillStyle = '#55c3ff';
+        ctx.fillRect(x - log.width / 2, log.lane * gridSize + 4, log.width, gridSize - 8);
+      }
+
+      ctx.fillStyle = '#ffee58';
+      for (const drone of state.drones) {
+        ctx.beginPath();
+        ctx.arc(drone.x, drone.y, 18, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.fillStyle = 'rgba(173,255,47,0.8)';
+      for (const firefly of state.fireflies) {
+        ctx.beginPath();
+        ctx.arc(firefly.x, firefly.y, 8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.fillStyle = '#4bffa2';
+      ctx.fillRect(player.x * gridSize + 8, player.y * gridSize + 8, gridSize - 16, gridSize - 16);
+    }
+
+    function loop(timestamp) {
+      if (!state.running) return;
+      const dt = Math.min(0.05, (timestamp - state.lastTime) / 1000);
+      state.lastTime = timestamp;
+      update(dt);
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    function startGame() {
+      resetGame();
+      overlay.classList.add('hidden');
+      state.running = true;
+      state.lastTime = performance.now();
+      requestAnimationFrame(loop);
+    }
+
+    function endGame() {
+      state.running = false;
+      overlay.classList.remove('hidden');
+      overlay.innerHTML = `
+        <h2>Flux Game Over</h2>
+        <p>Nivel alcanzado: ${player.level}</p>
+        <p>Puntuación final: ${player.score}</p>
+        <button id="restart">Reintentar</button>
+      `;
+      overlay.querySelector('#restart').addEventListener('click', startGame, { once: true });
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
+        e.preventDefault();
+      }
+      keys.add(e.code);
+    });
+
+    window.addEventListener('keyup', (e) => {
+      keys.delete(e.code);
+    });
+
+    startBtn.addEventListener('click', startGame);
+  </script>
+</body>
+</html>

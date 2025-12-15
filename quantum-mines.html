@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quantum Mines</title>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: 'Chakra Petch', sans-serif;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      background: radial-gradient(circle at center, #02070c, #030a16 60%, #04040a 100%);
+      color: #f3f8ff;
+      gap: 24px;
+      padding: 24px;
+    }
+
+    h1 {
+      margin: 0;
+      letter-spacing: 6px;
+      font-size: clamp(32px, 5vw, 46px);
+      text-transform: uppercase;
+      text-shadow: 0 0 18px rgba(0, 245, 255, 0.6);
+    }
+
+    .hud {
+      display: flex;
+      gap: 20px;
+      font-size: clamp(16px, 3vw, 20px);
+      letter-spacing: 1px;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(var(--size), 36px);
+      gap: 6px;
+      padding: 20px;
+      background: rgba(4, 16, 32, 0.82);
+      border-radius: 16px;
+      border: 1px solid rgba(0, 245, 255, 0.25);
+      box-shadow: 0 0 22px rgba(0, 245, 255, 0.25);
+    }
+
+    .cell {
+      width: 36px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.1s ease, background 0.2s ease;
+      user-select: none;
+    }
+
+    .cell:hover {
+      transform: translateY(-2px);
+      background: rgba(0, 245, 255, 0.14);
+    }
+
+    .cell.open {
+      background: rgba(0, 245, 255, 0.12);
+      border-color: rgba(0, 245, 255, 0.24);
+      cursor: default;
+    }
+
+    .cell.flag {
+      color: #ff5d7d;
+    }
+
+    .panel {
+      max-width: 540px;
+      padding: 18px 22px;
+      border-radius: 16px;
+      background: rgba(3, 12, 24, 0.8);
+      border: 1px solid rgba(0, 245, 255, 0.2);
+      line-height: 1.6;
+    }
+
+    button {
+      font-family: inherit;
+      letter-spacing: 2px;
+      padding: 10px 18px;
+      border-radius: 999px;
+      border: 1px solid rgba(0, 245, 255, 0.5);
+      background: rgba(0, 245, 255, 0.18);
+      color: #f3f8ff;
+      cursor: pointer;
+      text-transform: uppercase;
+    }
+
+    button:hover {
+      box-shadow: 0 0 16px rgba(0, 245, 255, 0.5);
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+  </style>
+</head>
+<body>
+  <h1>Quantum Mines</h1>
+  <div class="hud">
+    <div>Tiempo: <span id="time">0</span>s</div>
+    <div>Restantes: <span id="mines">0</span></div>
+    <div>Cadena segura: <span id="streak">0</span></div>
+  </div>
+  <div class="actions">
+    <button data-size="8" data-mines="12">Sector 1</button>
+    <button data-size="10" data-mines="18">Sector 2</button>
+    <button data-size="12" data-mines="26">Sector 3</button>
+    <button id="reset">Reiniciar</button>
+  </div>
+  <div id="board" class="board" style="--size: 10"></div>
+  <div class="panel">
+    <strong>Misión:</strong> Explora los sectores y neutraliza las minas cuánticas marcándolas con banderas. La cadena segura aumenta si abres casillas consecutivamente sin explotar.
+    <strong>Intel:</strong> Haz doble clic en una casilla abierta para revelar automáticamente sus vecinas si ya marcaste el número correcto de minas.
+    <strong>Atajo:</strong> Mantén pulsado Shift y haz clic para colocar banderas de manera ágil.
+  </div>
+
+  <script>
+    const boardElement = document.getElementById('board');
+    const timeEl = document.getElementById('time');
+    const minesEl = document.getElementById('mines');
+    const streakEl = document.getElementById('streak');
+    const resetBtn = document.getElementById('reset');
+    const actionButtons = document.querySelectorAll('.actions button[data-size]');
+
+    let size = 10;
+    let mineCount = 18;
+    let board = [];
+    let revealed = 0;
+    let flags = 0;
+    let time = 0;
+    let timer = null;
+    let streak = 0;
+    let ended = false;
+
+    function setup(newSize = size, newMines = mineCount) {
+      size = newSize;
+      mineCount = newMines;
+      boardElement.style.setProperty('--size', size);
+      boardElement.innerHTML = '';
+      board = Array.from({ length: size }, () => Array(size).fill(null));
+      revealed = 0;
+      flags = 0;
+      time = 0;
+      streak = 0;
+      ended = false;
+      clearInterval(timer);
+      timer = setInterval(() => {
+        time += 1;
+        timeEl.textContent = time;
+      }, 1000);
+      placeMines();
+      calculateNumbers();
+      drawBoard();
+      updateHUD();
+    }
+
+    function placeMines() {
+      let placed = 0;
+      while (placed < mineCount) {
+        const r = Math.floor(Math.random() * size);
+        const c = Math.floor(Math.random() * size);
+        if (!board[r][c]) {
+          board[r][c] = { mine: true, open: false, flag: false, number: 0 };
+          placed += 1;
+        }
+      }
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          if (!board[r][c]) board[r][c] = { mine: false, open: false, flag: false, number: 0 };
+        }
+      }
+    }
+
+    function calculateNumbers() {
+      const dirs = [-1, 0, 1];
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          if (board[r][c].mine) continue;
+          let count = 0;
+          for (const dr of dirs) {
+            for (const dc of dirs) {
+              if (dr === 0 && dc === 0) continue;
+              const nr = r + dr;
+              const nc = c + dc;
+              if (nr >= 0 && nr < size && nc >= 0 && nc < size && board[nr][nc].mine) {
+                count += 1;
+              }
+            }
+          }
+          board[r][c].number = count;
+        }
+      }
+    }
+
+    function drawBoard() {
+      boardElement.innerHTML = '';
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+          cell.dataset.r = r;
+          cell.dataset.c = c;
+          updateCellDisplay(cell, board[r][c]);
+          boardElement.appendChild(cell);
+        }
+      }
+    }
+
+    function updateCellDisplay(element, data) {
+      element.textContent = '';
+      element.classList.toggle('open', data.open);
+      element.classList.toggle('flag', data.flag);
+      if (data.open) {
+        if (data.mine) {
+          element.textContent = '✹';
+          element.style.color = '#ff4367';
+        } else if (data.number > 0) {
+          element.textContent = data.number;
+          const palette = ['#56ffe1', '#7aff8c', '#ffd75a', '#ff9b36', '#ff5d7d', '#e64dff'];
+          element.style.color = palette[data.number - 1] || '#fff';
+        } else {
+          element.style.color = '#cde9ff';
+        }
+      } else if (data.flag) {
+        element.textContent = '⚑';
+      } else {
+        element.style.color = '#f3f8ff';
+      }
+    }
+
+    function updateHUD() {
+      minesEl.textContent = Math.max(0, mineCount - flags);
+      streakEl.textContent = streak;
+      timeEl.textContent = time;
+    }
+
+    function reveal(r, c) {
+      const cell = board[r][c];
+      if (cell.open || cell.flag || ended) return;
+      cell.open = true;
+      revealed += 1;
+      if (cell.mine) {
+        streak = 0;
+        explode(r, c);
+        return;
+      }
+      streak += 1;
+      if (cell.number === 0) {
+        const dirs = [-1, 0, 1];
+        for (const dr of dirs) {
+          for (const dc of dirs) {
+            if (dr === 0 && dc === 0) continue;
+            const nr = r + dr;
+            const nc = c + dc;
+            if (nr >= 0 && nr < size && nc >= 0 && nc < size) {
+              reveal(nr, nc);
+            }
+          }
+        }
+      }
+      checkWin();
+      refreshCell(r, c);
+    }
+
+    function refreshCell(r, c) {
+      const element = boardElement.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+      if (element) updateCellDisplay(element, board[r][c]);
+      updateHUD();
+    }
+
+    function toggleFlag(r, c) {
+      const cell = board[r][c];
+      if (cell.open || ended) return;
+      cell.flag = !cell.flag;
+      flags += cell.flag ? 1 : -1;
+      refreshCell(r, c);
+    }
+
+    function explode(r, c) {
+      ended = true;
+      clearInterval(timer);
+      board[r][c].open = true;
+      board[r][c].mine = true;
+      for (let i = 0; i < size; i++) {
+        for (let j = 0; j < size; j++) {
+          const cell = board[i][j];
+          if (cell.mine) {
+            cell.open = true;
+            refreshCell(i, j);
+          }
+        }
+      }
+      setTimeout(() => alert('¡Detonación! Vuelve a intentarlo.'), 100);
+    }
+
+    function checkWin() {
+      if (ended) return;
+      if (revealed === size * size - mineCount) {
+        ended = true;
+        clearInterval(timer);
+        setTimeout(() => alert(`Sector despejado en ${time} segundos`), 100);
+      }
+    }
+
+    function chord(r, c) {
+      const cell = board[r][c];
+      if (!cell.open || cell.number === 0) return;
+      let flagCount = 0;
+      const coords = [];
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue;
+          const nr = r + dr;
+          const nc = c + dc;
+          if (nr >= 0 && nr < size && nc >= 0 && nc < size) {
+            coords.push([nr, nc]);
+            if (board[nr][nc].flag) flagCount += 1;
+          }
+        }
+      }
+      if (flagCount === cell.number) {
+        coords.forEach(([nr, nc]) => reveal(nr, nc));
+      }
+    }
+
+    boardElement.addEventListener('click', (e) => {
+      const cellEl = e.target.closest('.cell');
+      if (!cellEl) return;
+      const r = Number(cellEl.dataset.r);
+      const c = Number(cellEl.dataset.c);
+      if (e.shiftKey) {
+        toggleFlag(r, c);
+      } else {
+        reveal(r, c);
+      }
+    });
+
+    boardElement.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      const cellEl = e.target.closest('.cell');
+      if (!cellEl) return;
+      const r = Number(cellEl.dataset.r);
+      const c = Number(cellEl.dataset.c);
+      toggleFlag(r, c);
+    });
+
+    boardElement.addEventListener('dblclick', (e) => {
+      const cellEl = e.target.closest('.cell');
+      if (!cellEl) return;
+      const r = Number(cellEl.dataset.r);
+      const c = Number(cellEl.dataset.c);
+      chord(r, c);
+    });
+
+    resetBtn.addEventListener('click', () => setup(size, mineCount));
+
+    actionButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        const newSize = Number(button.dataset.size);
+        const newMines = Number(button.dataset.mines);
+        setup(newSize, newMines);
+      });
+    });
+
+    setup();
+  </script>
+</body>
+</html>
