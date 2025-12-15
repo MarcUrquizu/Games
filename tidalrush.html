@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tidal Rush</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    :root { font-family: 'Press Start 2P', system-ui; color-scheme: dark; }
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at 10% 20%, #20455f, #02111d 70%);
+      color: #e8f7ff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: clamp(12px, 3vw, 28px);
+      padding: clamp(12px, 2vw, 32px);
+    }
+    h1 { margin-top: 12px; font-size: clamp(1.6rem, 4vw, 2.6rem); text-shadow: 0 0 14px rgba(133, 219, 255, 0.55); }
+    .hud {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+      width: min(92vw, 720px);
+      background: rgba(5, 34, 51, 0.65);
+      border-radius: 18px;
+      padding: clamp(12px, 2vw, 24px);
+      border: 2px solid rgba(122, 217, 255, 0.4);
+      box-shadow: 0 0 25px rgba(90, 180, 220, 0.25);
+      text-align: center;
+    }
+    .hud span { font-size: clamp(0.65rem, 1.8vw, 0.95rem); }
+    canvas {
+      width: min(92vw, 720px);
+      aspect-ratio: 3 / 4;
+      border-radius: 24px;
+      border: 2px solid rgba(114, 214, 255, 0.45);
+      background: linear-gradient(180deg, rgba(11, 39, 58, 0.92), rgba(2, 15, 24, 0.92));
+      box-shadow: 0 0 30px rgba(70, 150, 200, 0.25);
+      touch-action: none;
+    }
+    .controls {
+      width: min(92vw, 720px);
+      background: rgba(4, 25, 40, 0.65);
+      border-radius: 18px;
+      border: 1px solid rgba(130, 220, 255, 0.3);
+      padding: clamp(14px, 2.5vw, 28px);
+      font-size: clamp(0.7rem, 1.8vw, 0.95rem);
+      line-height: 1.8;
+    }
+    button {
+      background: linear-gradient(120deg, #56e0ff, #3487ff);
+      border: none;
+      border-radius: 999px;
+      color: #04121c;
+      padding: 0.7rem 1.6rem;
+      font-family: inherit;
+      font-size: clamp(0.65rem, 2vw, 1rem);
+      cursor: pointer;
+      transition: transform 0.2s ease, filter 0.2s ease;
+      box-shadow: 0 0 18px rgba(93, 193, 255, 0.35);
+    }
+    button:hover { transform: translateY(-2px); filter: brightness(1.1); }
+    button:focus-visible { outline: 3px solid #fff7a6; outline-offset: 4px; }
+  </style>
+</head>
+<body>
+  <h1>Tidal Rush</h1>
+  <div class="hud" role="status" aria-live="polite">
+    <span>Distancia: <strong id="distance">0 m</strong></span>
+    <span>Tripulación: <strong id="crew">3</strong></span>
+    <span>Récord: <strong id="best">0 m</strong></span>
+    <button type="button" id="restart">Reintentar</button>
+  </div>
+  <canvas id="sea" width="540" height="720" role="img" aria-label="Barca esquivando remolinos y arrecifes"></canvas>
+  <section class="controls">
+    <p>Guía a la patrulla de mareas a través de un corredor cambiante. Recolecta boyas luminosas para reparar el casco y salva a la tripulación. Los remolinos te arrastran, los arrecifes dañan la embarcación, y las corrientes cambian cada minuto.</p>
+    <p><strong>Controles:</strong> Flechas o WASD para moverte, mantén pulsado para cargar un impulso que rompe remolinos. En pantallas táctiles arrastra para navegar y mantén pulsado un segundo para liberar el impulso.</p>
+  </section>
+  <script>
+    (() => {
+      const canvas = document.getElementById('sea');
+      const ctx = canvas.getContext('2d');
+      const distanceEl = document.getElementById('distance');
+      const crewEl = document.getElementById('crew');
+      const bestEl = document.getElementById('best');
+      const restartBtn = document.getElementById('restart');
+
+      let width, height, dpr;
+      let keys = new Set();
+      let pointer = { active: false, x: 0, y: 0, held: false, holdTime: 0 };
+      let lastTime = 0;
+      let rafId;
+      const storedBest = Number(localStorage.getItem('tidal-rush-best') || '0');
+      let bestDistance = storedBest;
+      bestEl.textContent = `${storedBest} m`;
+
+      function resize() {
+        dpr = window.devicePixelRatio || 1;
+        width = canvas.clientWidth * dpr;
+        height = canvas.clientHeight * dpr;
+        canvas.width = width;
+        canvas.height = height;
+        boat.size = Math.min(width, height) * 0.06;
+      }
+      window.addEventListener('resize', resize);
+
+      const boat = {
+        x: 0,
+        y: 0,
+        vx: 0,
+        vy: 0,
+        size: 40,
+        crew: 3,
+        hull: 3,
+        boost: 0,
+        boostReady: 0,
+        trail: []
+      };
+
+      const whirlpools = [];
+      const reefs = [];
+      const buoys = [];
+      let spawnTimers = { whirl: 0, reef: 0, buoy: 0 };
+      let distance = 0;
+      let difficulty = 1;
+      let gameOver = false;
+
+      function init() {
+        resize();
+        boat.x = width / 2;
+        boat.y = height * 0.8;
+        boat.vx = 0;
+        boat.vy = 0;
+        boat.crew = 3;
+        boat.hull = 3;
+        boat.boost = 0;
+        boat.boostReady = 0;
+        boat.trail = [];
+        whirlpools.length = 0;
+        reefs.length = 0;
+        buoys.length = 0;
+        spawnTimers = { whirl: 0, reef: 0, buoy: 0 };
+        distance = 0;
+        difficulty = 1;
+        gameOver = false;
+        lastTime = 0;
+        cancelAnimationFrame(rafId);
+        loop(0);
+      }
+
+      restartBtn.addEventListener('click', init);
+
+      function spawnWhirlpool() {
+        const radius = Math.min(width, height) * (0.04 + Math.random() * 0.05);
+        whirlpools.push({
+          x: Math.random() * width,
+          y: -radius,
+          radius,
+          strength: 0.00015 + difficulty * 0.00003,
+          rotation: Math.random() * Math.PI * 2
+        });
+      }
+
+      function spawnReef() {
+        const w = Math.min(width, height) * (0.06 + Math.random() * 0.08);
+        reefs.push({
+          x: Math.random() * (width - w),
+          y: -w,
+          w,
+          h: w * (0.4 + Math.random()),
+          shift: Math.random() * Math.PI * 2
+        });
+      }
+
+      function spawnBuoy() {
+        const r = Math.min(width, height) * 0.03;
+        buoys.push({
+          x: r + Math.random() * (width - r * 2),
+          y: -r,
+          radius: r,
+          type: Math.random() < 0.5 ? 'crew' : 'hull'
+        });
+      }
+
+      function updateEntities(delta) {
+        const speed = Math.min(width, height) * (0.16 + difficulty * 0.02);
+        const factor = delta / 1000;
+        spawnTimers.whirl -= delta;
+        spawnTimers.reef -= delta;
+        spawnTimers.buoy -= delta;
+
+        if (spawnTimers.whirl <= 0) {
+          spawnWhirlpool();
+          spawnTimers.whirl = 1200 - Math.min(700, difficulty * 50);
+        }
+        if (spawnTimers.reef <= 0) {
+          spawnReef();
+          spawnTimers.reef = 1400 - Math.min(900, difficulty * 60);
+        }
+        if (spawnTimers.buoy <= 0) {
+          spawnBuoy();
+          spawnTimers.buoy = 2000 - Math.min(1200, difficulty * 70);
+        }
+
+        distance += Math.round(speed * factor * 0.8);
+        difficulty += delta * 0.00008;
+        distanceEl.textContent = `${distance} m`;
+
+        whirlpools.forEach((whirl, i) => {
+          whirl.y += speed * factor * 0.8;
+          whirl.rotation += delta * 0.002;
+          if (whirl.y - whirl.radius > height) {
+            whirlpools.splice(i, 1);
+          }
+        });
+
+        reefs.forEach((reef, i) => {
+          reef.y += speed * factor;
+          reef.shift += delta * 0.001;
+          if (reef.y - reef.h > height) {
+            reefs.splice(i, 1);
+          }
+        });
+
+        buoys.forEach((buoy, i) => {
+          buoy.y += speed * factor * 0.9;
+          if (buoy.y - buoy.radius > height) {
+            buoys.splice(i, 1);
+          }
+        });
+      }
+
+      function applyInput(delta) {
+        const accel = Math.min(width, height) * 0.00045 * (delta / 16.67);
+        if (pointer.active) {
+          const dx = pointer.x - boat.x;
+          const dy = pointer.y - boat.y;
+          boat.vx += Math.sign(dx) * accel;
+          boat.vy += Math.sign(dy) * accel;
+        } else {
+          if (keys.has('ArrowLeft') || keys.has('KeyA')) boat.vx -= accel;
+          if (keys.has('ArrowRight') || keys.has('KeyD')) boat.vx += accel;
+          if (keys.has('ArrowUp') || keys.has('KeyW')) boat.vy -= accel;
+          if (keys.has('ArrowDown') || keys.has('KeyS')) boat.vy += accel;
+        }
+        boat.vx *= 0.94;
+        boat.vy *= 0.94;
+
+        boat.x = Math.max(boat.size, Math.min(width - boat.size, boat.x + boat.vx));
+        boat.y = Math.max(boat.size, Math.min(height - boat.size, boat.y + boat.vy));
+
+        if (pointer.held) {
+          pointer.holdTime += delta;
+          boat.boostReady = Math.min(1, pointer.holdTime / 900);
+        } else if (keys.has('Space')) {
+          boat.boostReady = Math.min(1, boat.boostReady + delta / 900);
+        } else {
+          boat.boostReady = Math.max(0, boat.boostReady - delta / 1400);
+        }
+      }
+
+      function triggerBoost() {
+        if (boat.boostReady < 0.95) return;
+        boat.boost = 550;
+        boat.boostReady = 0;
+        pointer.holdTime = 0;
+      }
+
+      function interact(delta) {
+        boat.trail.unshift({ x: boat.x, y: boat.y, life: 1 });
+        if (boat.trail.length > 40) boat.trail.pop();
+
+        const boostForce = boat.boost > 0 ? (boat.boost / 550) * Math.min(width, height) * 0.012 : 0;
+        boat.boost = Math.max(0, boat.boost - delta * 2);
+        boat.y -= boostForce;
+
+        whirlpools.forEach((whirl, i) => {
+          const dx = whirl.x - boat.x;
+          const dy = whirl.y - boat.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist < whirl.radius * 1.4) {
+            boat.vx += (dx / dist) * whirl.strength * delta * whirl.radius * 0.8;
+            boat.vy += (dy / dist) * whirl.strength * delta * whirl.radius * 0.8;
+          }
+          if (dist < whirl.radius + boat.size) {
+            if (boostForce > 0) {
+              whirlpools.splice(i, 1);
+            } else {
+              hitHull();
+            }
+          }
+        });
+
+        reefs.forEach((reef, i) => {
+          const oscillation = Math.sin(reef.shift) * reef.w * 0.2;
+          const rx = reef.x + oscillation;
+          const ry = reef.y;
+          if (boat.x + boat.size > rx && boat.x - boat.size < rx + reef.w && boat.y + boat.size > ry && boat.y - boat.size < ry + reef.h) {
+            reefs.splice(i, 1);
+            hitHull();
+          }
+        });
+
+        buoys.forEach((buoy, i) => {
+          const dist = Math.hypot(buoy.x - boat.x, buoy.y - boat.y);
+          if (dist < buoy.radius + boat.size * 0.8) {
+            if (buoy.type === 'crew' && boat.crew < 4) {
+              boat.crew++;
+              crewEl.textContent = String(boat.crew);
+            } else if (buoy.type === 'hull' && boat.hull < 4) {
+              boat.hull++;
+            } else {
+              distance += 100;
+            }
+            buoys.splice(i, 1);
+          }
+        });
+
+        if (boat.hull <= 0 || boat.crew <= 0) {
+          gameOver = true;
+        }
+      }
+
+      function hitHull() {
+        boat.hull--;
+        boat.crew = Math.max(0, boat.crew - 1);
+        crewEl.textContent = String(boat.crew);
+        boardFlash();
+      }
+
+      function boardFlash() {
+        canvas.animate([
+          { filter: 'brightness(1)', transform: 'scale(1)' },
+          { filter: 'brightness(1.4)', transform: 'scale(1.02)' },
+          { filter: 'brightness(1)', transform: 'scale(1)' }
+        ], { duration: 280, easing: 'ease-out' });
+      }
+
+      function draw(time) {
+        ctx.clearRect(0, 0, width, height);
+        const grad = ctx.createLinearGradient(0, 0, 0, height);
+        grad.addColorStop(0, '#022949');
+        grad.addColorStop(1, '#010d18');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, width, height);
+
+        ctx.save();
+        ctx.globalAlpha = 0.35;
+        for (let i = 0; i < 60; i++) {
+          ctx.beginPath();
+          const waveY = (time * 0.05 + i * 40) % (height + 80) - 80;
+          const amplitude = 20 + (i % 5) * 10;
+          ctx.moveTo(0, waveY);
+          for (let x = 0; x <= width; x += 30) {
+            const y = waveY + Math.sin((x + time * 0.2 + i * 12) * 0.015) * amplitude;
+            ctx.lineTo(x, y);
+          }
+          ctx.strokeStyle = `rgba(100, 220, 255, ${0.05 + (i % 6) * 0.02})`;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+        ctx.restore();
+
+        boat.trail.forEach((t, index) => {
+          const alpha = (1 - index / boat.trail.length) * 0.4;
+          ctx.fillStyle = `rgba(80, 200, 255, ${alpha})`;
+          ctx.beginPath();
+          ctx.arc(t.x, t.y, boat.size * (0.4 + index / boat.trail.length * 0.6), 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        ctx.save();
+        ctx.translate(boat.x, boat.y);
+        ctx.rotate(Math.sin(time * 0.005) * 0.04);
+        ctx.fillStyle = '#f5fbff';
+        ctx.beginPath();
+        ctx.moveTo(0, -boat.size);
+        ctx.lineTo(boat.size * 0.6, boat.size * 0.6);
+        ctx.lineTo(-boat.size * 0.6, boat.size * 0.6);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#5bd2ff';
+        ctx.fillRect(-boat.size * 0.2, -boat.size * 0.2, boat.size * 0.4, boat.size * 0.5);
+        ctx.restore();
+
+        whirlpools.forEach(whirl => {
+          const rings = 5;
+          for (let r = rings; r >= 1; r--) {
+            ctx.beginPath();
+            ctx.strokeStyle = `rgba(120, 220, 255, ${0.15 + (rings - r) * 0.12})`;
+            ctx.lineWidth = whirl.radius / rings;
+            ctx.arc(whirl.x, whirl.y, (whirl.radius / rings) * r, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        });
+
+        reefs.forEach(reef => {
+          const oscillation = Math.sin(reef.shift) * reef.w * 0.2;
+          ctx.fillStyle = '#ffb26b';
+          ctx.fillRect(reef.x + oscillation, reef.y, reef.w, reef.h);
+          ctx.fillStyle = '#ffe29b';
+          ctx.fillRect(reef.x + oscillation + reef.w * 0.2, reef.y + reef.h * 0.2, reef.w * 0.6, reef.h * 0.6);
+        });
+
+        buoys.forEach(buoy => {
+          ctx.fillStyle = buoy.type === 'crew' ? '#fffc7b' : '#89ffb0';
+          ctx.beginPath();
+          ctx.arc(buoy.x, buoy.y, buoy.radius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#01324a';
+          ctx.font = `${Math.max(14, boat.size * 0.5)}px 'Press Start 2P', monospace`;
+          ctx.textAlign = 'center';
+          ctx.fillText(buoy.type === 'crew' ? '+' : '⚓', buoy.x, buoy.y + buoy.radius * 0.3);
+        });
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `${Math.max(16, boat.size * 0.6)}px 'Press Start 2P', monospace`;
+        ctx.textAlign = 'left';
+        ctx.fillText('Casco ' + '❤'.repeat(boat.hull), 20, 40);
+        ctx.fillText('Impulso ' + Math.round(boat.boostReady * 100) + '%', 20, 80);
+
+        if (gameOver) {
+          ctx.fillStyle = 'rgba(1, 8, 14, 0.7)';
+          ctx.fillRect(0, 0, width, height);
+          ctx.fillStyle = '#94f1ff';
+          ctx.textAlign = 'center';
+          ctx.font = `${Math.max(28, width * 0.04)}px 'Press Start 2P', monospace`;
+          ctx.fillText('La tripulación cayó', width / 2, height / 2 - 30);
+          ctx.font = `${Math.max(18, width * 0.03)}px 'Press Start 2P', monospace`;
+          ctx.fillText('Pulsa reintentar', width / 2, height / 2 + 20);
+        }
+      }
+
+      function loop(time) {
+        rafId = requestAnimationFrame(loop);
+        const delta = Math.min(70, time - (lastTime || time));
+        lastTime = time;
+        if (!gameOver) {
+          applyInput(delta);
+          updateEntities(delta);
+          interact(delta);
+          if (distance > bestDistance) {
+            bestDistance = distance;
+            bestEl.textContent = `${bestDistance} m`;
+            localStorage.setItem('tidal-rush-best', String(bestDistance));
+          }
+        }
+        draw(time);
+      }
+
+      window.addEventListener('keydown', e => {
+        if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyW','KeyA','KeyS','KeyD','Space'].includes(e.code)) {
+          e.preventDefault();
+        }
+        keys.add(e.code);
+        if (e.code === 'Space') triggerBoost();
+        if (gameOver && e.code === 'Space') init();
+      });
+      window.addEventListener('keyup', e => {
+        keys.delete(e.code);
+      });
+
+      canvas.addEventListener('pointerdown', e => {
+        pointer.active = true;
+        pointer.held = true;
+        pointer.holdTime = 0;
+        updatePointer(e);
+      });
+      canvas.addEventListener('pointermove', e => {
+        if (!pointer.active) return;
+        updatePointer(e);
+      });
+      canvas.addEventListener('pointerup', () => {
+        if (pointer.holdTime > 900) triggerBoost();
+        pointer.active = false;
+        pointer.held = false;
+        pointer.holdTime = 0;
+      });
+      canvas.addEventListener('pointerleave', () => {
+        pointer.active = false;
+        pointer.held = false;
+        pointer.holdTime = 0;
+      });
+
+      function updatePointer(e) {
+        const rect = canvas.getBoundingClientRect();
+        pointer.x = (e.clientX - rect.left) * (width / rect.width);
+        pointer.y = (e.clientY - rect.top) * (height / rect.height);
+      }
+
+      init();
+    })();
+  </script>
+</body>
+</html>

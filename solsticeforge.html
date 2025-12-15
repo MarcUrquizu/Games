@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Solstice Forge</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    :root { color-scheme: dark; font-family: 'Press Start 2P', system-ui; }
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: clamp(14px, 3vw, 32px);
+      padding: clamp(14px, 3vw, 36px);
+      background: radial-gradient(circle at 30% 20%, #1c2144, #040511 75%);
+      color: #f2f8ff;
+    }
+    h1 { margin-top: 0; font-size: clamp(1.6rem, 4vw, 2.6rem); text-shadow: 0 0 16px rgba(132, 199, 255, 0.5); }
+    .hud {
+      display: flex;
+      flex-wrap: wrap;
+      gap: clamp(12px, 2.5vw, 24px);
+      justify-content: center;
+      align-items: center;
+      background: rgba(8, 12, 33, 0.65);
+      border: 2px solid rgba(132, 199, 255, 0.35);
+      border-radius: 18px;
+      padding: clamp(12px, 2vw, 24px);
+      box-shadow: 0 0 26px rgba(92, 160, 255, 0.25);
+    }
+    .hud span { font-size: clamp(0.7rem, 1.8vw, 1rem); }
+    canvas {
+      width: min(92vw, 760px);
+      aspect-ratio: 16 / 9;
+      border-radius: 24px;
+      border: 2px solid rgba(114, 186, 255, 0.4);
+      background: linear-gradient(135deg, rgba(7, 11, 28, 0.92), rgba(14, 40, 75, 0.85));
+      box-shadow: 0 0 30px rgba(78, 137, 220, 0.25);
+      touch-action: none;
+    }
+    .info {
+      max-width: min(92vw, 760px);
+      font-size: clamp(0.7rem, 1.9vw, 1rem);
+      line-height: 1.8;
+      background: rgba(6, 12, 28, 0.65);
+      border-radius: 20px;
+      border: 1px solid rgba(142, 210, 255, 0.35);
+      padding: clamp(14px, 2.5vw, 28px);
+    }
+    button {
+      background: linear-gradient(120deg, #55f8d3, #5a7bff);
+      border: none;
+      border-radius: 999px;
+      padding: 0.8rem 1.7rem;
+      color: #041021;
+      font-family: inherit;
+      font-size: clamp(0.7rem, 2vw, 1rem);
+      cursor: pointer;
+      transition: transform 0.2s ease, filter 0.2s ease;
+      box-shadow: 0 0 20px rgba(105, 190, 255, 0.35);
+    }
+    button:hover { transform: translateY(-2px); filter: brightness(1.1); }
+    button:focus-visible { outline: 3px solid #fff6a6; outline-offset: 4px; }
+  </style>
+</head>
+<body>
+  <h1>Solstice Forge</h1>
+  <div class="hud" role="status" aria-live="polite">
+    <span>Forja: <strong id="heat">0%</strong></span>
+    <span>Cadencia: <strong id="combo">x1</strong></span>
+    <span>Reliquias: <strong id="relics">0</strong></span>
+    <span>Récord: <strong id="best">0</strong></span>
+    <button type="button" id="reset">Iniciar ciclo</button>
+  </div>
+  <canvas id="forge" width="960" height="540" role="img" aria-label="Forja rítmica con martillo y runas"></canvas>
+  <section class="info">
+    <p>Golpea el yunque cuando las runas brillen en la zona dorada para templar el metal. Una forja precisa incrementa la cadencia y desbloquea reliquias. Con cada reliquia, la pista acelera y aparecen runas duales que exigen dobles golpes.</p>
+    <p><strong>Controles:</strong> Usa las teclas <kbd>J</kbd> y <kbd>F</kbd> o toca la mitad izquierda/derecha del lienzo para martillar runas azules y ámbar. Mantén pulsada una tecla para cargar un golpe crítico cuando el indicador titile.</p>
+  </section>
+  <script>
+    (() => {
+      const canvas = document.getElementById('forge');
+      const ctx = canvas.getContext('2d');
+      const heatEl = document.getElementById('heat');
+      const comboEl = document.getElementById('combo');
+      const relicsEl = document.getElementById('relics');
+      const bestEl = document.getElementById('best');
+      const resetBtn = document.getElementById('reset');
+
+      let width, height, dpr;
+      let lastTime = 0;
+      let running = true;
+      const keyState = { left: false, right: false };
+      const pressTimes = { left: 0, right: 0 };
+      const pointerState = { active: false, kind: null, start: 0 };
+      let bar = { progress: 0, speed: 0.4 };
+      let heat = 0;
+      let combo = 1;
+      let relics = 0;
+      let best = Number(localStorage.getItem('solstice-forge-best') || '0');
+      bestEl.textContent = String(best);
+
+      const runes = [];
+      const particles = [];
+
+      function resize() {
+        dpr = window.devicePixelRatio || 1;
+        width = canvas.clientWidth * dpr;
+        height = canvas.clientHeight * dpr;
+        canvas.width = width;
+        canvas.height = height;
+      }
+      window.addEventListener('resize', resize);
+
+      function spawnRune(kind = Math.random() < 0.5 ? 'left' : 'right') {
+        const timing = Math.random() * 0.5 + 0.6;
+        runes.push({
+          kind,
+          time: bar.progress + timing,
+          hit: false,
+          critical: Math.random() < 0.25
+        });
+      }
+
+      function resetGame() {
+        heat = 0;
+        combo = 1;
+        relics = 0;
+        bar.speed = 0.45;
+        bar.progress = 0;
+        runes.length = 0;
+        particles.length = 0;
+        running = true;
+        for (let i = 0; i < 6; i++) spawnRune(i % 2 === 0 ? 'left' : 'right');
+        updateHUD();
+      }
+
+      function updateHUD() {
+        heatEl.textContent = `${Math.round(heat)}%`;
+        comboEl.textContent = `x${combo}`;
+        relicsEl.textContent = String(relics);
+        bestEl.textContent = String(best);
+      }
+
+      function loop(time) {
+        requestAnimationFrame(loop);
+        const delta = Math.min(80, time - (lastTime || time));
+        lastTime = time;
+        if (!running) {
+          draw(time);
+          return;
+        }
+        bar.progress += (delta / 1000) * bar.speed;
+        if (bar.progress > 1) {
+          bar.progress %= 1;
+          spawnRune();
+          if (Math.random() < 0.3) spawnRune('right');
+        }
+        runes.forEach(rune => {
+          rune.time -= (delta / 1000) * bar.speed;
+        });
+        while (runes.length && runes[0].time < -0.2) {
+          if (!runes[0].hit) missRune();
+          runes.shift();
+        }
+        particles.forEach((p, i) => {
+          p.life -= delta;
+          if (p.life <= 0) particles.splice(i, 1);
+          p.x += p.vx * (delta / 16);
+          p.y += p.vy * (delta / 16);
+        });
+        draw(time);
+      }
+
+      function missRune() {
+        combo = 1;
+        heat = Math.max(0, heat - 8);
+        updateHUD();
+      }
+
+      function handleHit(kind, charged = false) {
+        const rune = runes.find(r => !r.hit && r.kind === kind && Math.abs(r.time) < 0.18);
+        if (!rune) {
+          missRune();
+          return;
+        }
+        const offset = rune.time;
+        rune.hit = true;
+        rune.time = -0.3;
+        const accuracy = Math.max(0, 1 - Math.abs(offset) / 0.18);
+        const gain = (charged || rune.critical ? 18 : 12) * accuracy * combo;
+        heat = Math.min(100, heat + gain);
+        combo = Math.min(15, combo + 1);
+        spawnParticles(kind);
+        if (heat >= 100) {
+          forgeRelic();
+        }
+        updateHUD();
+      }
+
+      function forgeRelic() {
+        relics++;
+        heat = 0;
+        combo = Math.max(2, combo);
+        bar.speed = Math.min(1.2, bar.speed + 0.08);
+        if (relics > best) {
+          best = relics;
+          localStorage.setItem('solstice-forge-best', String(best));
+        }
+        for (let i = 0; i < 4; i++) spawnRune(Math.random() < 0.5 ? 'left' : 'right');
+        particles.push({ x: width / 2, y: height * 0.55, vx: 0, vy: -0.5, life: 600, color: '#ffe265' });
+      }
+
+      function spawnParticles(kind) {
+        const centerX = kind === 'left' ? width * 0.3 : width * 0.7;
+        const centerY = height * 0.65;
+        for (let i = 0; i < 18; i++) {
+          particles.push({
+            x: centerX,
+            y: centerY,
+            vx: (Math.random() - 0.5) * 0.8,
+            vy: -Math.random() * 1.2,
+            life: 400 + Math.random() * 200,
+            color: kind === 'left' ? '#67e6ff' : '#ffd66b'
+          });
+        }
+      }
+
+      function draw(time) {
+        ctx.clearRect(0, 0, width, height);
+        const grad = ctx.createLinearGradient(0, 0, width, height);
+        grad.addColorStop(0, '#060d22');
+        grad.addColorStop(1, '#0a1f3f');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, width, height);
+
+        ctx.save();
+        ctx.translate(width / 2, height * 0.55);
+        ctx.fillStyle = '#111933';
+        ctx.fillRect(-width * 0.25, -height * 0.05, width * 0.5, height * 0.12);
+        ctx.fillStyle = '#233b66';
+        ctx.fillRect(-width * 0.22, -height * 0.035, width * 0.44, height * 0.08);
+
+        const zoneWidth = width * 0.12;
+        ctx.fillStyle = '#ffe065';
+        ctx.fillRect(-zoneWidth / 2, -height * 0.035, zoneWidth, height * 0.07);
+        ctx.restore();
+
+        drawRunes(time);
+        drawIndicator();
+        drawParticles();
+
+        ctx.fillStyle = '#9bd0ff';
+        ctx.font = `${Math.max(22, width * 0.03)}px 'Press Start 2P', monospace`;
+        ctx.textAlign = 'center';
+        if (!running) {
+          ctx.fillText('Forja detenida', width / 2, height * 0.5);
+        }
+      }
+
+      function drawIndicator() {
+        const indicatorX = width * (0.3 + 0.4 * bar.progress);
+        const indicatorY = height * 0.55;
+        ctx.fillStyle = '#fff2c0';
+        ctx.beginPath();
+        ctx.arc(indicatorX, indicatorY, height * 0.045, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#ffa64d';
+        ctx.lineWidth = 6;
+        ctx.stroke();
+        ctx.font = `${Math.max(14, width * 0.018)}px 'Press Start 2P', monospace`;
+        ctx.fillStyle = '#051127';
+        ctx.fillText('⚒', indicatorX, indicatorY + 6);
+      }
+
+      function drawRunes(time) {
+        runes.forEach((rune, index) => {
+          if (rune.hit) return;
+          const progress = Math.max(0, rune.time);
+          const x = rune.kind === 'left' ? width * 0.3 : width * 0.7;
+          const y = height * (0.2 + (1 - progress) * 0.4);
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.rotate(Math.sin(time * 0.003 + index) * 0.1);
+          ctx.fillStyle = rune.kind === 'left' ? '#67e6ff' : '#ffd66b';
+          ctx.beginPath();
+          ctx.moveTo(0, -30);
+          ctx.lineTo(26, 0);
+          ctx.lineTo(0, 30);
+          ctx.lineTo(-26, 0);
+          ctx.closePath();
+          ctx.fill();
+          if (rune.critical) {
+            ctx.strokeStyle = '#fffbd6';
+            ctx.lineWidth = 4;
+            ctx.stroke();
+          }
+          ctx.restore();
+        });
+      }
+
+      function drawParticles() {
+        particles.forEach(p => {
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, Math.max(4, height * 0.01), 0, Math.PI * 2);
+          ctx.fill();
+        });
+      }
+
+      function triggerStrike(kind, duration) {
+        const charged = duration > 320;
+        handleHit(kind, charged);
+      }
+
+      window.addEventListener('keydown', e => {
+        if (['KeyF', 'KeyJ'].includes(e.code)) {
+          e.preventDefault();
+          const kind = e.code === 'KeyF' ? 'left' : 'right';
+          if (!keyState[kind]) {
+            keyState[kind] = true;
+            pressTimes[kind] = performance.now();
+          }
+        }
+      });
+      window.addEventListener('keyup', e => {
+        if (e.code === 'KeyF' || e.code === 'KeyJ') {
+          const kind = e.code === 'KeyF' ? 'left' : 'right';
+          if (keyState[kind]) {
+            keyState[kind] = false;
+            const duration = performance.now() - pressTimes[kind];
+            triggerStrike(kind, duration);
+          }
+        }
+      });
+
+      canvas.addEventListener('pointerdown', e => {
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        pointerState.active = true;
+        pointerState.kind = x < rect.width / 2 ? 'left' : 'right';
+        pointerState.start = performance.now();
+      });
+      canvas.addEventListener('pointerup', () => {
+        if (!pointerState.active) return;
+        const duration = performance.now() - pointerState.start;
+        triggerStrike(pointerState.kind, duration);
+        pointerState.active = false;
+      });
+      const cancelPointer = () => {
+        pointerState.active = false;
+      };
+      canvas.addEventListener('pointerleave', cancelPointer);
+      canvas.addEventListener('pointercancel', cancelPointer);
+
+      resetBtn.addEventListener('click', resetGame);
+
+      resize();
+      resetGame();
+      loop(0);
+    })();
+  </script>
+</body>
+</html>

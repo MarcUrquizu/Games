@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Jungle Runner</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #102220;
+      --fg: #fdf6e3;
+      --accent: #ffb300;
+      --danger: #ff5c57;
+      font-family: "Segoe UI", system-ui, sans-serif;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at top, #234d4a, var(--bg));
+      color: var(--fg);
+    }
+    main {
+      width: min(680px, 92vw);
+      display: grid;
+      gap: 1.2rem;
+      padding: 2.5rem clamp(1rem, 5vw, 3.5rem);
+      background: rgba(6, 20, 19, 0.75);
+      border: 2px solid rgba(255, 255, 255, 0.08);
+      border-radius: 24px;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 4vw, 2.8rem);
+      text-align: center;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+      text-shadow: 0 0 18px rgba(255, 179, 0, 0.35);
+    }
+    canvas {
+      border-radius: 18px;
+      background: linear-gradient(#132d29, #08201d 65%, #1b4024 66%, #1b4024 100%);
+      border: 3px solid rgba(255, 255, 255, 0.12);
+      box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.45);
+      width: 100%;
+      max-width: 640px;
+      height: auto;
+      aspect-ratio: 16 / 10;
+    }
+    .hud {
+      display: flex;
+      justify-content: space-between;
+      font-size: 1.05rem;
+      letter-spacing: 0.04em;
+    }
+    .hud span {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    button {
+      justify-self: center;
+      padding: 0.75rem 1.8rem;
+      font-size: 1.05rem;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      background: var(--accent);
+      color: #1d1600;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      box-shadow: 0 14px 24px rgba(255, 179, 0, 0.28);
+    }
+    button:hover {
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 0 18px 30px rgba(255, 179, 0, 0.35);
+    }
+    .help {
+      font-size: 0.95rem;
+      color: rgba(255, 255, 255, 0.75);
+      line-height: 1.6;
+      text-align: center;
+    }
+    @media (max-width: 520px) {
+      main {
+        padding: 1.8rem;
+        border-radius: 18px;
+      }
+      .hud {
+        flex-direction: column;
+        gap: 0.5rem;
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Jungle Runner</h1>
+    <div class="hud">
+      <span>🏃‍♂️ Distancia: <strong id="score">0</strong> m</span>
+      <span>🌟 Récord: <strong id="best">0</strong> m</span>
+    </div>
+    <canvas id="game" width="640" height="400" role="img" aria-label="Jungle Runner - esquiva los obstáculos"></canvas>
+    <button id="start">Comenzar aventura</button>
+    <p class="help">Pulsa <strong>ESPACIO</strong> o toca la pantalla para saltar. Mantén pulsado para un salto más alto. Evita las trampas, recolecta luciérnagas y conquista la jungla.</p>
+  </main>
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const startButton = document.getElementById('start');
+    const scoreEl = document.getElementById('score');
+    const bestEl = document.getElementById('best');
+
+    const state = {
+      time: 0,
+      score: 0,
+      best: Number(localStorage.getItem('junglerunner-best') || 0),
+      running: false,
+      gameOver: false,
+      lastSpawn: 0,
+      obstacles: [],
+      fireflies: [],
+      particles: [],
+      skyLayer: 0,
+      groundLayer: 0
+    };
+
+    const player = {
+      x: 110,
+      y: 0,
+      width: 46,
+      height: 54,
+      color: '#ffe866',
+      vy: 0,
+      jumpForce: 15.5,
+      maxJumps: 2,
+      jumps: 0,
+      grounded: false,
+      trailCooldown: 0
+    };
+
+    const config = {
+      gravity: 0.8,
+      groundY: canvas.height - 70,
+      obstacleSpeed: 6,
+      minSpawnTime: 650,
+      maxSpawnTime: 1400,
+      fireflyChance: 0.45
+    };
+
+    const sounds = {
+      jump: createSound(280, 0.07, 'sine'),
+      collect: createSound(560, 0.08, 'triangle'),
+      crash: createSound(110, 0.22, 'sawtooth')
+    };
+
+    function createSound(frequency, duration, type) {
+      const context = new (window.AudioContext || window.webkitAudioContext)();
+      return () => {
+        const oscillator = context.createOscillator();
+        const gainNode = context.createGain();
+        oscillator.type = type;
+        oscillator.frequency.value = frequency;
+        oscillator.connect(gainNode);
+        gainNode.connect(context.destination);
+        oscillator.start();
+        gainNode.gain.exponentialRampToValueAtTime(0.00001, context.currentTime + duration);
+        oscillator.stop(context.currentTime + duration);
+      };
+    }
+
+    function resetGame() {
+      state.time = 0;
+      state.score = 0;
+      state.running = true;
+      state.gameOver = false;
+      state.lastSpawn = 0;
+      state.obstacles.length = 0;
+      state.fireflies.length = 0;
+      state.particles.length = 0;
+      player.y = config.groundY - player.height;
+      player.vy = 0;
+      player.jumps = 0;
+      player.grounded = true;
+      scoreEl.textContent = '0';
+      canvas.focus();
+    }
+
+    function spawnObstacle() {
+      const height = 30 + Math.random() * 70;
+      const isTriple = Math.random() < 0.2;
+      const width = isTriple ? 60 : 36 + Math.random() * 24;
+      const type = isTriple ? 'totem' : (Math.random() < 0.5 ? 'spike' : 'stump');
+      state.obstacles.push({
+        x: canvas.width + width,
+        y: config.groundY - height,
+        width,
+        height,
+        speed: config.obstacleSpeed + Math.random() * 1.8,
+        type
+      });
+    }
+
+    function spawnFirefly() {
+      const size = 12 + Math.random() * 6;
+      state.fireflies.push({
+        x: canvas.width + size,
+        y: config.groundY - 120 - Math.random() * 120,
+        size,
+        pulse: Math.random() * Math.PI * 2,
+        collected: false
+      });
+    }
+
+    function addParticles(x, y, color, count = 12) {
+      for (let i = 0; i < count; i++) {
+        state.particles.push({
+          x,
+          y,
+          vx: (Math.random() - 0.5) * 6,
+          vy: (Math.random() - 0.8) * 6,
+          size: 4 + Math.random() * 4,
+          life: 0.6 + Math.random() * 0.4,
+          color
+        });
+      }
+    }
+
+    function jump() {
+      if (!state.running) return;
+      if (player.jumps >= player.maxJumps) return;
+      player.vy = -player.jumpForce;
+      player.jumps++;
+      player.grounded = false;
+      player.trailCooldown = 0;
+      sounds.jump();
+      addParticles(player.x + player.width / 2, player.y + player.height, '#ffe866', 9);
+    }
+
+    function update(delta) {
+      if (!state.running) return;
+      state.time += delta;
+      state.skyLayer = (state.skyLayer + delta * 0.005) % canvas.width;
+      state.groundLayer = (state.groundLayer + delta * config.obstacleSpeed * 0.03) % canvas.width;
+
+      if (!state.gameOver) {
+        state.score += delta * 0.03;
+        scoreEl.textContent = Math.floor(state.score);
+        if (Math.random() < 0.0025 * delta) {
+          config.obstacleSpeed += 0.002 * delta;
+        }
+      }
+
+      player.vy += config.gravity;
+      player.y += player.vy;
+
+      if (player.y + player.height >= config.groundY) {
+        player.y = config.groundY - player.height;
+        player.vy = 0;
+        player.grounded = true;
+        player.jumps = 0;
+      }
+
+      if (player.trailCooldown <= 0 && !state.gameOver) {
+        addParticles(player.x + player.width / 2, player.y + player.height, '#ffe866', 2);
+        player.trailCooldown = 80;
+      } else {
+        player.trailCooldown -= delta;
+      }
+
+      state.lastSpawn += delta;
+      const spawnInterval = config.minSpawnTime + Math.random() * (config.maxSpawnTime - config.minSpawnTime);
+      if (state.lastSpawn > spawnInterval) {
+        spawnObstacle();
+        if (Math.random() < config.fireflyChance) {
+          spawnFirefly();
+        }
+        state.lastSpawn = 0;
+      }
+
+      state.obstacles = state.obstacles.filter(obstacle => {
+        obstacle.x -= obstacle.speed;
+        if (!state.gameOver && collide(player, obstacle)) {
+          sounds.crash();
+          addParticles(player.x + player.width / 2, player.y + player.height / 2, '#ff5c57', 22);
+          endGame();
+        }
+        return obstacle.x + obstacle.width > -10;
+      });
+
+      state.fireflies = state.fireflies.filter(firefly => {
+        firefly.x -= config.obstacleSpeed * 0.95;
+        firefly.pulse += delta * 0.005;
+        if (!firefly.collected && collideCircle(player, firefly)) {
+          firefly.collected = true;
+          state.score += 35;
+          scoreEl.textContent = Math.floor(state.score);
+          sounds.collect();
+          addParticles(firefly.x, firefly.y, '#8ef9ff', 18);
+        }
+        return firefly.x + firefly.size > -20 && !firefly.collected;
+      });
+
+      state.particles = state.particles.filter(p => {
+        p.life -= delta * 0.0015;
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.12;
+        return p.life > 0;
+      });
+    }
+
+    function collide(a, b) {
+      return a.x < b.x + b.width &&
+             a.x + a.width > b.x &&
+             a.y < b.y + b.height &&
+             a.y + a.height > b.y;
+    }
+
+    function collideCircle(rect, circle) {
+      const closestX = Math.max(rect.x, Math.min(circle.x, rect.x + rect.width));
+      const closestY = Math.max(rect.y, Math.min(circle.y, rect.y + rect.height));
+      const dx = circle.x - closestX;
+      const dy = circle.y - closestY;
+      return (dx * dx + dy * dy) < Math.pow(circle.size, 2);
+    }
+
+    function endGame() {
+      state.gameOver = true;
+      state.running = false;
+      if (state.score > state.best) {
+        state.best = Math.floor(state.score);
+        localStorage.setItem('junglerunner-best', state.best);
+      }
+      bestEl.textContent = state.best;
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawBackground();
+      drawPlayer();
+      drawObstacles();
+      drawFireflies();
+      drawParticles();
+      if (state.gameOver) drawGameOver();
+    }
+
+    function drawBackground() {
+      const skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      skyGradient.addColorStop(0, '#0d2d3a');
+      skyGradient.addColorStop(0.6, '#063024');
+      skyGradient.addColorStop(1, '#092517');
+      ctx.fillStyle = skyGradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+      for (let i = 0; i < canvas.width; i += 80) {
+        ctx.fillRect((i + state.skyLayer) % canvas.width, 40, 40, 12);
+      }
+
+      ctx.fillStyle = '#123422';
+      const groundY = config.groundY;
+      ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
+
+      ctx.fillStyle = '#1d6135';
+      for (let i = -canvas.width; i < canvas.width * 2; i += 120) {
+        ctx.fillRect((i + state.groundLayer) % (canvas.width * 2), groundY - 18, 60, 18);
+      }
+    }
+
+    function drawPlayer() {
+      ctx.fillStyle = player.color;
+      ctx.beginPath();
+      ctx.roundRect(player.x, player.y, player.width, player.height, 12);
+      ctx.fill();
+      ctx.fillStyle = '#2b2b28';
+      ctx.fillRect(player.x + 22, player.y + 12, 14, 14);
+      ctx.fillStyle = '#1d1600';
+      ctx.fillRect(player.x + 10, player.y + player.height - 10, 12, 10);
+      ctx.fillRect(player.x + 28, player.y + player.height - 10, 12, 10);
+    }
+
+    function drawObstacles() {
+      state.obstacles.forEach(obstacle => {
+        switch (obstacle.type) {
+          case 'totem':
+            ctx.fillStyle = '#7b4a1b';
+            ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+            ctx.fillStyle = '#c99c68';
+            ctx.fillRect(obstacle.x + 8, obstacle.y + 8, obstacle.width - 16, obstacle.height - 16);
+            ctx.fillStyle = '#40210f';
+            ctx.fillRect(obstacle.x + 12, obstacle.y + obstacle.height - 28, obstacle.width - 24, 10);
+            break;
+          case 'spike':
+            ctx.fillStyle = '#d8f0ff';
+            ctx.beginPath();
+            ctx.moveTo(obstacle.x, obstacle.y + obstacle.height);
+            ctx.lineTo(obstacle.x + obstacle.width / 2, obstacle.y);
+            ctx.lineTo(obstacle.x + obstacle.width, obstacle.y + obstacle.height);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+            ctx.stroke();
+            break;
+          default:
+            ctx.fillStyle = '#4c2f17';
+            ctx.beginPath();
+            ctx.roundRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height, 10);
+            ctx.fill();
+            ctx.fillStyle = '#7f512b';
+            ctx.fillRect(obstacle.x + 6, obstacle.y + obstacle.height - 18, obstacle.width - 12, 12);
+            break;
+        }
+      });
+    }
+
+    function drawFireflies() {
+      state.fireflies.forEach(firefly => {
+        const glow = (Math.sin(firefly.pulse) + 1) * 0.5;
+        ctx.fillStyle = `rgba(142, 249, 255, ${0.2 + glow * 0.4})`;
+        ctx.beginPath();
+        ctx.arc(firefly.x, firefly.y, firefly.size * 1.6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#8ef9ff';
+        ctx.beginPath();
+        ctx.arc(firefly.x, firefly.y, firefly.size * 0.7 + glow * 3, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    function drawParticles() {
+      state.particles.forEach(p => {
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = Math.max(p.life, 0);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      });
+    }
+
+    function drawGameOver() {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#ffe866';
+      ctx.font = 'bold 48px "Segoe UI"';
+      ctx.textAlign = 'center';
+      ctx.fillText('¡Te atraparon!', canvas.width / 2, canvas.height / 2 - 20);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '24px "Segoe UI"';
+      ctx.fillText(`Distancia: ${Math.floor(state.score)} m`, canvas.width / 2, canvas.height / 2 + 18);
+      ctx.fillStyle = '#8ef9ff';
+      ctx.fillText('Pulsa ESPACIO o el botón para intentarlo de nuevo', canvas.width / 2, canvas.height / 2 + 56);
+    }
+
+    let lastTime = 0;
+    function loop(timestamp) {
+      const delta = timestamp - lastTime;
+      lastTime = timestamp;
+      update(delta);
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    startButton.addEventListener('click', () => {
+      if (state.gameOver || !state.running) {
+        resetGame();
+      }
+    });
+
+    window.addEventListener('keydown', (event) => {
+      if (event.code === 'Space') {
+        event.preventDefault();
+        if (state.gameOver) {
+          resetGame();
+        } else {
+          jump();
+        }
+      }
+    });
+
+    window.addEventListener('mousedown', () => {
+      if (state.gameOver) {
+        resetGame();
+      } else {
+        jump();
+      }
+    });
+
+    window.addEventListener('touchstart', (event) => {
+      event.preventDefault();
+      if (state.gameOver) {
+        resetGame();
+      } else {
+        jump();
+      }
+    }, { passive: false });
+
+    canvas.addEventListener('contextmenu', (event) => event.preventDefault());
+
+    bestEl.textContent = state.best;
+    player.y = config.groundY - player.height;
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>

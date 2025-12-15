@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rune Fusion</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: 'Press Start 2P', system-ui;
+      --bg: radial-gradient(circle at 30% 20%, #2f2156, #05030f 75%);
+      --tile-size: min(14vw, 78px);
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: clamp(12px, 4vw, 40px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: clamp(16px, 3vw, 32px);
+      background: var(--bg);
+      color: #f9f1ff;
+    }
+    header { text-align: center; max-width: 680px; }
+    h1 { font-size: clamp(1.4rem, 4vw, 2.6rem); text-shadow: 0 0 14px rgba(176,130,255,0.5); }
+    p { line-height: 1.8; font-size: clamp(0.7rem, 1.8vw, 0.95rem); }
+    .board {
+      display: grid;
+      grid-template-columns: repeat(6, var(--tile-size));
+      grid-auto-rows: var(--tile-size);
+      gap: clamp(6px, 1.4vw, 16px);
+      padding: clamp(12px, 2vw, 28px);
+      border-radius: 24px;
+      border: 2px solid rgba(216, 180, 255, 0.35);
+      background: rgba(21, 16, 38, 0.7);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 0 28px rgba(124, 82, 255, 0.35);
+    }
+    button.tile {
+      appearance: none;
+      border: none;
+      border-radius: 18px;
+      position: relative;
+      cursor: pointer;
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #0c0316;
+      font-size: clamp(0.55rem, 1.4vw, 0.75rem);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: bold;
+    }
+    button.tile:focus-visible { outline: 3px solid #fff396; outline-offset: 4px; }
+    button.tile[data-state="0"] { background: radial-gradient(circle, #ffcdd4, #ff688b); box-shadow: 0 0 22px rgba(255,118,152,0.45); }
+    button.tile[data-state="1"] { background: radial-gradient(circle, #9ff8ff, #54c2ff); box-shadow: 0 0 22px rgba(116,217,255,0.45); }
+    button.tile[data-state="2"] { background: radial-gradient(circle, #d9ffb5, #7bd46d); box-shadow: 0 0 22px rgba(166,255,150,0.45); }
+
+    .hud {
+      display: flex;
+      flex-wrap: wrap;
+      gap: clamp(12px, 2vw, 24px);
+      justify-content: center;
+      background: rgba(16, 12, 29, 0.7);
+      padding: clamp(12px, 2vw, 24px);
+      border-radius: 20px;
+      border: 1px solid rgba(184, 156, 255, 0.4);
+    }
+    .hud span { font-size: clamp(0.65rem, 1.6vw, 0.9rem); }
+    .controls { text-align: center; max-width: 720px; }
+    .actions { display: flex; gap: 12px; justify-content: center; }
+    .actions button {
+      background: linear-gradient(130deg, #ff94f7, #7f7bff);
+      color: #0a0119;
+      border: none;
+      border-radius: 999px;
+      padding: 0.6rem 1.4rem;
+      font-family: inherit;
+      font-size: clamp(0.65rem, 2vw, 0.95rem);
+      cursor: pointer;
+      transition: transform 0.15s ease, filter 0.2s ease;
+      box-shadow: 0 0 16px rgba(165, 125, 255, 0.35);
+    }
+    .actions button:hover { transform: translateY(-2px); filter: brightness(1.1); }
+    .actions button:focus-visible { outline: 3px solid #fff396; outline-offset: 4px; }
+    .progress {
+      width: min(90vw, 420px);
+      height: 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.2);
+      margin: 0 auto;
+    }
+    .progress div {
+      height: 100%;
+      width: 0;
+      transition: width 0.3s ease;
+      background: linear-gradient(130deg, #ffd166, #06d6a0);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Rune Fusion</h1>
+    <p>Los tejedorxs del cosmos dejaron un tablero cargado de energía. Combina las runas rotando su resonancia hasta que todas brillen en la misma frecuencia. Cada combinación perfecta aumenta el caos y el tablero se reconfigura.</p>
+  </header>
+  <div class="hud" role="status" aria-live="polite">
+    <span>Puntos: <strong id="score">0</strong></span>
+    <span>Movimientos: <strong id="moves">0</strong></span>
+    <span>Récord: <strong id="best">0</strong></span>
+  </div>
+  <div class="progress" aria-hidden="true"><div id="progress"></div></div>
+  <div class="board" id="board" role="grid" aria-label="Tablero de runas a combinar"></div>
+  <section class="controls">
+    <div class="actions">
+      <button type="button" id="reshuffle">Reconfigurar</button>
+      <button type="button" id="reset">Reiniciar progreso</button>
+    </div>
+    <p>Selecciona una runa para girarla; alterará también a las runas ortogonales. Completa el tablero con un mismo color antes de que la inestabilidad (barra superior) llegue al máximo. Cada victoria avanza al siguiente ciclo con un patrón más complejo.</p>
+  </section>
+  <script>
+    (() => {
+      const size = 6;
+      const boardEl = document.getElementById('board');
+      const scoreEl = document.getElementById('score');
+      const movesEl = document.getElementById('moves');
+      const bestEl = document.getElementById('best');
+      const reshuffleBtn = document.getElementById('reshuffle');
+      const resetBtn = document.getElementById('reset');
+      const progressBar = document.getElementById('progress');
+
+      let cells = [];
+      let score = 0;
+      let best = Number(localStorage.getItem('runefusion-best') || '0');
+      let moves = 0;
+      let instability = 0;
+      let cycle = 1;
+      let timerId;
+
+      bestEl.textContent = String(best);
+
+      function createCell(x, y) {
+        const button = document.createElement('button');
+        button.className = 'tile';
+        button.type = 'button';
+        button.dataset.state = String(Math.floor(Math.random() * 3));
+        button.dataset.x = String(x);
+        button.dataset.y = String(y);
+        button.setAttribute('role', 'gridcell');
+        button.setAttribute('aria-label', `Runa ${x + 1}, ${y + 1} energía ${Number(button.dataset.state) + 1}`);
+        button.addEventListener('click', () => rotateCluster(x, y));
+        button.addEventListener('keydown', (event) => {
+          if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) {
+            event.preventDefault();
+            moveFocus(x, y, event.key);
+          }
+        });
+        return button;
+      }
+
+      function buildBoard() {
+        boardEl.textContent = '';
+        cells = [];
+        for (let y = 0; y < size; y++) {
+          const row = [];
+          for (let x = 0; x < size; x++) {
+            const cell = createCell(x, y);
+            boardEl.appendChild(cell);
+            row.push(cell);
+          }
+          cells.push(row);
+        }
+        if (timerId) clearInterval(timerId);
+        timerId = setInterval(() => {
+          instability = Math.min(100, instability + 2 + cycle);
+          progressBar.style.width = `${instability}%`;
+          if (instability >= 100) {
+            spillChaos();
+          }
+        }, 1000);
+      }
+
+      function moveFocus(x, y, key) {
+        const deltas = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] };
+        const [dx, dy] = deltas[key];
+        let nx = x + dx;
+        let ny = y + dy;
+        if (nx < 0) nx = size - 1;
+        if (nx >= size) nx = 0;
+        if (ny < 0) ny = size - 1;
+        if (ny >= size) ny = 0;
+        cells[ny][nx].focus();
+      }
+
+      function rotateCluster(x, y, silent = false) {
+        const offsets = [[0,0], [1,0], [-1,0], [0,1], [0,-1]];
+        offsets.forEach(([dx, dy]) => {
+          const nx = (x + dx + size) % size;
+          const ny = (y + dy + size) % size;
+          const tile = cells[ny][nx];
+          const next = (Number(tile.dataset.state) + 1) % 3;
+          tile.dataset.state = String(next);
+          tile.setAttribute('aria-label', `Runa ${nx + 1}, ${ny + 1} energía ${next + 1}`);
+        });
+        if (!silent) {
+          moves++;
+          instability = Math.min(100, instability + 3 + cycle);
+          progressBar.style.width = `${instability}%`;
+          movesEl.textContent = String(moves);
+          if (checkWin()) {
+            celebrate();
+          }
+        }
+      }
+
+      function checkWin() {
+        const first = cells[0][0].dataset.state;
+        for (const row of cells) {
+          for (const tile of row) {
+            if (tile.dataset.state !== first) return false;
+          }
+        }
+        return true;
+      }
+
+      function celebrate() {
+        score += Math.round(150 * cycle + Math.max(0, 60 - moves) * 2);
+        cycle++;
+        instability = Math.max(0, instability - 30);
+        scoreEl.textContent = String(score);
+        progressBar.style.width = `${instability}%`;
+        if (score > best) {
+          best = score;
+          bestEl.textContent = String(best);
+          localStorage.setItem('runefusion-best', String(best));
+        }
+        flashBoard();
+        scramble(Math.min(12, 4 + cycle));
+      }
+
+      function spillChaos() {
+        instability = 0;
+        score = Math.max(0, Math.floor(score * 0.7));
+        scoreEl.textContent = String(score);
+        moves = 0;
+        movesEl.textContent = '0';
+        cycle = Math.max(1, cycle - 1);
+        flashBoard(true);
+        scramble(8);
+      }
+
+      function scramble(iterations) {
+        for (let i = 0; i < iterations; i++) {
+          const x = Math.floor(Math.random() * size);
+          const y = Math.floor(Math.random() * size);
+          rotateCluster(x, y, true);
+        }
+        moves = 0;
+        movesEl.textContent = '0';
+        instability = Math.min(instability, 40);
+        progressBar.style.width = `${instability}%`;
+      }
+
+      function flashBoard(danger = false) {
+        boardEl.animate([
+          { transform: 'scale(1)', filter: 'brightness(1)' },
+          { transform: 'scale(1.04)', filter: danger ? 'brightness(1.4)' : 'brightness(1.2)' },
+          { transform: 'scale(1)', filter: 'brightness(1)' }
+        ], { duration: 420, easing: 'ease-out' });
+      }
+
+      function resetGame() {
+        score = 0;
+        cycle = 1;
+        moves = 0;
+        instability = 0;
+        scoreEl.textContent = '0';
+        movesEl.textContent = '0';
+        progressBar.style.width = '0';
+        buildBoard();
+      }
+
+      reshuffleBtn.addEventListener('click', () => scramble(10));
+      resetBtn.addEventListener('click', resetGame);
+
+      buildBoard();
+    })();
+  </script>
+</body>
+</html>
