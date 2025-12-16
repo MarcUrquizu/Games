@@ -1,0 +1,786 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Parchís (1 PC) - Humanos + Bots</title>
+  <style>
+    :root { --bg:#0b1020; --card:#121a33; --muted:#9fb0ff; --text:#e9ecff; --line:#25305b; }
+    html,body{height:100%;margin:0;background:radial-gradient(1200px 800px at 30% 15%, #17224a 0%, var(--bg) 55%, #070a14 100%); color:var(--text); font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;}
+    .wrap{max-width:1100px;margin:0 auto;padding:18px;display:grid;grid-template-columns: 1.1fr .9fr;gap:16px;align-items:start;}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03)); border:1px solid rgba(255,255,255,.10); border-radius:18px; padding:14px 14px; box-shadow:0 14px 40px rgba(0,0,0,.35);}
+    h1{font-size:18px;margin:0 0 10px;}
+    h2{font-size:14px;margin:14px 0 8px;color:var(--muted);font-weight:600;}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+    label{font-size:13px;color:#cfd6ff;}
+    select,button,input[type="checkbox"]{accent-color:#8ea2ff;}
+    select,button{border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(18,26,51,.9);color:var(--text);padding:10px 12px;font-weight:600;}
+    button{cursor:pointer;transition:transform .06s ease,filter .2s ease;}
+    button:hover{filter:brightness(1.08);}
+    button:active{transform:translateY(1px);}
+    button:disabled{opacity:.45;cursor:not-allowed;}
+    .small{font-size:12px;color:#c3ccff;line-height:1.35;}
+    .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.18);font-size:12px;color:#d8ddff;}
+    canvas{width:100%;height:auto;border-radius:16px;border:1px solid rgba(255,255,255,.10);background:rgba(0,0,0,.22);}
+    .log{height:260px;overflow:auto;border-radius:14px;border:1px solid rgba(255,255,255,.10);padding:10px;background:rgba(0,0,0,.16);font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;font-size:12px;line-height:1.35;}
+    .sep{height:1px;background:rgba(255,255,255,.10);margin:10px 0;}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .kbd{font-family:ui-monospace,monospace;border:1px solid rgba(255,255,255,.14);padding:2px 6px;border-radius:8px;background:rgba(0,0,0,.18);font-size:12px;}
+    .hidden{display:none;}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>🎲 Parchís (1 ordenador) — Humanos + Bots</h1>
+      <canvas id="board" width="760" height="760"></canvas>
+      <div class="sep"></div>
+      <div class="row">
+        <span class="pill" id="turnPill">Turno: —</span>
+        <span class="pill" id="dicePill">Dado: —</span>
+        <span class="pill" id="modePill">Modo: —</span>
+      </div>
+      <h2>Controles</h2>
+      <div class="small">
+        1) Pulsa <span class="kbd">Tirar dado</span><br/>
+        2) Si hay movimientos posibles, <b>haz click en una ficha</b> para moverla.<br/>
+        Reglas clave: salir con <b>5</b>, comer si caes exacto en rival y no es casilla segura, puentes bloquean el paso.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Configuración</h2>
+      <div id="setup">
+        <div class="row">
+          <label>Total jugadores:</label>
+          <select id="totalPlayers">
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4" selected>4</option>
+          </select>
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <label>Jugadores humanos (mismo PC):</label>
+          <select id="humanPlayers">
+            <option value="1" selected>1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+          </select>
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <label><input type="checkbox" id="extraTurn6" checked> Turno extra al sacar 6</label>
+        </div>
+        <div class="row" style="margin-top:10px;">
+          <button id="startBtn">Empezar partida</button>
+          <button id="resetBtn">Reiniciar</button>
+        </div>
+        <div class="small" style="margin-top:8px;">
+          Colores en orden: <b>Rojo</b>, <b>Azul</b>, <b>Verde</b>, <b>Amarillo</b>. <br/>
+          Si eliges 2 humanos, los otros serán bots automáticamente.
+        </div>
+      </div>
+
+      <h2>Acciones</h2>
+      <div class="row">
+        <button id="rollBtn" disabled>🎲 Tirar dado</button>
+        <button id="skipBtn" disabled>⏭️ Pasar (si no hay jugada)</button>
+      </div>
+
+      <h2>Registro</h2>
+      <div class="log" id="log"></div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  // ======== Config tablero (modelo tipo Ludo/Parchís simplificado) ========
+  const COLORS = [
+    { key:"R", name:"Rojo",   css:"#ff4a4a", start: 0 },
+    { key:"B", name:"Azul",   css:"#4aa3ff", start: 13 },
+    { key:"G", name:"Verde",  css:"#4dff9a", start: 26 },
+    { key:"Y", name:"Amarillo", css:"#ffd34a", start: 39 },
+  ];
+  const MAIN_LEN = 52;       // casillas del circuito
+  const HOME_LEN = 6;        // recta final
+  const PATH_LEN = MAIN_LEN + HOME_LEN; // 58, indices 0..57
+  const PIECES_PER_PLAYER = 4;
+
+  // Casillas seguras (aprox. típicas en Ludo/Parchís simplificado)
+  const SAFE_MAIN = new Set([0,8,13,21,26,34,39,47]); // global indices
+  // Nota: start squares también cuentan como seguras; aquí ya las incluimos.
+
+  // ======== Estado del juego ========
+  const state = {
+    started: false,
+    totalPlayers: 4,
+    humanPlayers: 1,
+    extraTurn6: true,
+    players: [],  // {color, isBot, pieces:[{pos:-1..57}], finishedCount}
+    turn: 0,      // index player actual
+    dice: null,
+    awaitingMove: false,
+    legalMoves: [], // [{pi, toIndex, capture:{player,piece} | null}]
+    busyBot: false
+  };
+
+  // ======== UI ========
+  const canvas = document.getElementById("board");
+  const ctx = canvas.getContext("2d");
+  const logEl = document.getElementById("log");
+
+  const totalSel = document.getElementById("totalPlayers");
+  const humanSel = document.getElementById("humanPlayers");
+  const extraTurn6 = document.getElementById("extraTurn6");
+  const startBtn = document.getElementById("startBtn");
+  const resetBtn = document.getElementById("resetBtn");
+  const rollBtn = document.getElementById("rollBtn");
+  const skipBtn = document.getElementById("skipBtn");
+
+  const turnPill = document.getElementById("turnPill");
+  const dicePill = document.getElementById("dicePill");
+  const modePill = document.getElementById("modePill");
+
+  function log(msg){
+    const t = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    logEl.innerHTML += `[${t}] ${msg}<br/>`;
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  // ======== Utilidades de movimiento ========
+  function buildPathForColor(colorIndex){
+    const start = COLORS[colorIndex].start; // global start on main track
+    const arr = [];
+    for(let i=0;i<MAIN_LEN;i++){
+      arr.push({ type:"main", g: (start + i) % MAIN_LEN }); // global main index
+    }
+    for(let j=0;j<HOME_LEN;j++){
+      arr.push({ type:"home", c: COLORS[colorIndex].key, h: j }); // home lane
+    }
+    return arr; // length 58
+  }
+
+  const PATHS = COLORS.map((_,i)=>buildPathForColor(i));
+
+  function getSquareOccupantsMain(globalIndex){
+    // returns array of {playerIndex, pieceIndex}
+    const occ = [];
+    for(let p=0;p<state.players.length;p++){
+      const path = PATHS[p];
+      for(let k=0;k<state.players[p].pieces.length;k++){
+        const pos = state.players[p].pieces[k].pos;
+        if(pos >=0 && pos < MAIN_LEN){
+          const g = path[pos].g;
+          if(g === globalIndex) occ.push({playerIndex:p, pieceIndex:k});
+        }
+      }
+    }
+    return occ;
+  }
+
+  function isBlockOnMain(globalIndex){
+    // a "puente" is two pieces of same color on the same main square
+    const occ = getSquareOccupantsMain(globalIndex);
+    const byPlayer = new Map();
+    for(const o of occ){
+      byPlayer.set(o.playerIndex, (byPlayer.get(o.playerIndex)||0)+1);
+    }
+    for(const [p,count] of byPlayer.entries()){
+      if(count >= 2) return { playerIndex: p, count };
+    }
+    return null;
+  }
+
+  function isSafeMain(globalIndex){
+    return SAFE_MAIN.has(globalIndex);
+  }
+
+  function canLandMain(playerIndex, globalIndex){
+    // Can land if:
+    // - if opponent block => no
+    // - if own block already (2) => no
+    const occ = getSquareOccupantsMain(globalIndex);
+    const counts = new Map();
+    for(const o of occ){
+      counts.set(o.playerIndex, (counts.get(o.playerIndex)||0)+1);
+    }
+    for(const [p,c] of counts.entries()){
+      if(p === playerIndex && c >= 2) return false;
+      if(p !== playerIndex && c >= 2) return false; // bridge blocks occupancy
+    }
+    return true;
+  }
+
+  function computeMove(playerIndex, pieceIndex, dice){
+    const player = state.players[playerIndex];
+    const piece = player.pieces[pieceIndex];
+    const pos = piece.pos;
+
+    // Home: need 5 to exit
+    if(pos === -1){
+      if(dice !== 5) return null;
+      const to = 0;
+      // if start square has opponent block, cannot exit
+      const g = PATHS[playerIndex][to].g;
+      if(!canLandMain(playerIndex, g)) return null;
+      // capture possible on start? yes if not safe (but start is safe in our SAFE_MAIN)
+      return { pi: pieceIndex, toIndex: to, capture: null };
+    }
+
+    const to = pos + dice;
+    if(to > PATH_LEN - 1) return null;
+
+    // Check blocks on the way (only while traversing main track)
+    // We simulate steps from pos+1 to min(to, MAIN_LEN-1) because beyond MAIN_LEN-1 you're in home lane.
+    for(let step = pos + 1; step <= Math.min(to, MAIN_LEN - 1); step++){
+      const g = PATHS[playerIndex][step].g;
+      const block = isBlockOnMain(g);
+      if(block){
+        // cannot pass through block; can land on it only if step === to and it's own (and not already 2)
+        if(step !== to) return null;
+        if(block.playerIndex !== playerIndex) return null;
+        // own block: landing would create 3? prevented by canLandMain
+      }
+    }
+
+    const targetCell = PATHS[playerIndex][to];
+
+    if(targetCell.type === "main"){
+      const g = targetCell.g;
+
+      if(!canLandMain(playerIndex, g)) return null;
+
+      // Determine capture: if exactly one opponent on that square, and it's not safe => capture it.
+      const occ = getSquareOccupantsMain(g);
+      // if safe, no capture
+      if(!isSafeMain(g)){
+        const opponents = occ.filter(o => o.playerIndex !== playerIndex);
+        const own = occ.filter(o => o.playerIndex === playerIndex);
+        // if opponent bridge exists we'd have rejected canLandMain earlier.
+        if(opponents.length === 1 && own.length === 0){
+          return { pi: pieceIndex, toIndex: to, capture: { playerIndex: opponents[0].playerIndex, pieceIndex: opponents[0].pieceIndex } };
+        }
+      }
+      return { pi: pieceIndex, toIndex: to, capture: null };
+    } else {
+      // Home lane: no captures, no blocks
+      return { pi: pieceIndex, toIndex: to, capture: null };
+    }
+  }
+
+  function listLegalMoves(playerIndex, dice){
+    const moves = [];
+    for(let i=0;i<PIECES_PER_PLAYER;i++){
+      const mv = computeMove(playerIndex, i, dice);
+      if(mv) moves.push(mv);
+    }
+    return moves;
+  }
+
+  function applyMove(playerIndex, move){
+    const player = state.players[playerIndex];
+    const piece = player.pieces[move.pi];
+
+    // Capture
+    if(move.capture){
+      const opp = state.players[move.capture.playerIndex];
+      opp.pieces[move.capture.pieceIndex].pos = -1;
+      log(`💥 ${player.color.name} come a una ficha de ${opp.color.name}. (Vuelve a casa)`);
+    }
+
+    piece.pos = move.toIndex;
+
+    // Check finish
+    if(piece.pos === PATH_LEN - 1){
+      player.finishedCount++;
+      log(`🏁 ${player.color.name} mete una ficha en meta. (${player.finishedCount}/4)`);
+    }
+  }
+
+  function checkWinner(){
+    for(let p=0;p<state.players.length;p++){
+      if(state.players[p].finishedCount >= PIECES_PER_PLAYER){
+        return p;
+      }
+    }
+    return null;
+  }
+
+  // ======== Bots ========
+  function chooseBotMove(playerIndex, moves){
+    // Heurística simple: ganar > comer > salir > avanzar más
+    let best = null;
+    let bestScore = -1e9;
+    for(const m of moves){
+      let score = 0;
+      if(m.toIndex === PATH_LEN-1) score += 10000;
+      if(m.capture) score += 2000;
+      if(state.players[playerIndex].pieces[m.pi].pos === -1) score += 300; // salir
+      score += m.toIndex * 2; // avanzar
+      // prefer moves that create bridge (defensivo)
+      const cell = PATHS[playerIndex][m.toIndex];
+      if(cell.type === "main"){
+        const g = cell.g;
+        // would it make a bridge?
+        const occ = getSquareOccupantsMain(g);
+        const ownCount = occ.filter(o=>o.playerIndex===playerIndex).length;
+        if(ownCount === 1) score += 120;
+        // avoid landing on unsafe with many opponents around? (simple)
+        if(!isSafeMain(g)) score += 10;
+      }
+      if(score > bestScore){
+        bestScore = score;
+        best = m;
+      }
+    }
+    return best;
+  }
+
+  function botTurn(){
+    if(!state.started) return;
+    const p = state.turn;
+    const player = state.players[p];
+    if(!player.isBot) return;
+
+    state.busyBot = true;
+    rollBtn.disabled = true;
+    skipBtn.disabled = true;
+
+    setTimeout(() => {
+      const d = rollDice();
+      setDice(d);
+      const moves = listLegalMoves(p, d);
+      state.legalMoves = moves;
+
+      if(moves.length === 0){
+        log(`🤖 ${player.color.name} no tiene jugada con ${d}.`);
+        endTurn(d, false);
+        state.busyBot = false;
+        return;
+      }
+
+      const choice = chooseBotMove(p, moves);
+      log(`🤖 ${player.color.name} juega ficha #${choice.pi+1} con ${d}.`);
+      applyMove(p, choice);
+      draw();
+
+      const winner = checkWinner();
+      if(winner !== null){
+        gameOver(winner);
+        state.busyBot = false;
+        return;
+      }
+
+      const extra = state.extraTurn6 && d === 6;
+      endTurn(d, extra);
+      state.busyBot = false;
+    }, 520);
+  }
+
+  // ======== Flujo de turno ========
+  function rollDice(){
+    return 1 + Math.floor(Math.random()*6);
+  }
+
+  function setDice(d){
+    state.dice = d;
+    dicePill.textContent = `Dado: ${d}`;
+  }
+
+  function currentPlayer(){
+    return state.players[state.turn];
+  }
+
+  function updatePills(){
+    if(!state.started){
+      turnPill.textContent = `Turno: —`;
+      dicePill.textContent = `Dado: —`;
+      modePill.textContent = `Modo: —`;
+      return;
+    }
+    const p = currentPlayer();
+    const who = p.isBot ? "🤖 Bot" : "👤 Humano";
+    turnPill.textContent = `Turno: ${p.color.name} (${who})`;
+    modePill.textContent = `${state.humanPlayers} humano(s) + ${state.totalPlayers - state.humanPlayers} bot(s)`;
+    dicePill.textContent = `Dado: ${state.dice ?? "—"}`;
+  }
+
+  function beginTurn(){
+    state.dice = null;
+    state.awaitingMove = false;
+    state.legalMoves = [];
+    updatePills();
+
+    const p = currentPlayer();
+    const canInteract = state.started && !p.isBot && !state.busyBot;
+    rollBtn.disabled = !canInteract;
+    skipBtn.disabled = true;
+
+    if(p.isBot) botTurn();
+  }
+
+  function endTurn(dice, extraTurn){
+    state.awaitingMove = false;
+    state.legalMoves = [];
+    state.dice = null;
+
+    if(extraTurn){
+      log(`🎁 Turno extra para ${currentPlayer().color.name} por sacar 6.`);
+      // mismo jugador repite
+    } else {
+      state.turn = (state.turn + 1) % state.players.length;
+    }
+    updatePills();
+    beginTurn();
+    draw();
+  }
+
+  function gameOver(winnerIndex){
+    const w = state.players[winnerIndex];
+    log(`🏆 ¡Gana ${w.color.name}!`);
+    rollBtn.disabled = true;
+    skipBtn.disabled = true;
+    state.started = false;
+    updatePills();
+  }
+
+  // ======== Dibujo del tablero ========
+  // Precompute coordinates for main ring and home lanes
+  const geom = {
+    center: {x: 380, y: 380},
+    mainR: 260,
+    mainPoints: [],  // [ {x,y} for global 0..51 ]
+    homePoints: { R:[], B:[], G:[], Y:[] }, // per color h0..h5
+  };
+
+  function buildGeometry(){
+    const cx = geom.center.x, cy = geom.center.y;
+    geom.mainPoints = [];
+    for(let g=0; g<MAIN_LEN; g++){
+      // place 52 points around a circle (top = 0-ish) with a slight rotation
+      const angle = (-Math.PI/2) + (2*Math.PI) * (g / MAIN_LEN);
+      const x = cx + geom.mainR * Math.cos(angle);
+      const y = cy + geom.mainR * Math.sin(angle);
+      geom.mainPoints.push({x,y});
+    }
+
+    // home lanes go inward from the "entry" direction (the last main before home in each path is index 51)
+    for(let p=0;p<COLORS.length;p++){
+      const key = COLORS[p].key;
+      const entryGlobal = PATHS[p][MAIN_LEN-1].g; // global square right before home lane
+      const entryPt = geom.mainPoints[entryGlobal];
+      const dirX = cx - entryPt.x;
+      const dirY = cy - entryPt.y;
+      const len = Math.hypot(dirX, dirY);
+      const ux = dirX/len, uy = dirY/len;
+
+      geom.homePoints[key] = [];
+      for(let h=0; h<HOME_LEN; h++){
+        const dist = 80 + h*28;
+        geom.homePoints[key].push({ x: entryPt.x + ux*dist, y: entryPt.y + uy*dist });
+      }
+    }
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    // background grid-ish
+    ctx.globalAlpha = 0.35;
+    ctx.strokeStyle = "rgba(255,255,255,.12)";
+    for(let i=0;i<canvas.width;i+=40){
+      ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,canvas.height); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(canvas.width,i); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    // main ring squares
+    for(let g=0; g<MAIN_LEN; g++){
+      const pt = geom.mainPoints[g];
+      const safe = isSafeMain(g);
+      ctx.beginPath();
+      ctx.fillStyle = safe ? "rgba(255,255,255,.18)" : "rgba(0,0,0,.18)";
+      ctx.strokeStyle = "rgba(255,255,255,.18)";
+      ctx.lineWidth = 1;
+      ctx.arc(pt.x, pt.y, 14, 0, Math.PI*2);
+      ctx.fill(); ctx.stroke();
+    }
+
+    // mark starts
+    for(let p=0;p<state.players.length;p++){
+      const g = COLORS[p].start;
+      const pt = geom.mainPoints[g];
+      ctx.beginPath();
+      ctx.fillStyle = state.players[p].color.css;
+      ctx.globalAlpha = 0.85;
+      ctx.arc(pt.x, pt.y, 6, 0, Math.PI*2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
+    // home lanes
+    for(let p=0;p<state.players.length;p++){
+      const key = state.players[p].color.key;
+      for(let h=0; h<HOME_LEN; h++){
+        const pt = geom.homePoints[key][h];
+        ctx.beginPath();
+        ctx.fillStyle = "rgba(0,0,0,.18)";
+        ctx.strokeStyle = "rgba(255,255,255,.18)";
+        ctx.arc(pt.x, pt.y, 12, 0, Math.PI*2);
+        ctx.fill(); ctx.stroke();
+
+        // tint lane
+        ctx.beginPath();
+        ctx.globalAlpha = 0.18;
+        ctx.fillStyle = state.players[p].color.css;
+        ctx.arc(pt.x, pt.y, 12, 0, Math.PI*2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    // center
+    ctx.beginPath();
+    ctx.fillStyle = "rgba(255,255,255,.08)";
+    ctx.strokeStyle = "rgba(255,255,255,.16)";
+    ctx.arc(geom.center.x, geom.center.y, 60, 0, Math.PI*2);
+    ctx.fill(); ctx.stroke();
+
+    // pieces (with offsets within same cell)
+    const pieceDrawn = [];
+    function drawPiece(playerIndex, pieceIndex, x, y){
+      const col = state.players[playerIndex].color.css;
+      const isSelectable = state.awaitingMove &&
+        !state.players[playerIndex].isBot &&
+        playerIndex === state.turn &&
+        state.legalMoves.some(m => m.pi === pieceIndex);
+
+      ctx.beginPath();
+      ctx.fillStyle = col;
+      ctx.strokeStyle = isSelectable ? "white" : "rgba(255,255,255,.25)";
+      ctx.lineWidth = isSelectable ? 3 : 1.5;
+      ctx.arc(x, y, 9, 0, Math.PI*2);
+      ctx.fill(); ctx.stroke();
+
+      // number
+      ctx.fillStyle = "rgba(0,0,0,.55)";
+      ctx.font = "bold 10px system-ui";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(String(pieceIndex+1), x, y+0.5);
+    }
+
+    // compute cell grouping to offset pieces
+    const cellMap = new Map(); // key -> array of {p,k}
+    for(let p=0;p<state.players.length;p++){
+      const path = PATHS[p];
+      for(let k=0;k<PIECES_PER_PLAYER;k++){
+        const pos = state.players[p].pieces[k].pos;
+        let key, base;
+        if(pos === -1){
+          // home base corner positions (outside ring)
+          const angle = (-Math.PI/2) + (2*Math.PI) * (COLORS[p].start / MAIN_LEN);
+          base = { x: geom.center.x + (geom.mainR+70)*Math.cos(angle),
+                   y: geom.center.y + (geom.mainR+70)*Math.sin(angle) };
+          key = `H:${p}`;
+        } else {
+          const cell = path[pos];
+          if(cell.type==="main"){
+            base = geom.mainPoints[cell.g];
+            key = `M:${cell.g}`;
+          } else {
+            base = geom.homePoints[cell.c][cell.h];
+            key = `L:${cell.c}:${cell.h}`;
+          }
+        }
+        if(!cellMap.has(key)) cellMap.set(key, []);
+        cellMap.get(key).push({p,k,base});
+      }
+    }
+
+    // draw grouped with small offsets
+    for(const [key, arr] of cellMap.entries()){
+      arr.forEach((pk, i) => {
+        const off = [
+          {dx:-10,dy:-6},{dx:10,dy:-6},{dx:-10,dy:8},{dx:10,dy:8}
+        ][i % 4];
+        drawPiece(pk.p, pk.k, pk.base.x + off.dx, pk.base.y + off.dy);
+      });
+    }
+
+    // hints
+    if(state.awaitingMove && state.legalMoves.length){
+      ctx.fillStyle = "rgba(255,255,255,.9)";
+      ctx.font = "600 13px system-ui";
+      ctx.textAlign = "left";
+      ctx.fillText("Haz click en una ficha resaltada para mover.", 16, 24);
+    }
+  }
+
+  // ======== Input (click on piece) ========
+  canvas.addEventListener("click", (ev) => {
+    if(!state.started) return;
+    const p = currentPlayer();
+    if(p.isBot) return;
+    if(!state.awaitingMove) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const mx = (ev.clientX - rect.left) * (canvas.width / rect.width);
+    const my = (ev.clientY - rect.top)  * (canvas.height / rect.height);
+
+    // Find nearest selectable piece within radius
+    let best = null, bestDist = 999999;
+    const selectable = new Set(state.legalMoves.map(m=>m.pi));
+
+    for(let k=0;k<PIECES_PER_PLAYER;k++){
+      if(!selectable.has(k)) continue;
+
+      // get piece draw position approximation (same logic as draw grouping but simpler)
+      const pos = p.pieces[k].pos;
+      let x,y;
+      if(pos === -1){
+        const angle = (-Math.PI/2) + (2*Math.PI) * (p.color.start / MAIN_LEN);
+        x = geom.center.x + (geom.mainR+70)*Math.cos(angle);
+        y = geom.center.y + (geom.mainR+70)*Math.sin(angle);
+      } else {
+        const cell = PATHS[state.turn][pos];
+        if(cell.type==="main"){
+          ({x,y} = geom.mainPoints[cell.g]);
+        } else {
+          ({x,y} = geom.homePoints[cell.c][cell.h]);
+        }
+      }
+
+      const d = Math.hypot(mx-x, my-y);
+      if(d < 24 && d < bestDist){
+        bestDist = d;
+        best = k;
+      }
+    }
+
+    if(best === null) return;
+
+    // Apply chosen move
+    const mv = state.legalMoves.find(m => m.pi === best);
+    log(`👤 ${p.color.name} mueve ficha #${best+1} con ${state.dice}.`);
+    applyMove(state.turn, mv);
+    state.awaitingMove = false;
+    state.legalMoves = [];
+    draw();
+
+    const winner = checkWinner();
+    if(winner !== null){
+      gameOver(winner);
+      return;
+    }
+
+    const extra = state.extraTurn6 && state.dice === 6;
+    endTurn(state.dice, extra);
+  });
+
+  // ======== Botones ========
+  rollBtn.addEventListener("click", () => {
+    if(!state.started) return;
+    const p = currentPlayer();
+    if(p.isBot) return;
+    if(state.dice !== null) return;
+
+    const d = rollDice();
+    setDice(d);
+    log(`🎲 ${p.color.name} saca ${d}.`);
+
+    const moves = listLegalMoves(state.turn, d);
+    state.legalMoves = moves;
+
+    if(moves.length === 0){
+      log(`😕 No hay jugada. Puedes pasar.`);
+      state.awaitingMove = false;
+      rollBtn.disabled = true;
+      skipBtn.disabled = false;
+    } else {
+      state.awaitingMove = true;
+      rollBtn.disabled = true;
+      skipBtn.disabled = true;
+      log(`👉 Elige una ficha (las seleccionables se resaltan).`);
+    }
+    updatePills();
+    draw();
+  });
+
+  skipBtn.addEventListener("click", () => {
+    if(!state.started) return;
+    if(state.dice === null) return;
+    log(`⏭️ ${currentPlayer().color.name} pasa turno.`);
+    endTurn(state.dice, false);
+  });
+
+  startBtn.addEventListener("click", () => {
+    state.totalPlayers = parseInt(totalSel.value,10);
+    state.humanPlayers = Math.min(parseInt(humanSel.value,10), state.totalPlayers);
+    state.extraTurn6 = extraTurn6.checked;
+
+    startGame();
+  });
+
+  resetBtn.addEventListener("click", () => {
+    resetAll();
+  });
+
+  totalSel.addEventListener("change", () => {
+    const t = parseInt(totalSel.value,10);
+    // adjust human options max
+    [...humanSel.options].forEach(o => o.disabled = parseInt(o.value,10) > t);
+    if(parseInt(humanSel.value,10) > t) humanSel.value = String(t);
+  });
+
+  function resetAll(){
+    state.started = false;
+    state.players = [];
+    state.turn = 0;
+    state.dice = null;
+    state.awaitingMove = false;
+    state.legalMoves = [];
+    state.busyBot = false;
+    logEl.innerHTML = "";
+    rollBtn.disabled = true;
+    skipBtn.disabled = true;
+    updatePills();
+    draw();
+    log("🔄 Reiniciado.");
+  }
+
+  function startGame(){
+    resetAll();
+    state.started = true;
+
+    // Build players in fixed color order, truncate to totalPlayers
+    state.players = [];
+    for(let i=0;i<state.totalPlayers;i++){
+      state.players.push({
+        color: COLORS[i],
+        isBot: i >= state.humanPlayers,
+        pieces: Array.from({length:PIECES_PER_PLAYER}, () => ({pos:-1})),
+        finishedCount: 0
+      });
+    }
+
+    state.turn = 0;
+
+    log(`✅ Partida iniciada: ${state.humanPlayers} humano(s), ${state.totalPlayers - state.humanPlayers} bot(s).`);
+    log(`Reglas: salir con 5 · comer en no-seguras · puentes bloquean · ${state.extraTurn6 ? "turno extra con 6" : "sin turno extra con 6"}.`);
+
+    updatePills();
+    draw();
+    beginTurn();
+  }
+
+  // ======== init ========
+  buildGeometry();
+  totalSel.dispatchEvent(new Event("change"));
+  updatePills();
+  draw();
+  log("Listo. Configura jugadores y pulsa «Empezar partida».");
+})();
+</script>
+</body>
+</html>
