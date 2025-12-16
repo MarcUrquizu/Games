@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ruleta — click derecho elige sin cambiar el aspecto</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #111827;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 24px; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      background: radial-gradient(1200px 800px at 70% -10%, #1f2937 0%, var(--bg) 40%, #0b1224 100%); color: var(--text);
+      min-height: 100svh;
+    }
+    .wrap { max-width: 960px; margin: 0 auto; display: grid; gap: 16px; }
+    .header { display:flex; align-items:center; justify-content:space-between; gap: 12px; flex-wrap: wrap; }
+    h1 { font-size: clamp(20px, 2.8vw, 32px); margin: 0; letter-spacing: 0.2px; }
+    .card { background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+            border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 16px; }
+    .grid { display:grid; grid-template-columns: 1fr; gap: 16px; }
+    @media (min-width: 900px) { .grid { grid-template-columns: 1.2fr 1fr; } }
+
+    textarea, input, button {
+      background: #0b1020; color: var(--text); border: 1px solid #1f2937; border-radius: 12px;
+      padding: 10px 12px; font-size: 14px; outline: none; width: 100%;
+    }
+    textarea { resize: vertical; min-height: 84px; }
+    button { cursor: pointer; transition: transform .06s ease, background .2s ease, border-color .2s ease; }
+    button.primary { background: #0a192f; border-color: #27324a; }
+    button.primary:hover { background: #0e223f; }
+    button:active { transform: translateY(1px); }
+
+    .row { display:flex; gap: 8px; align-items:center; }
+    .row > * { flex: 1; }
+
+    .canvasBox { position: relative; aspect-ratio: 1 / 1; width: 100%; max-width: 520px; margin-inline: auto; }
+    canvas { width: 100%; height: 100%; display:block; border-radius: 50%; }
+    .pointer { position:absolute; inset: 0 auto 50% 50%; width: 0; height: 0; transform: translate(-50%, -30%); pointer-events: none; }
+    .pointer::before { content: ""; position:absolute; left:50%; transform: translateX(-50%);
+      border-left: 12px solid transparent; border-right: 12px solid transparent; border-bottom: 20px solid var(--accent);
+      filter: drop-shadow(0 2px 6px rgba(56,189,248,0.55)); }
+
+    .muted { color: var(--muted); font-size: 12px; }
+    .result { font-size: 18px; font-weight: 700; }
+    .tips { font-size: 13px; color: var(--muted); }
+    .footer { margin-top: 8px; font-size: 12px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <h1>Ruleta editable (click derecho = elegir sin cambiar el aspecto)</h1>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="row">
+          <textarea id="options" placeholder="Escribe opciones separadas por comas">Rojo, Verde, Azul, Amarillo, Morado, Naranja</textarea>
+        </div>
+        <div class="row">
+          <button id="build" class="primary">Construir / actualizar ruleta</button>
+          <button id="spin">Girar al azar</button>
+        </div>
+        <p class="tips">• Haz <strong>clic derecho</strong> sobre un sector para <em>tocar esa respuesta</em> al instante, sin que cambie la apariencia de la ruleta.<br>
+        • Clic izquierdo: gira al azar. • Puedes editar la lista y pulsar «Construir».</p>
+        <p class="result" id="result">Resultado: —</p>
+      </div>
+
+      <div class="card">
+        <div class="canvasBox">
+          <canvas id="wheel" width="900" height="900" aria-label="ruleta"></canvas>
+          <div class="pointer" aria-hidden="true"></div>
+        </div>
+        <div class="footer">No se abre el menú de contexto al pulsar con botón derecho.</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('wheel');
+    const ctx = canvas.getContext('2d');
+    const buildBtn = document.getElementById('build');
+    const spinBtn  = document.getElementById('spin');
+    const optionsEl= document.getElementById('options');
+    const resultEl = document.getElementById('result');
+
+    let items = [];
+    let rotation = -Math.PI / 2; // 0 apunta hacia arriba (puntero)
+    let spinning = false;
+
+    // Paleta de colores generativa (no cambia en clic derecho)
+    function colorFor(i, n) {
+      const h = (i / n) * 360; // HSL -> convertimos a RGB aprox con función simple
+      return `hsl(${h}deg 65% 48%)`;
+    }
+
+    function parseItems(text) {
+      return text
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
+    }
+
+    function drawWheel() {
+      const { width, height } = canvas;
+      const cx = width / 2, cy = height / 2;
+      const r = Math.min(cx, cy) - 8;
+
+      // Fondo
+      ctx.clearRect(0,0,width,height);
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(rotation);
+
+      const n = items.length || 1;
+      const step = (2 * Math.PI) / n;
+
+      for (let i = 0; i < n; i++) {
+        // Sector
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.arc(0, 0, r, i * step, (i + 1) * step);
+        ctx.closePath();
+        ctx.fillStyle = colorFor(i, n);
+        ctx.fill();
+
+        // Borde
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+        ctx.stroke();
+
+        // Texto
+        ctx.save();
+        const mid = i * step + step / 2;
+        ctx.rotate(mid);
+        ctx.textAlign = 'right';
+        ctx.fillStyle = '#0b1020';
+        ctx.font = `${Math.max(18, Math.floor(r * 0.08))}px ui-sans-serif, system-ui`;
+        ctx.translate(r - 16, 6);
+        const label = (items[i] ?? '').toString();
+        wrapText(ctx, label, 0, 0, Math.min(260, r * 0.65), Math.max(18, Math.floor(r * 0.08)));
+        ctx.restore();
+      }
+
+      // Disco central
+      ctx.beginPath();
+      ctx.arc(0,0,r*0.14,0,Math.PI*2);
+      ctx.fillStyle = '#0b1020';
+      ctx.fill();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    function wrapText(context, text, x, y, maxWidth, lineHeight){
+      const words = text.split(' ');
+      let line = '';
+      let yy = y;
+      for (let n = 0; n < words.length; n++) {
+        const testLine = line + words[n] + ' ';
+        const metrics = context.measureText(testLine);
+        if (metrics.width > maxWidth && n > 0) {
+          context.fillText(line, x, yy);
+          line = words[n] + ' ';
+          yy += lineHeight * 1.05;
+        } else {
+          line = testLine;
+        }
+      }
+      context.fillText(line, x, yy);
+    }
+
+    function setItemsFromInput() {
+      const list = parseItems(optionsEl.value);
+      items = list.length ? list : ['(vacío)'];
+      drawWheel();
+    }
+
+    // Conversión coordenadas -> índice de sector según la rotación actual
+    function indexFromPoint(clientX, clientY) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const x = (clientX - rect.left) * scaleX - canvas.width / 2;
+      const y = (clientY - rect.top) * scaleY - canvas.height / 2;
+      const angle = Math.atan2(y, x) - rotation; // ángulo relativo a la ruleta
+      let a = angle % (2 * Math.PI);
+      if (a < 0) a += 2 * Math.PI;
+      const n = items.length || 1;
+      const step = (2 * Math.PI) / n;
+      return Math.floor(a / step);
+    }
+
+    function announce(idx) {
+      const choice = items[idx] ?? '—';
+      resultEl.textContent = `Resultado: ${choice}`;
+    }
+
+    // Animación de giro (clic izquierdo)
+    function spinRandom() {
+      if (spinning || items.length === 0) return;
+      spinning = true;
+      const n = items.length;
+      const extraTurns = 4 + Math.random() * 2; // 4–6 vueltas
+      const targetIndex = Math.floor(Math.random() * n);
+      const step = (2 * Math.PI) / n;
+      const targetAngle = targetIndex * step + step / 2; // centro del sector
+
+      const start = performance.now();
+      const duration = 2600 + Math.random() * 600;
+      const startRot = rotation;
+      const endRot = startRot + extraTurns * 2 * Math.PI + targetAngle - ((startRot % (2*Math.PI)) + Math.PI/2);
+
+      function easeOutCubic(t){ return 1 - Math.pow(1 - t, 3); }
+
+      function frame(now){
+        const t = Math.min(1, (now - start) / duration);
+        rotation = startRot + (endRot - startRot) * easeOutCubic(t);
+        drawWheel();
+        if (t < 1) requestAnimationFrame(frame); else {
+          spinning = false;
+          // El puntero está en 12 en punto → determinar índice ganador real
+          const idx = ((n - Math.floor(((rotation % (2*Math.PI)) + 2*Math.PI) % (2*Math.PI) / step)) % n);
+          announce(idx);
+        }
+      }
+      requestAnimationFrame(frame);
+    }
+
+    // Eventos
+    buildBtn.addEventListener('click', setItemsFromInput);
+    spinBtn.addEventListener('click', spinRandom);
+
+    // Clic izquierdo: girar
+    canvas.addEventListener('click', (e) => {
+      e.preventDefault();
+      spinRandom();
+    });
+
+    // Clic derecho: ELEGIR esa respuesta sin cambiar nada visual
+    canvas.addEventListener('contextmenu', (e) => {
+      e.preventDefault(); // no abrir menú de contexto
+      const idx = indexFromPoint(e.clientX, e.clientY);
+      announce(idx);
+      // Intencionadamente NO redibujamos la ruleta ni cambiamos estilos → el aspecto no cambia
+    });
+
+    // Soporte para botones adicionales (por si el SO no lanza contextmenu):
+    canvas.addEventListener('pointerdown', (e) => {
+      if (e.button === 2) { // botón derecho
+        e.preventDefault();
+        const idx = indexFromPoint(e.clientX, e.clientY);
+        announce(idx);
+      }
+    });
+
+    // Redimensionado responsivo del canvas (HiDPI)
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const size = Math.min(rect.width, rect.height);
+      canvas.width = Math.round(size * dpr);
+      canvas.height = Math.round(size * dpr);
+      drawWheel();
+    }
+    new ResizeObserver(resizeCanvas).observe(document.querySelector('.canvasBox'));
+
+    // Inicio
+    setItemsFromInput();
+    resizeCanvas();
+  </script>
+</body>
+</html>
