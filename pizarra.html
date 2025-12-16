@@ -1,22 +1,38 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Pizarra Blanca</title>
+
+  <!-- PWA -->
+  <meta name="theme-color" content="#5b8cff" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+
   <style>
     :root { --bg:#f5f7fb; --panel:#ffffff; --accent:#5b8cff; --shadow:0 4px 12px rgba(0,0,0,.1); }
     *{ box-sizing:border-box }
     html,body{ height:100%; margin:0; background:var(--bg); overflow:hidden }
-    header{ background:var(--panel); box-shadow:var(--shadow); padding:10px 16px; display:flex; align-items:center; justify-content:space-between; font-family:system-ui,sans-serif; font-weight:600; z-index:5; position:relative }
+    header{
+      background:var(--panel); box-shadow:var(--shadow); padding:10px 16px;
+      display:flex; align-items:center; justify-content:space-between;
+      font-family:system-ui,sans-serif; font-weight:600; z-index:5; position:relative;
+      gap:12px;
+    }
+    header .right{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    header button{
+      border:none; background:#fff; box-shadow:var(--shadow);
+      border-radius:10px; height:36px; padding:0 12px;
+      cursor:pointer; font-weight:700;
+    }
+    header button:hover{ background:#eef2ff }
 
     #workspace{ position:relative; width:100%; height:calc(100vh - 60px); display:flex; align-items:center; justify-content:center; overflow:hidden; padding:10px }
 
-    /* Marco externo para evitar desfases por borde */
     #board{ width:100%; height:100%; max-width:calc(100vw - 170px); max-height:calc(100vh - 80px); border:2px solid #e2e4eb; border-radius:12px; box-shadow:var(--shadow); background:#fff; display:flex }
     #canvas{ flex:1; width:100%; height:100%; display:block; cursor:crosshair; touch-action:none; background:#fff; border:none }
 
-    /* === Barra derecha === */
     #toolbar{ position:fixed; top:80px; right:10px; width:160px; max-height:calc(100% - 100px); background:var(--panel); box-shadow:var(--shadow); border-radius:20px; padding:12px; display:flex; flex-direction:column; align-items:stretch; gap:12px; transition:transform .3s ease,opacity .3s ease; overflow:hidden; z-index:10 }
     #toolbar.minimized{ transform:translateX(110%); opacity:.4 }
     #minimize-btn{ position:fixed; top:80px; right:182px; background:var(--panel); border:none; box-shadow:var(--shadow); border-radius:50%; width:42px; height:42px; cursor:pointer; font-size:18px; transition:background .3s; z-index:11 }
@@ -39,12 +55,22 @@
     .dot{ display:block; border-radius:50%; background:#000; margin:auto }
 
     .wide-btn{ width:100%; height:36px; border:none; background:#fff; border-radius:10px; box-shadow:var(--shadow); cursor:pointer; font-weight:700 }
+
+    /* aviso pequeño */
+    #pwaHint{
+      position:fixed; left:12px; bottom:12px; z-index:50;
+      background:#fff; box-shadow:var(--shadow); border-radius:12px;
+      padding:10px 12px; font-family:system-ui,sans-serif; font-size:12px; color:#334;
+      max-width:360px; display:none;
+    }
+    #pwaHint code{ background:#f3f5ff; padding:1px 6px; border-radius:8px; }
   </style>
 </head>
 <body>
   <header>
     <span>🧑🏻‍🏫 Pizarra Blanca</span>
-    <div>
+    <div class="right">
+      <button id="installApp" title="Instalar en el escritorio">⬇️ Descargar app</button>
       <button id="save">📥 Guardar PNG</button>
     </div>
   </header>
@@ -59,7 +85,7 @@
     <div class="group">
       <div class="title">Herramientas</div>
       <div class="tool-grid">
-        <button class="tool" data-tool="brush" title="Pincel">🖌️</button>
+        <button class="tool active" data-tool="brush" title="Pincel">🖌️</button>
         <button class="tool" data-tool="eraser" title="Borrador">🧽</button>
         <button class="tool" data-tool="line" title="Línea">／</button>
         <button class="tool" data-tool="rect" title="Rectángulo">▭</button>
@@ -110,15 +136,170 @@
     </div>
   </aside>
 
+  <div id="pwaHint"></div>
+
   <script>
+    // ==========
+    // PWA "todo-en-uno":
+    // Creamos manifest + service worker como "Blob" para NO necesitar archivos externos.
+    // ==========
+    const manifest = {
+      name: "Pizarra Blanca",
+      short_name: "Pizarra",
+      start_url: "./",
+      scope: "./",
+      display: "standalone",
+      background_color: "#f5f7fb",
+      theme_color: "#5b8cff",
+      icons: [
+        { src: "icon-192.png", sizes: "192x192", type: "image/png" },
+        { src: "icon-512.png", sizes: "512x512", type: "image/png" }
+      ]
+    };
+
+    // Iconos (SVG -> PNG) generados al vuelo, y los servimos via Cache desde SW
+    async function svgToPngBytes(size){
+      const svg = `
+<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5b8cff"/>
+      <stop offset="1" stop-color="#2dd4bf"/>
+    </linearGradient>
+  </defs>
+  <rect rx="${Math.round(size*0.18)}" ry="${Math.round(size*0.18)}" x="0" y="0" width="${size}" height="${size}" fill="url(#g)"/>
+  <rect x="${Math.round(size*0.18)}" y="${Math.round(size*0.18)}" width="${Math.round(size*0.64)}" height="${Math.round(size*0.48)}" rx="${Math.round(size*0.06)}" fill="white" opacity="0.9"/>
+  <path d="M ${Math.round(size*0.28)} ${Math.round(size*0.72)} L ${Math.round(size*0.72)} ${Math.round(size*0.72)}" stroke="white" stroke-width="${Math.round(size*0.06)}" stroke-linecap="round"/>
+</svg>`.trim();
+
+      const img = new Image();
+      img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+      await img.decode();
+
+      const c = document.createElement("canvas");
+      c.width = size; c.height = size;
+      const x = c.getContext("2d");
+      x.drawImage(img, 0, 0, size, size);
+
+      const blob = await new Promise(res => c.toBlob(res, "image/png"));
+      return new Uint8Array(await blob.arrayBuffer());
+    }
+
+    function makeBlobURL(text, type){
+      return URL.createObjectURL(new Blob([text], {type}));
+    }
+
+    // Creamos el manifest como blob URL y lo enlazamos
+    const manifestURL = makeBlobURL(JSON.stringify(manifest, null, 2), "application/manifest+json");
+    const manifestLink = document.createElement("link");
+    manifestLink.rel = "manifest";
+    manifestLink.href = manifestURL;
+    document.head.appendChild(manifestLink);
+
+    // Service Worker (cachea index, y responde a iconos y manifest)
+    const swCode = `
+const CACHE = "pizarra-pwa-v1";
+self.addEventListener("install", (e) => {
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(["./"])));
+  self.skipWaiting();
+});
+self.addEventListener("activate", (e) => e.waitUntil(self.clients.claim()));
+
+self.addEventListener("fetch", (e) => {
+  const url = new URL(e.request.url);
+
+  // Manifest e iconos servidos desde cache "virtual"
+  if (url.pathname.endsWith("/manifest.webmanifest")) {
+    e.respondWith(new Response(self.__MANIFEST__, { headers: { "Content-Type": "application/manifest+json" } }));
+    return;
+  }
+  if (url.pathname.endsWith("/icon-192.png")) {
+    e.respondWith(new Response(self.__ICON192__, { headers: { "Content-Type": "image/png" } }));
+    return;
+  }
+  if (url.pathname.endsWith("/icon-512.png")) {
+    e.respondWith(new Response(self.__ICON512__, { headers: { "Content-Type": "image/png" } }));
+    return;
+  }
+
+  e.respondWith(
+    caches.match(e.request).then(r => r || fetch(e.request).then(net => {
+      const copy = net.clone();
+      caches.open(CACHE).then(c => c.put(e.request, copy)).catch(()=>{});
+      return net;
+    }).catch(()=>caches.match("./")))
+  );
+});
+    `.trim();
+
+    async function registerSW(){
+      if (!("serviceWorker" in navigator)) return;
+
+      // Generamos iconos
+      const [i192, i512] = await Promise.all([svgToPngBytes(192), svgToPngBytes(512)]);
+
+      // Inyectamos "constantes" binarias en el SW usando base64 (para que sea autocontenido)
+      const toB64 = (u8) => {
+        let s = "";
+        for (let i=0;i<u8.length;i++) s += String.fromCharCode(u8[i]);
+        return btoa(s);
+      };
+
+      const injected =
+`self.__MANIFEST__ = ${JSON.stringify(JSON.stringify(manifest))};
+self.__ICON192__ = Uint8Array.from(atob("${toB64(i192)}"), c => c.charCodeAt(0));
+self.__ICON512__ = Uint8Array.from(atob("${toB64(i512)}"), c => c.charCodeAt(0));
+${swCode}`;
+
+      const swURL = makeBlobURL(injected, "text/javascript");
+      try {
+        await navigator.serviceWorker.register(swURL, { scope: "./" });
+      } catch(_) {}
+    }
+    registerSW();
+
+    // ==========
+    // Botón "Descargar app" (Instalar PWA)
+    // ==========
+    let deferredPrompt = null;
+    const installBtn = document.getElementById("installApp");
+    const hint = document.getElementById("pwaHint");
+
+    // Por defecto lo ocultamos; se mostrará cuando sea instalable
+    installBtn.style.display = "none";
+
+    function showHint(msg){
+      hint.innerHTML = msg;
+      hint.style.display = "block";
+      setTimeout(()=> hint.style.display = "none", 8000);
+    }
+
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      installBtn.style.display = "inline-block";
+    });
+
+    installBtn.addEventListener("click", async () => {
+      if (!deferredPrompt) {
+        showHint("Para poder instalar: abre esto desde <code>http://localhost</code> o <code>https://</code> (no con doble clic).<br>En Chrome/Edge también puedes ir al menú ⋮ → <b>Instalar aplicación</b>.");
+        return;
+      }
+      deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+      deferredPrompt = null;
+      installBtn.style.display = "none";
+    });
+
+    // ==========
+    // Tu app (pizarra)
+    // ==========
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
 
     let drawing=false, tool='brush', color='#000', size=6, alpha=1;
 
-    // HiDPI sizing
     function resizeCanvas(){
-      // Guardar contenido actual (incluido cuando se pulsa F11 y cambia el tamaño)
       let snapshotURL = null;
       if (canvas.width && canvas.height) {
         try { snapshotURL = canvas.toDataURL('image/png'); } catch(_) {}
@@ -127,25 +308,18 @@
       const rect = document.getElementById('board').getBoundingClientRect();
       const dpr = Math.max(1, window.devicePixelRatio || 1);
 
-      // Ajustar tamaño CSS
       canvas.style.width = rect.width + 'px';
       canvas.style.height = rect.height + 'px';
 
-      // Ajustar tamaño interno en píxeles
       canvas.width = Math.round(rect.width * dpr);
       canvas.height = Math.round(rect.height * dpr);
 
-      // Resetear transformaciones y escalar para dibujar en px CSS
       ctx.setTransform(1,0,0,1,0,0);
       ctx.scale(dpr, dpr);
 
-      // Restaurar contenido previo si existía
       if (snapshotURL) {
         const img = new Image();
-        img.onload = () => {
-          // Dibujamos usando dimensiones CSS (el contexto ya está escalado a DPR)
-          ctx.drawImage(img, 0, 0, rect.width, rect.height);
-        };
+        img.onload = () => ctx.drawImage(img, 0, 0, rect.width, rect.height);
         img.src = snapshotURL;
       }
     }
@@ -155,7 +329,26 @@
     function getPos(e){ const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
 
     function start(e){ e.preventDefault(); drawing=true; const p=getPos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); }
-    function move(e){ if(!drawing) return; const p=getPos(e); ctx.globalAlpha=alpha; ctx.lineCap='round'; ctx.lineWidth=size; if(tool==='brush'){ ctx.strokeStyle=color; ctx.lineTo(p.x,p.y); ctx.stroke(); } else if(tool==='eraser'){ ctx.save(); ctx.globalCompositeOperation='destination-out'; ctx.beginPath(); ctx.arc(p.x,p.y,size/2,0,Math.PI*2); ctx.fill(); ctx.restore(); } }
+    function move(e){
+      if(!drawing) return;
+      const p=getPos(e);
+      ctx.globalAlpha=alpha;
+      ctx.lineCap='round';
+      ctx.lineWidth=size;
+
+      if(tool==='brush'){
+        ctx.strokeStyle=color;
+        ctx.lineTo(p.x,p.y);
+        ctx.stroke();
+      } else if(tool==='eraser'){
+        ctx.save();
+        ctx.globalCompositeOperation='destination-out';
+        ctx.beginPath();
+        ctx.arc(p.x,p.y,size/2,0,Math.PI*2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
     function stop(){ drawing=false; }
 
     canvas.addEventListener('pointerdown', start);
@@ -164,14 +357,38 @@
     canvas.addEventListener('pointercancel', stop);
 
     // Tools UI
-    document.querySelectorAll('.tool').forEach(b=>{ b.onclick=()=>{ document.querySelectorAll('.tool').forEach(x=>x.classList.remove('active')); b.classList.add('active'); tool=b.dataset.tool; }; });
+    document.querySelectorAll('.tool').forEach(b=>{
+      b.onclick=()=>{
+        document.querySelectorAll('.tool').forEach(x=>x.classList.remove('active'));
+        b.classList.add('active');
+        tool=b.dataset.tool;
+      };
+    });
+
     const palette = document.getElementById('palette');
-    palette.querySelectorAll('.swatch').forEach(s=>{ s.onclick=()=>{ color=s.dataset.color; palette.querySelectorAll('.swatch').forEach(x=>x.classList.remove('selected')); s.classList.add('selected'); }; });
-    document.querySelectorAll('.size').forEach(s=>s.onclick=()=>{ document.querySelectorAll('.size').forEach(x=>x.classList.remove('active')); s.classList.add('active'); size=parseInt(s.dataset.size); });
+    palette.querySelectorAll('.swatch').forEach(s=>{
+      s.onclick=()=>{
+        color=s.dataset.color;
+        palette.querySelectorAll('.swatch').forEach(x=>x.classList.remove('selected'));
+        s.classList.add('selected');
+      };
+    });
+
+    document.querySelectorAll('.size').forEach(s=>s.onclick=()=>{
+      document.querySelectorAll('.size').forEach(x=>x.classList.remove('active'));
+      s.classList.add('active');
+      size=parseInt(s.dataset.size);
+    });
+
     document.getElementById('alpha').oninput=e=>alpha=parseFloat(e.target.value);
 
     document.getElementById('clear').onclick=()=>ctx.clearRect(0,0,canvas.width,canvas.height);
-    document.getElementById('save').onclick=()=>{ const a=document.createElement('a'); a.download='pizarra.png'; a.href=canvas.toDataURL('image/png'); a.click(); };
+    document.getElementById('save').onclick=()=>{
+      const a=document.createElement('a');
+      a.download='pizarra.png';
+      a.href=canvas.toDataURL('image/png');
+      a.click();
+    };
 
     const toolbar=document.getElementById('toolbar');
     document.getElementById('minimize-btn').onclick=()=>toolbar.classList.toggle('minimized');
@@ -179,10 +396,39 @@
     // Paginado
     const pages = []; let pageIndex = 0;
     const snapshot = ()=>canvas.toDataURL('image/png');
-    const render = (url)=>new Promise(res=>{ if(!url){ ctx.clearRect(0,0,canvas.width,canvas.height); return res(); } const img=new Image(); img.onload=()=>{ const r=canvas.getBoundingClientRect(); ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0,r.width,r.height); res(); }; img.src=url; });
+    const render = (url)=>new Promise(res=>{
+      if(!url){ ctx.clearRect(0,0,canvas.width,canvas.height); return res(); }
+      const img=new Image();
+      img.onload=()=>{
+        const r=canvas.getBoundingClientRect();
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        ctx.drawImage(img,0,0,r.width,r.height);
+        res();
+      };
+      img.src=url;
+    });
 
-    document.getElementById('nextPage').onclick = async ()=>{ pages[pageIndex]=snapshot(); pageIndex++; if(pageIndex>=pages.length){ pages.push(null); ctx.clearRect(0,0,canvas.width,canvas.height); } else { await render(pages[pageIndex]); } };
-    document.getElementById('prevPage').onclick = async ()=>{ if(pageIndex===0) return; pages[pageIndex]=snapshot(); pageIndex--; await render(pages[pageIndex]); };
+    document.getElementById('nextPage').onclick = async ()=>{
+      pages[pageIndex]=snapshot();
+      pageIndex++;
+      if(pageIndex>=pages.length){
+        pages.push(null);
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+      } else {
+        await render(pages[pageIndex]);
+      }
+    };
+    document.getElementById('prevPage').onclick = async ()=>{
+      if(pageIndex===0) return;
+      pages[pageIndex]=snapshot();
+      pageIndex--;
+      await render(pages[pageIndex]);
+    };
+
+    // Ayuda si está abierto como file://
+    if (location.protocol === "file:") {
+      showHint("Estás abriendo el archivo con doble clic (<code>file://</code>). Para instalar como app, abre desde <code>http://localhost</code> o súbelo a <code>https://</code>.");
+    }
   </script>
 </body>
 </html>
