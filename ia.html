@@ -5,13 +5,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gemini Chat</title>
 
-  <!-- Tailwind -->
+  <!-- Tailwind CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Prism -->
+  <!-- Prism (código) -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/9.0.0/themes/prism-tomorrow.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/9.0.0/components/prism-core.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/9.0.0/plugins/autoloader/prism-autoloader.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+  <!-- MathJax (LaTeX) -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true
+      },
+      options: {
+        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+      }
+    };
+  </script>
+  <script id="MathJax-script" async
+          src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 
   <script>
     tailwind.config = {
@@ -19,8 +35,7 @@
       theme: {
         extend: {
           colors: {
-            primary: { 500: '#10a37f' },
-            dark: { 800: '#1f2937', 900: '#111827' }
+            primary: { 500: '#10a37f', 600: '#0e8c6d' }
           }
         }
       }
@@ -28,27 +43,16 @@
   </script>
 
   <style>
-    /* ====== CSS (antes ia.css / style.css) ====== */
-    @layer utilities {
-      .message-user {
-        @apply bg-primary-500 text-white rounded-3xl rounded-br-md px-5 py-3 max-w-[85%] ml-auto;
-      }
-      .message-ai {
-        @apply bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-3xl rounded-bl-md px-5 py-3 max-w-[85%];
-      }
-    }
-
-    /* Mejorar bloques de código */
+    /* Mejora de bloques de código (sin @apply, porque con CDN no compila) */
     pre[class*="language-"] {
-      @apply rounded-lg !my-3 !p-4 !text-sm;
+      border-radius: 0.75rem;
+      margin: 0.75rem 0 !important;
+      padding: 1rem !important;
+      font-size: 0.875rem !important;
+      overflow: auto;
     }
     code[class*="language-"] {
-      @apply text-sm;
-    }
-
-    /* Animación de escritura */
-    .typing-indicator {
-      @apply bg-gray-100 dark:bg-gray-800 rounded-3xl rounded-bl-md px-5 py-3 max-w-[85%];
+      font-size: 0.875rem !important;
     }
   </style>
 </head>
@@ -71,9 +75,7 @@
 
       <div class="flex-1 overflow-y-auto p-2">
         <h2 class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Historial</h2>
-        <div id="history-list" class="space-y-1">
-          <!-- Historial dinámico -->
-        </div>
+        <div id="history-list" class="space-y-1"></div>
       </div>
     </aside>
 
@@ -89,8 +91,8 @@
       </div>
 
       <!-- Chat messages -->
-      <div id="chat-container" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
-        <div class="max-w-3xl mx-auto w-full">
+      <div id="chat-container" class="flex-1 overflow-y-auto p-4 md:p-6">
+        <div class="max-w-3xl mx-auto w-full space-y-6">
           <!-- Mensajes se insertan aquí -->
         </div>
       </div>
@@ -125,23 +127,17 @@
   </div>
 
   <script>
-    // ====== JS (antes ia.js / script.js) ======
+    // ====== JS ======
 
-    // ⚠️ RECOMENDACIÓN DE SEGURIDAD:
-    // No pongas tu API key en frontend en producción. Cualquiera puede verla.
-    // Lo ideal es un backend que haga las llamadas.
-
-    // Configuración
-    const API_KEY = 'AIzaSyDusvqZ58M7DybovPfHFzY_V7PQr6xUJM4'; // ⚠️ Reemplazar
+    // ⚠️ No pongas tu API key en frontend en producción.
+    const API_KEY = 'AIzaSyDusvqZ58M7DybovPfHFzY_V7PQr6xUJM4';
     const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${API_KEY}`;
 
-    // Estado
     let conversation = [];
     let currentSessionId = Date.now().toString();
     let lastRequestTime = 0;
-    const RATE_LIMIT_DELAY = 1000; // 1 segundo entre peticiones
+    const RATE_LIMIT_DELAY = 1000;
 
-    // DOM Elements
     const chatContainer = document.getElementById('chat-container');
     const userInput = document.getElementById('user-input');
     const chatForm = document.getElementById('chat-form');
@@ -152,20 +148,16 @@
     const sidebar = document.getElementById('sidebar');
     const historyList = document.getElementById('history-list');
 
-    // Inicialización
     document.addEventListener('DOMContentLoaded', () => {
       loadTheme();
       loadHistory();
       renderHistory();
     });
 
-    // --- FUNCIONES PRINCIPALES ---
-
     async function sendMessage() {
       const message = userInput.value.trim();
       if (!message) return;
 
-      // Rate limiting
       const now = Date.now();
       if (now - lastRequestTime < RATE_LIMIT_DELAY) {
         alert('Espera un momento antes de enviar otro mensaje.');
@@ -173,14 +165,13 @@
       }
       lastRequestTime = now;
 
-      // Agregar mensaje del usuario
       addMessageToDOM(message, 'user');
       conversation.push({ role: 'user', parts: [{ text: message }] });
       saveConversation();
+
       userInput.value = '';
       userInput.style.height = 'auto';
 
-      // Mostrar indicador de escritura
       const aiMessageEl = addMessageToDOM('', 'ai', true);
       scrollToBottom();
 
@@ -190,65 +181,116 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: conversation,
-            generationConfig: {
-              maxOutputTokens: 2048,
-              temperature: 0.7
-            }
+            generationConfig: { maxOutputTokens: 2048, temperature: 0.7 }
           })
         });
 
-        if (!response.ok) {
-          throw new Error(`Error: ${response.status}`);
-        }
+        if (!response.ok) throw new Error(`Error: ${response.status}`);
 
         const data = await response.json();
-        const aiText = data.candidates[0].content.parts[0].text;
+        const aiText = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? 'Sin respuesta.';
 
-        // Actualizar conversación
         conversation.push({ role: 'model', parts: [{ text: aiText }] });
         saveConversation();
 
-        // Animación de escritura
         await typeWriter(aiText, aiMessageEl);
+
+        // Resaltar código
         highlightCodeBlocks();
+
+        // Renderizar LaTeX (MathJax) SOLO en el mensaje nuevo
+        typesetMath(aiMessageEl);
+
         scrollToBottom();
       } catch (error) {
         console.error('API Error:', error);
+        aiMessageEl.className = bubbleAiClass();
         aiMessageEl.textContent = 'Lo siento, hubo un error al procesar tu solicitud. Intenta de nuevo.';
-        aiMessageEl.classList.remove('typing-indicator');
       }
+    }
+
+    // --- Burbujas estilo ChatGPT (Tailwind directo) ---
+    function bubbleUserClass() {
+      return [
+        "max-w-[85%]",
+        "ml-auto",
+        "rounded-3xl",
+        "rounded-br-md",
+        "px-5",
+        "py-3",
+        "bg-primary-500",
+        "text-white",
+        "shadow-sm",
+        "whitespace-pre-wrap",
+        "break-words"
+      ].join(" ");
+    }
+
+    function bubbleAiClass() {
+      return [
+        "max-w-[85%]",
+        "mr-auto",
+        "rounded-3xl",
+        "rounded-bl-md",
+        "px-5",
+        "py-3",
+        "bg-gray-100",
+        "dark:bg-gray-800",
+        "text-gray-900",
+        "dark:text-gray-100",
+        "shadow-sm",
+        "whitespace-pre-wrap",
+        "break-words"
+      ].join(" ");
+    }
+
+    function typingClass() {
+      return [
+        "max-w-[85%]",
+        "mr-auto",
+        "rounded-3xl",
+        "rounded-bl-md",
+        "px-5",
+        "py-3",
+        "bg-gray-100",
+        "dark:bg-gray-800",
+        "text-gray-700",
+        "dark:text-gray-200",
+        "shadow-sm"
+      ].join(" ");
     }
 
     function addMessageToDOM(text, sender, isTyping = false) {
-      const div = document.createElement('div');
-      div.classList.add('flex', 'justify-start');
-      if (sender === 'user') div.classList.add('justify-end');
+      const row = document.createElement('div');
+      row.className = sender === 'user' ? 'flex justify-end' : 'flex justify-start';
 
-      const messageDiv = document.createElement('div');
+      const bubble = document.createElement('div');
 
       if (isTyping) {
-        messageDiv.classList.add('typing-indicator');
-        messageDiv.innerHTML = '<span class="animate-pulse">...</span>';
+        bubble.className = typingClass();
+        bubble.innerHTML = '<span class="animate-pulse">...</span>';
       } else if (sender === 'user') {
-        messageDiv.classList.add('message-user');
-        messageDiv.textContent = text;
+        bubble.className = bubbleUserClass();
+        bubble.textContent = text;
       } else {
-        messageDiv.classList.add('message-ai');
-        messageDiv.innerHTML = marked.parse(text); // Renderizar Markdown
+        bubble.className = bubbleAiClass();
+        // Importante: NO convertimos \n a <br>. Usamos whitespace-pre-wrap.
+        bubble.innerHTML = marked.parse(text);
       }
 
-      div.appendChild(messageDiv);
-      chatContainer.querySelector('.max-w-3xl').appendChild(div);
-      return messageDiv;
+      row.appendChild(bubble);
+      chatContainer.querySelector('.max-w-3xl').appendChild(row);
+      return bubble;
     }
 
     async function typeWriter(text, element) {
-      element.classList.remove('typing-indicator');
+      // Quitamos typing
+      element.className = bubbleAiClass();
       element.innerHTML = '';
 
       const tokens = text.split('');
       for (let i = 0; i < tokens.length; i++) {
-        // Detectar bloques de código y saltar animación
+        // Si detecta bloque de código, lo mete completo para no romperlo
         if (text.substring(i, i + 3) === '```') {
           const end = text.indexOf('```', i + 3);
           if (end !== -1) {
@@ -257,17 +299,27 @@
             continue;
           }
         }
-        element.innerHTML += tokens[i];
-        await new Promise(r => setTimeout(r, 15));
+        element.textContent += tokens[i]; // textContent para no romper LaTeX a mitad
+        await new Promise(r => setTimeout(r, 10));
       }
+
+      // Al final, renderizamos markdown completo (incluye links/code)
+      element.innerHTML = marked.parse(text);
     }
 
     function scrollToBottom() {
       chatContainer.scrollTop = chatContainer.scrollHeight;
     }
 
-    // --- HISTORIAL ---
+    // --- MathJax ---
+    function typesetMath(containerEl) {
+      if (window.MathJax?.typesetPromise) {
+        window.MathJax.typesetClear?.([containerEl]);
+        window.MathJax.typesetPromise([containerEl]).catch(err => console.error('MathJax:', err));
+      }
+    }
 
+    // --- HISTORIAL ---
     function saveConversation() {
       const history = JSON.parse(localStorage.getItem('chatHistory') || '{}');
       history[currentSessionId] = {
@@ -297,19 +349,15 @@
     function renderHistory() {
       historyList.innerHTML = '';
       const history = JSON.parse(localStorage.getItem('chatHistory') || '{}');
-      Object.entries(history)
-        .reverse()
-        .forEach(([id, data]) => {
-          const btn = document.createElement('button');
-          btn.className = `w-full text-left px-3 py-2 rounded-md text-sm truncate ${
-            id === currentSessionId
-              ? 'bg-gray-200 dark:bg-gray-700 font-medium'
-              : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-          }`;
-          btn.textContent = data.title;
-          btn.onclick = () => loadSession(id);
-          historyList.appendChild(btn);
-        });
+      Object.entries(history).reverse().forEach(([id, data]) => {
+        const btn = document.createElement('button');
+        btn.className = `w-full text-left px-3 py-2 rounded-md text-sm truncate ${
+          id === currentSessionId ? 'bg-gray-200 dark:bg-gray-700 font-medium' : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+        }`;
+        btn.textContent = data.title;
+        btn.onclick = () => loadSession(id);
+        historyList.appendChild(btn);
+      });
     }
 
     function loadSession(id) {
@@ -329,11 +377,12 @@
         addMessageToDOM(msg.parts[0].text, sender);
       });
       highlightCodeBlocks();
+      // Renderizar LaTeX de todos los mensajes al cargar historial
+      typesetMath(chatContainer);
       scrollToBottom();
     }
 
     // --- EVENTOS ---
-
     chatForm.addEventListener('submit', e => {
       e.preventDefault();
       sendMessage();
@@ -372,10 +421,7 @@
 
     themeToggle.addEventListener('click', () => {
       document.documentElement.classList.toggle('dark');
-      localStorage.setItem(
-        'theme',
-        document.documentElement.classList.contains('dark') ? 'dark' : 'light'
-      );
+      localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
     });
 
     mobileMenuBtn.addEventListener('click', () => {
@@ -383,7 +429,6 @@
     });
 
     // --- UTILIDADES ---
-
     function loadTheme() {
       const saved = localStorage.getItem('theme');
       if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -392,15 +437,13 @@
     }
 
     function highlightCodeBlocks() {
-      document.querySelectorAll('pre code').forEach(block => {
-        Prism.highlightElement(block);
-      });
+      document.querySelectorAll('pre code').forEach(block => Prism.highlightElement(block));
     }
 
-    // Markdown renderer ligero (usamos marked.js)
+    // Markdown renderer ligero (conserva $...$ y $$...$$ para MathJax)
     const marked = {
       parse: (str) => {
-        // Escapar HTML básico
+        // Escapar HTML básico (seguro)
         str = str
           .replace(/&/g, '&amp;')
           .replace(/</g, '&lt;')
@@ -408,25 +451,25 @@
           .replace(/"/g, '&quot;')
           .replace(/'/g, '&#039;');
 
-        // Bloques de código
+        // Bloques de código ```lang ... ```
         str = str.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
           const language = lang || 'plaintext';
-          return `<pre><code class="language-${language}">${code.trim()}</code></pre>`;
+          return `<pre><code class="language-${language}">${code.replace(/^\n+|\n+$/g, '')}</code></pre>`;
         });
 
-        // Código en línea
-        str = str.replace(/`([^`]+)`/g, '<code>$1</code>');
+        // Código en línea `...`
+        str = str.replace(/`([^`]+)`/g, '<code class="px-1 py-0.5 rounded bg-black/5 dark:bg-white/10">$1</code>');
 
         // Negritas e itálicas
         str = str.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
         str = str.replace(/\*(.*?)\*/g, '<em>$1</em>');
 
-        // Enlaces
+        // Enlaces [text](url)
         str = str.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" class="text-primary-500 hover:underline">$1</a>');
 
-        // Saltos de línea
-        str = str.replace(/\n/g, '<br>');
-
+        // IMPORTANTE:
+        // No hacemos str.replace(/\n/g,'<br>') para NO romper $$...$$
+        // Los saltos se ven por CSS: whitespace-pre-wrap
         return str;
       }
     };
