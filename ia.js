@@ -1,7 +1,7 @@
 // script.js
 
 // Configuración
-const API_KEY = 'YOUR_GEMINI_API_KEY'; // ⚠️ Reemplazar
+const API_KEY = 'AIzaSyAu05y0gFk80o0gAb9kiU5hv3WXBn10w2Q'; // ⚠️ Reemplazar
 const API_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key=${API_KEY}`;
 
 // Estado
