@@ -4,10 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gemini Chat</title>
+
+  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/9.0.0/themes/prism-tomorrow.min.css" integrity="sha512-..." crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/9.0.0/components/prism-core.min.js" integrity="sha512-..." crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/9.0.0/plugins/autoloader/prism-autoloader.min.js" integrity="sha512-..." crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+  <!-- Prism -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/9.0.0/themes/prism-tomorrow.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/9.0.0/components/prism-core.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/9.0.0/plugins/autoloader/prism-autoloader.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -21,8 +26,33 @@
       }
     }
   </script>
-  <link rel="stylesheet" href="ia.css" />
+
+  <style>
+    /* ====== CSS (antes ia.css / style.css) ====== */
+    @layer utilities {
+      .message-user {
+        @apply bg-primary-500 text-white rounded-3xl rounded-br-md px-5 py-3 max-w-[85%] ml-auto;
+      }
+      .message-ai {
+        @apply bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-3xl rounded-bl-md px-5 py-3 max-w-[85%];
+      }
+    }
+
+    /* Mejorar bloques de código */
+    pre[class*="language-"] {
+      @apply rounded-lg !my-3 !p-4 !text-sm;
+    }
+    code[class*="language-"] {
+      @apply text-sm;
+    }
+
+    /* Animación de escritura */
+    .typing-indicator {
+      @apply bg-gray-100 dark:bg-gray-800 rounded-3xl rounded-bl-md px-5 py-3 max-w-[85%];
+    }
+  </style>
 </head>
+
 <body class="bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100 transition-colors duration-300">
   <div class="flex h-screen overflow-hidden">
     <!-- Sidebar -->
@@ -31,7 +61,7 @@
         <h1 class="text-xl font-bold text-primary-500">Gemini Chat</h1>
         <div class="mt-4 flex justify-between items-center">
           <button id="new-chat-btn" class="px-3 py-1.5 bg-primary-500 text-white rounded-md text-sm hover:bg-primary-600 transition">+ Nueva conversación</button>
-          <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+          <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="Cambiar tema">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-700 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
             </svg>
@@ -51,7 +81,7 @@
     <main class="flex-1 flex flex-col">
       <!-- Mobile sidebar toggle -->
       <div class="md:hidden p-3 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <button id="mobile-menu-btn" class="p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700">
+        <button id="mobile-menu-btn" class="p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="Abrir menú">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
           </svg>
@@ -84,6 +114,7 @@
               </svg>
             </button>
           </form>
+
           <div class="flex justify-between mt-2 text-xs text-gray-500 dark:text-gray-400">
             <button id="clear-chat" class="hover:underline">Borrar conversación</button>
             <span>Presiona Enter para enviar</span>
@@ -93,6 +124,312 @@
     </main>
   </div>
 
-  <script src="ia.js"></script>
+  <script>
+    // ====== JS (antes ia.js / script.js) ======
+
+    // ⚠️ RECOMENDACIÓN DE SEGURIDAD:
+    // No pongas tu API key en frontend en producción. Cualquiera puede verla.
+    // Lo ideal es un backend que haga las llamadas.
+
+    // Configuración
+    const API_KEY = 'AIzaSyAu05y0gFk80o0gAb9kiU5hv3WXBn10w2Q'; // ⚠️ Reemplazar
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${API_KEY}`;
+
+    // Estado
+    let conversation = [];
+    let currentSessionId = Date.now().toString();
+    let lastRequestTime = 0;
+    const RATE_LIMIT_DELAY = 1000; // 1 segundo entre peticiones
+
+    // DOM Elements
+    const chatContainer = document.getElementById('chat-container');
+    const userInput = document.getElementById('user-input');
+    const chatForm = document.getElementById('chat-form');
+    const clearChatBtn = document.getElementById('clear-chat');
+    const newChatBtn = document.getElementById('new-chat-btn');
+    const themeToggle = document.getElementById('theme-toggle');
+    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+    const sidebar = document.getElementById('sidebar');
+    const historyList = document.getElementById('history-list');
+
+    // Inicialización
+    document.addEventListener('DOMContentLoaded', () => {
+      loadTheme();
+      loadHistory();
+      renderHistory();
+    });
+
+    // --- FUNCIONES PRINCIPALES ---
+
+    async function sendMessage() {
+      const message = userInput.value.trim();
+      if (!message) return;
+
+      // Rate limiting
+      const now = Date.now();
+      if (now - lastRequestTime < RATE_LIMIT_DELAY) {
+        alert('Espera un momento antes de enviar otro mensaje.');
+        return;
+      }
+      lastRequestTime = now;
+
+      // Agregar mensaje del usuario
+      addMessageToDOM(message, 'user');
+      conversation.push({ role: 'user', parts: [{ text: message }] });
+      saveConversation();
+      userInput.value = '';
+      userInput.style.height = 'auto';
+
+      // Mostrar indicador de escritura
+      const aiMessageEl = addMessageToDOM('', 'ai', true);
+      scrollToBottom();
+
+      try {
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: conversation,
+            generationConfig: {
+              maxOutputTokens: 2048,
+              temperature: 0.7
+            }
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`Error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const aiText = data.candidates[0].content.parts[0].text;
+
+        // Actualizar conversación
+        conversation.push({ role: 'model', parts: [{ text: aiText }] });
+        saveConversation();
+
+        // Animación de escritura
+        await typeWriter(aiText, aiMessageEl);
+        highlightCodeBlocks();
+        scrollToBottom();
+      } catch (error) {
+        console.error('API Error:', error);
+        aiMessageEl.textContent = 'Lo siento, hubo un error al procesar tu solicitud. Intenta de nuevo.';
+        aiMessageEl.classList.remove('typing-indicator');
+      }
+    }
+
+    function addMessageToDOM(text, sender, isTyping = false) {
+      const div = document.createElement('div');
+      div.classList.add('flex', 'justify-start');
+      if (sender === 'user') div.classList.add('justify-end');
+
+      const messageDiv = document.createElement('div');
+
+      if (isTyping) {
+        messageDiv.classList.add('typing-indicator');
+        messageDiv.innerHTML = '<span class="animate-pulse">...</span>';
+      } else if (sender === 'user') {
+        messageDiv.classList.add('message-user');
+        messageDiv.textContent = text;
+      } else {
+        messageDiv.classList.add('message-ai');
+        messageDiv.innerHTML = marked.parse(text); // Renderizar Markdown
+      }
+
+      div.appendChild(messageDiv);
+      chatContainer.querySelector('.max-w-3xl').appendChild(div);
+      return messageDiv;
+    }
+
+    async function typeWriter(text, element) {
+      element.classList.remove('typing-indicator');
+      element.innerHTML = '';
+
+      const tokens = text.split('');
+      for (let i = 0; i < tokens.length; i++) {
+        // Detectar bloques de código y saltar animación
+        if (text.substring(i, i + 3) === '```') {
+          const end = text.indexOf('```', i + 3);
+          if (end !== -1) {
+            element.innerHTML += marked.parse(text.substring(i, end + 3));
+            i = end + 2;
+            continue;
+          }
+        }
+        element.innerHTML += tokens[i];
+        await new Promise(r => setTimeout(r, 15));
+      }
+    }
+
+    function scrollToBottom() {
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    // --- HISTORIAL ---
+
+    function saveConversation() {
+      const history = JSON.parse(localStorage.getItem('chatHistory') || '{}');
+      history[currentSessionId] = {
+        title:
+          (conversation[0]?.parts?.[0]?.text
+            ? conversation[0].parts[0].text.substring(0, 30) + (conversation[0].parts[0].text.length > 30 ? '...' : '')
+            : 'Nueva conversación'),
+        conversation
+      };
+      localStorage.setItem('chatHistory', JSON.stringify(history));
+      renderHistory();
+    }
+
+    function loadHistory() {
+      const saved = localStorage.getItem('chatHistory');
+      if (saved) {
+        const history = JSON.parse(saved);
+        const ids = Object.keys(history);
+        if (ids.length > 0) {
+          currentSessionId = ids[0];
+          conversation = history[currentSessionId].conversation || [];
+          renderConversation();
+        }
+      }
+    }
+
+    function renderHistory() {
+      historyList.innerHTML = '';
+      const history = JSON.parse(localStorage.getItem('chatHistory') || '{}');
+      Object.entries(history)
+        .reverse()
+        .forEach(([id, data]) => {
+          const btn = document.createElement('button');
+          btn.className = `w-full text-left px-3 py-2 rounded-md text-sm truncate ${
+            id === currentSessionId
+              ? 'bg-gray-200 dark:bg-gray-700 font-medium'
+              : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+          }`;
+          btn.textContent = data.title;
+          btn.onclick = () => loadSession(id);
+          historyList.appendChild(btn);
+        });
+    }
+
+    function loadSession(id) {
+      const history = JSON.parse(localStorage.getItem('chatHistory') || '{}');
+      if (history[id]) {
+        currentSessionId = id;
+        conversation = history[id].conversation || [];
+        renderConversation();
+        renderHistory();
+      }
+    }
+
+    function renderConversation() {
+      chatContainer.querySelector('.max-w-3xl').innerHTML = '';
+      conversation.forEach(msg => {
+        const sender = msg.role === 'user' ? 'user' : 'ai';
+        addMessageToDOM(msg.parts[0].text, sender);
+      });
+      highlightCodeBlocks();
+      scrollToBottom();
+    }
+
+    // --- EVENTOS ---
+
+    chatForm.addEventListener('submit', e => {
+      e.preventDefault();
+      sendMessage();
+    });
+
+    userInput.addEventListener('input', () => {
+      userInput.style.height = 'auto';
+      userInput.style.height = Math.min(userInput.scrollHeight, 120) + 'px';
+    });
+
+    userInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    clearChatBtn.addEventListener('click', () => {
+      if (confirm('¿Borrar esta conversación?')) {
+        conversation = [];
+        chatContainer.querySelector('.max-w-3xl').innerHTML = '';
+        const history = JSON.parse(localStorage.getItem('chatHistory') || '{}');
+        delete history[currentSessionId];
+        localStorage.setItem('chatHistory', JSON.stringify(history));
+        currentSessionId = Date.now().toString();
+        renderHistory();
+      }
+    });
+
+    newChatBtn.addEventListener('click', () => {
+      conversation = [];
+      chatContainer.querySelector('.max-w-3xl').innerHTML = '';
+      currentSessionId = Date.now().toString();
+      renderHistory();
+    });
+
+    themeToggle.addEventListener('click', () => {
+      document.documentElement.classList.toggle('dark');
+      localStorage.setItem(
+        'theme',
+        document.documentElement.classList.contains('dark') ? 'dark' : 'light'
+      );
+    });
+
+    mobileMenuBtn.addEventListener('click', () => {
+      sidebar.classList.toggle('-translate-x-full');
+    });
+
+    // --- UTILIDADES ---
+
+    function loadTheme() {
+      const saved = localStorage.getItem('theme');
+      if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+      }
+    }
+
+    function highlightCodeBlocks() {
+      document.querySelectorAll('pre code').forEach(block => {
+        Prism.highlightElement(block);
+      });
+    }
+
+    // Markdown renderer ligero (usamos marked.js)
+    const marked = {
+      parse: (str) => {
+        // Escapar HTML básico
+        str = str
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+
+        // Bloques de código
+        str = str.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
+          const language = lang || 'plaintext';
+          return `<pre><code class="language-${language}">${code.trim()}</code></pre>`;
+        });
+
+        // Código en línea
+        str = str.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+        // Negritas e itálicas
+        str = str.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        str = str.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+        // Enlaces
+        str = str.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" class="text-primary-500 hover:underline">$1</a>');
+
+        // Saltos de línea
+        str = str.replace(/\n/g, '<br>');
+
+        return str;
+      }
+    };
+  </script>
 </body>
 </html>
