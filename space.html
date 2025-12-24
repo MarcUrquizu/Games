@@ -1,0 +1,1325 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mini Space Invaders (Canvas)</title>
+  <style>
+    html, body { margin:0; height:100%; background:#0b0f14; color:#e8eef7; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; }
+    .wrap { display:flex; align-items:center; justify-content:center; height:100%; }
+    canvas { background:#05070a; border:1px solid #1d2a38; border-radius:10px; box-shadow: 0 12px 40px rgba(0,0,0,.5); touch-action: manipulation; }
+    .hint { position:fixed; bottom:14px; left:50%; transform:translateX(-50%); opacity:.75; font-size:13px; text-align:center; padding:0 12px; }
+    .hint kbd { background:#111a24; border:1px solid #223247; padding:2px 6px; border-radius:6px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <canvas id="game" width="800" height="600"></canvas>
+  </div>
+  <div class="hint">
+    Mover: <kbd>←</kbd><kbd>→</kbd> o <kbd>A</kbd><kbd>D</kbd> · Disparo auto · <kbd>R</kbd> menú
+  </div>
+
+<script>
+(() => {
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const rectsIntersect = (a, b) =>
+    a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+
+  const W = canvas.width, H = canvas.height;
+  const floorY = H - 70;
+  const keys = new Set();
+
+  // ===== Persistencia: desbloqueo Hardcore =====
+  const LS_UNLOCK = "msi_unlocked_hardcore";
+  const LS_LASTMODE = "msi_last_mode";
+  const hasHardcoreUnlocked = () => localStorage.getItem(LS_UNLOCK) === "1";
+  const setHardcoreUnlocked = () => localStorage.setItem(LS_UNLOCK, "1");
+
+  // ===== Audio (beeps) =====
+  let audioCtx = null;
+  function ensureAudio() {
+    if (audioCtx) return;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    audioCtx = new AC();
+  }
+  function beep(freq = 140, dur = 0.08, type = "square", gain = 0.06) {
+    try {
+      ensureAudio();
+      if (!audioCtx) return;
+      if (audioCtx.state === "suspended") audioCtx.resume();
+
+      const t0 = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, t0);
+
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(gain, t0 + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+
+      osc.connect(g);
+      g.connect(audioCtx.destination);
+
+      osc.start(t0);
+      osc.stop(t0 + dur + 0.02);
+    } catch {}
+  }
+
+  // ===== Screen shake =====
+  const shake = { t: 0, mag: 0 };
+  function triggerShake(mag = 7, dur = 0.16) {
+    shake.t = Math.max(shake.t, dur);
+    shake.mag = Math.max(shake.mag, mag);
+  }
+  function stopShake() { shake.t = 0; shake.mag = 0; }
+
+  // ===== Modo actual =====
+  const mode = { name: (localStorage.getItem(LS_LASTMODE) || "NORMAL") }; // NORMAL | HARDCORE
+
+  // Ajustes (sin potenciador de daño)
+  const tuning = {
+    NORMAL: {
+      enemyShootMul: 1.0,
+      enemySpeedMul: 1.0,
+      enemyBulletMul: 1.0,
+      bossHpMul: 1.0,
+      bossFireMul: 1.0,
+
+      rapidDropChance: 0.10,   // +0.5 disp/s
+      shieldDropChance: 0.05,  // si no tienes
+      buddyDropChance: 0.003,  // un poco menos probable
+    },
+    HARDCORE: {
+      enemyShootMul: 1.35,
+      enemySpeedMul: 1.15,
+      enemyBulletMul: 1.15,
+      bossHpMul: 1.15,
+      bossFireMul: 1.15,
+
+      rapidDropChance: 0.06,
+      shieldDropChance: 0.035,
+      buddyDropChance: 0.003,
+    }
+  };
+
+  const state = {
+    score: 0,
+    lives: 3,
+    maxLives: 3,
+    wave: 1,
+    status: "MENU", // MENU | PLAYING | GAME_OVER | WAVE_CLEAR | GAME_WON
+    maxWaves: 100,
+    justWon: false,
+  };
+
+  const player = {
+    x: W/2 - 20, y: H - 60,
+    w: 40, h: 16,
+    speed: 420,
+
+    // Cadencia: disparos/segundo (sin máximo)
+    fireRate: 2.0,
+    fireRateStep: 0.5,
+
+    // Escudo: 0..3 (corazones azules rellenos)
+    shield: 0,
+  };
+
+  // ===== Balas jugador/compañeros =====
+  const playerBullets = []; // {x,y,w,h,vy,dmg}
+  const PLAYER_BULLET_DMG = 1; // fijo (sin potenciador de daño)
+
+  // ===== Compañeros =====
+  const buddies = []; // max 2
+  function makeBuddy(slotIndex) { return { slotIndex, cooldown: 0 }; }
+
+  // ===== Balas enemigas (SIEMPRE quitan 1) =====
+  const enemyBullets = []; // {x,y,w,h,vx,vy,fromBoss}
+
+  // ===== Powerups =====
+  const powerups = []; // {x,y,w,h,vy,type}
+  const POWERUP_RAPID  = "RAPID";
+  const POWERUP_SHIELD = "SHIELD";
+  const POWERUP_BUDDY  = "BUDDY";
+
+  // ===== Explosiones =====
+  const explosions = []; // {x,y,t,dur,parts[],big}
+  function spawnExplosion(x, y, big = false) {
+    const dur = big ? 0.55 : 0.32;
+    const n = big ? 30 : 16;
+    const parts = [];
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = (big ? 180 : 120) + Math.random() * (big ? 220 : 140);
+      parts.push({
+        vx: Math.cos(a) * sp,
+        vy: Math.sin(a) * sp,
+        r: (big ? 3.0 : 2.2) + Math.random() * 2.2
+      });
+    }
+    explosions.push({ x, y, t: 0, dur, parts, big });
+  }
+
+  // ===== Enemigos normales (oleadas normales) =====
+  const enemies = {
+    rows: 5,
+    cols: 10,
+    padX: 14,
+    padY: 14,
+    cellW: 42,
+    cellH: 26,
+    top: 70,
+    left: 90,
+    dir: 1,
+    speed: 55,
+    dropStep: 18,
+    shootChance: 0.006,
+    alive: [],
+
+    // animación bajada
+    dropping: false,
+    dropT: 0,
+    dropDuration: 0.12,
+    dropDy: 0,
+    dropApplied: 0,
+  };
+
+  // ===== Adds del jefe final (enemigos invocados) =====
+  const adds = []; // {x,y,w,h,hp,hpMax,alive,vx,shootCd}
+  const addsCfg = {
+    w: 34, h: 20,
+    bulletSpeed: 210,
+    shootChance: 0.0018, // suave
+    max: 16,
+  };
+
+  // ===== Boss =====
+  const boss = {
+    active: false,
+    isFinal: false,
+
+    x: W/2 - 80,
+    y: 90,
+    w: 160,
+    h: 48,
+
+    hp: 0,
+    hpMax: 0,
+
+    dir: 1,
+    speed: 110,
+
+    cooldown: 0,
+    phase: 1, // 1..4 final boss
+    patternId: 0, // jefes normales (cada 5)
+    auxT: 0, // temporizador auxiliar
+    addCooldown: 0, // invocar adds
+  };
+
+  function currentTuning() { return tuning[mode.name] || tuning.NORMAL; }
+  function isBossWave(w) { return (w % 5 === 0); }
+
+  // ===== VIDA ENEMIGOS POR TRAMOS (cada 5 oleadas, excluyendo jefe) =====
+  // 1-5:   1-2
+  // 6-10:  2-3
+  // 11-15: 3-4
+  // ...
+  // 96-100: 20-21 (aplica a 96-99; 100 es jefe)
+  function hpRangeForWave(wave) {
+    const tier = Math.floor((wave - 1) / 5) + 1; // 1..20
+    return { minHp: tier, maxHp: tier + 1 };
+  }
+
+  // ===== Estimación panel secreto =====
+  function estimateProgressToWave(targetWave) {
+    const t = currentTuning();
+    const enemiesPerNormalWave = enemies.rows * enemies.cols; // 50
+    let normalWaves = 0;
+    for (let w = 1; w < targetWave; w++) if (!isBossWave(w)) normalWaves++;
+    const totalKills = normalWaves * enemiesPerNormalWave;
+
+    const expectedRapid = totalKills * t.rapidDropChance;
+    const approxFireRate = 2.0 + expectedRapid * player.fireRateStep;
+
+    const lambdaBuddy = totalKills * t.buddyDropChance;
+    const pGe1 = 1 - Math.exp(-lambdaBuddy);
+    const pGe2 = 1 - (1 + lambdaBuddy) * Math.exp(-lambdaBuddy);
+    const approxBuddies = clamp(Math.round(pGe1 + pGe2), 0, 2);
+
+    return { approxFireRate, approxBuddies };
+  }
+
+  // ===== Init =====
+  function initFinalBoss() {
+    boss.active = true;
+    boss.isFinal = true;
+
+    boss.w = 240;
+    boss.h = 70;
+    boss.x = W/2 - boss.w/2;
+    boss.y = 78;
+
+    boss.dir = 1;
+    boss.speed = 105;
+
+    boss.phase = 1;
+    boss.auxT = 0;
+    boss.addCooldown = 0;
+
+    const t = currentTuning();
+
+    // SUPER difícil: mucha vida. (Aún así balas quitan 1, como pediste)
+    const baseHp = 5200;
+    const modeMul = t.bossHpMul;
+    boss.hpMax = Math.floor(baseHp * modeMul);
+    boss.hp = boss.hpMax;
+
+    // reset adds
+    adds.length = 0;
+
+    // cooldown base (se acelera con vida perdida)
+    boss.cooldown = 0.85 / t.bossFireMul;
+  }
+
+  function initBossForWave(wave) {
+    if (wave === state.maxWaves) { initFinalBoss(); return; }
+
+    boss.active = true;
+    boss.isFinal = false;
+
+    boss.w = 160;
+    boss.h = 48;
+    boss.x = W/2 - boss.w/2;
+    boss.y = 95;
+
+    boss.dir = 1;
+    boss.speed = 110;
+
+    boss.patternId = wave / 5;
+    boss.auxT = 0;
+
+    const t = currentTuning();
+
+    // Jefes normales: más vida progresiva, pero razonable
+    const base = 220 + (boss.patternId - 1) * 120;
+    boss.hpMax = Math.floor(base * t.bossHpMul);
+    boss.hp = boss.hpMax;
+
+    boss.cooldown = 0.92 / t.bossFireMul;
+  }
+
+  function initEnemiesForWave(wave) {
+    enemies.alive = [];
+    enemies.dir = 1;
+
+    const t = currentTuning();
+
+    // Escalado suave (evita que a partir de 49/99 vaya absurdo)
+    enemies.speed = (50 + (wave - 1) * 3.2) * t.enemySpeedMul;
+    enemies.shootChance = (0.0042 + (wave - 1) * 0.00026) * t.enemyShootMul;
+
+    enemies.dropping = false;
+    enemies.dropT = 0;
+    enemies.dropDy = 0;
+    enemies.dropApplied = 0;
+
+    const { minHp, maxHp } = hpRangeForWave(wave);
+
+    for (let r = 0; r < enemies.rows; r++) {
+      for (let c = 0; c < enemies.cols; c++) {
+        const hpMaxLocal = minHp + (Math.random() < 0.5 ? 0 : 1);
+        enemies.alive.push({
+          r, c,
+          x: enemies.left + c * (enemies.cellW + enemies.padX),
+          y: enemies.top  + r * (enemies.cellH + enemies.padY),
+          w: enemies.cellW,
+          h: enemies.cellH,
+          alive: true,
+          hp: hpMaxLocal,
+          hpMax: hpMaxLocal,
+          tierMinHp: minHp,
+        });
+      }
+    }
+  }
+
+  function initWave() {
+    playerBullets.length = 0;
+    enemyBullets.length = 0;
+    powerups.length = 0;
+    explosions.length = 0;
+
+    boss.active = false;
+    boss.isFinal = false;
+    adds.length = 0;
+
+    if (isBossWave(state.wave)) initBossForWave(state.wave);
+    else initEnemiesForWave(state.wave);
+
+    player.x = W/2 - player.w/2;
+    state.status = "PLAYING";
+  }
+
+  function resetGame(toMenu = true) {
+    state.score = 0;
+    state.lives = 3;
+    state.maxLives = 3;
+    state.wave = 1;
+    state.justWon = false;
+
+    player.fireRate = 2.0;
+    player.shield = 0;
+
+    buddies.length = 0;
+    playerBullets.length = 0;
+    enemyBullets.length = 0;
+    powerups.length = 0;
+    explosions.length = 0;
+
+    boss.active = false;
+    boss.isFinal = false;
+    adds.length = 0;
+
+    stopShake();
+
+    state.status = toMenu ? "MENU" : "PLAYING";
+    if (!toMenu) initWave();
+  }
+
+  function startGameWithMode(m) {
+    mode.name = m;
+    localStorage.setItem(LS_LASTMODE, m);
+    resetGame(false);
+  }
+
+  // ===== Panel secreto (Ctrl+Q) =====
+  const devPanel = document.createElement("div");
+  devPanel.style.cssText = `
+    position: fixed; right: 18px; top: 18px; z-index: 9999;
+    width: 320px; padding: 12px; border-radius: 12px;
+    background: rgba(10,14,20,.92);
+    border: 1px solid rgba(120,150,200,.25);
+    box-shadow: 0 12px 40px rgba(0,0,0,.55);
+    display: none;
+    color: #e8eef7;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+  `;
+  devPanel.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+      <div style="font-weight:700;">Panel secreto</div>
+      <button id="devClose" style="cursor:pointer;border-radius:10px;border:1px solid rgba(120,150,200,.25);background:#111a24;color:#e8eef7;padding:4px 10px;">X</button>
+    </div>
+
+    <div style="margin-top:10px;font-size:13px;opacity:.9;">Saltar a oleada (1–100)</div>
+    <div style="display:flex; gap:8px; margin-top:8px;">
+      <input id="devWave" type="number" min="1" max="100" value="1"
+        style="flex:1;border-radius:10px;border:1px solid rgba(120,150,200,.25);background:#0b0f14;color:#e8eef7;padding:8px 10px;" />
+      <button id="devGo" style="cursor:pointer;border-radius:10px;border:1px solid rgba(120,150,200,.25);background:#111a24;color:#e8eef7;padding:8px 10px;">Ir</button>
+    </div>
+
+    <div id="devEst" style="margin-top:10px;font-size:12px;opacity:.9;white-space:pre-line;line-height:1.35;">
+      Estimación: —
+    </div>
+
+    <div style="margin-top:10px;font-size:13px;opacity:.9;">Modo</div>
+    <div style="display:flex; gap:8px; margin-top:8px;">
+      <button id="devNormal" style="flex:1;cursor:pointer;border-radius:10px;border:1px solid rgba(120,150,200,.25);background:#111a24;color:#e8eef7;padding:8px 10px;">Normal</button>
+      <button id="devHard" style="flex:1;cursor:pointer;border-radius:10px;border:1px solid rgba(120,150,200,.25);background:#111a24;color:#e8eef7;padding:8px 10px;">Hardcore</button>
+    </div>
+
+    <div style="margin-top:10px;font-size:12px;opacity:.65;">
+      (solo para pruebas)
+    </div>
+  `;
+  document.body.appendChild(devPanel);
+
+  let devOpen = false;
+  function updateDevEstimate() {
+    const w = clamp(Number(devPanel.querySelector("#devWave").value || 1), 1, state.maxWaves);
+    const est = estimateProgressToWave(w);
+    devPanel.querySelector("#devEst").textContent =
+      `Estimación al llegar a oleada ${w}:\n` +
+      `• cadencia ≈ ${est.approxFireRate.toFixed(1)} disp/s\n` +
+      `• compañeros ≈ ${est.approxBuddies}/2`;
+  }
+  function openDevPanel() {
+    devOpen = true;
+    devPanel.style.display = "block";
+    devPanel.querySelector("#devWave").value = String(state.wave);
+    updateDevEstimate();
+  }
+  function closeDevPanel() { devOpen = false; devPanel.style.display = "none"; }
+  function toggleDevPanel() { devOpen ? closeDevPanel() : openDevPanel(); }
+
+  function gotoWaveWithApprox(n) {
+    const w = clamp(Math.floor(n || 1), 1, state.maxWaves);
+    const est = estimateProgressToWave(w);
+
+    player.fireRate = est.approxFireRate;
+
+    buddies.length = 0;
+    for (let i = 0; i < est.approxBuddies; i++) buddies.push(makeBuddy(i));
+
+    player.shield = 0;
+    state.lives = state.maxLives;
+
+    playerBullets.length = 0;
+    enemyBullets.length = 0;
+    powerups.length = 0;
+    explosions.length = 0;
+    adds.length = 0;
+
+    state.wave = w;
+    state.status = "PLAYING";
+    initWave();
+  }
+
+  devPanel.querySelector("#devClose").addEventListener("click", closeDevPanel);
+  devPanel.querySelector("#devWave").addEventListener("input", updateDevEstimate);
+  devPanel.querySelector("#devGo").addEventListener("click", () => gotoWaveWithApprox(Number(devPanel.querySelector("#devWave").value)));
+  devPanel.querySelector("#devNormal").addEventListener("click", () => { mode.name = "NORMAL"; localStorage.setItem(LS_LASTMODE, "NORMAL"); updateDevEstimate(); });
+  devPanel.querySelector("#devHard").addEventListener("click", () => { mode.name = "HARDCORE"; localStorage.setItem(LS_LASTMODE, "HARDCORE"); updateDevEstimate(); });
+
+  // ===== Input =====
+  window.addEventListener("keydown", (e) => {
+    ensureAudio();
+
+    // secreto (no hay texto en pantalla)
+    if (e.ctrlKey && e.code === "KeyQ") { e.preventDefault(); toggleDevPanel(); return; }
+
+    if (["ArrowLeft","ArrowRight","KeyA","KeyD","KeyR","Enter","Space","Digit1","Digit2"].includes(e.code)) e.preventDefault();
+    keys.add(e.code);
+
+    if (e.code === "KeyR") { resetGame(true); return; }
+
+    if ((e.code === "Enter" || e.code === "Space") && state.status === "MENU") {
+      const allowed = hasHardcoreUnlocked() ? mode.name : "NORMAL";
+      startGameWithMode(allowed);
+    }
+  }, { passive:false });
+
+  window.addEventListener("keyup", (e) => keys.delete(e.code));
+
+  canvas.addEventListener("mousedown", () => {
+    ensureAudio();
+    if (state.status === "MENU") {
+      const allowed = hasHardcoreUnlocked() ? mode.name : "NORMAL";
+      startGameWithMode(allowed);
+    }
+  });
+
+  // ===== Auto-disparo jugador + buddies =====
+  function shootFrom(x, y, speed = -720, dmg = 1) {
+    playerBullets.push({ x, y, w: 6, h: 12, vy: speed, dmg });
+  }
+  function autoFire(dt) {
+    if (state.status !== "PLAYING") return;
+
+    player._cooldown = Math.max(0, (player._cooldown || 0) - dt);
+    if (player._cooldown === 0) {
+      shootFrom(player.x + player.w/2 - 3, player.y - 10, -720, PLAYER_BULLET_DMG);
+      player._cooldown = 1 / player.fireRate;
+    }
+
+    for (let i = 0; i < buddies.length; i++) {
+      const b = buddies[i];
+      b.cooldown = Math.max(0, b.cooldown - dt);
+      if (b.cooldown === 0) {
+        const side = (b.slotIndex === 0) ? -1 : 1;
+        const bx = player.x + player.w/2 + side * 34;
+        const by = player.y - 6;
+        shootFrom(bx - 3, by - 10, -700, PLAYER_BULLET_DMG);
+        b.cooldown = 1 / player.fireRate;
+      }
+    }
+  }
+
+  function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
+  // Corazón normal
+  function drawHeart(x, y, size, filled) {
+    const s = size;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.beginPath();
+    ctx.moveTo(s*0.5, s*0.25);
+    ctx.bezierCurveTo(s*0.5, 0, s*0.1, 0, s*0.1, s*0.3);
+    ctx.bezierCurveTo(s*0.1, s*0.55, s*0.45, s*0.75, s*0.5, s*0.95);
+    ctx.bezierCurveTo(s*0.55, s*0.75, s*0.9, s*0.55, s*0.9, s*0.3);
+    ctx.bezierCurveTo(s*0.9, 0, s*0.5, 0, s*0.5, s*0.25);
+    ctx.closePath();
+
+    if (filled) {
+      ctx.fillStyle = "#ff4d7d";
+      ctx.fill();
+    } else {
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "#ff4d7d";
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // Corazón escudo AZUL sin contorno (solo relleno)
+  function drawShieldHeartFilled(x, y, size) {
+    const s = size;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.beginPath();
+    ctx.moveTo(s*0.5, s*0.25);
+    ctx.bezierCurveTo(s*0.5, 0, s*0.1, 0, s*0.1, s*0.3);
+    ctx.bezierCurveTo(s*0.1, s*0.55, s*0.45, s*0.75, s*0.5, s*0.95);
+    ctx.bezierCurveTo(s*0.55, s*0.75, s*0.9, s*0.55, s*0.9, s*0.3);
+    ctx.bezierCurveTo(s*0.9, 0, s*0.5, 0, s*0.5, s*0.25);
+    ctx.closePath();
+    ctx.fillStyle = "#4aa8ff";
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function applyPowerup(type) {
+    if (type === POWERUP_RAPID) {
+      player.fireRate += 0.5;
+      beep(520, 0.05, "triangle", 0.04);
+    } else if (type === POWERUP_SHIELD) {
+      player.shield = 3;
+      beep(260, 0.07, "sine", 0.05);
+    } else if (type === POWERUP_BUDDY) {
+      if (buddies.length < 2) {
+        buddies.push(makeBuddy(buddies.length));
+        beep(640, 0.06, "triangle", 0.04);
+      }
+    }
+  }
+
+  // ===== Disparo enemigos (siempre 1 vida de daño) =====
+  function spawnEnemyBullet(x, y, vx, vy, fromBoss = false) {
+    const t = currentTuning();
+    enemyBullets.push({
+      x, y, w: 6, h: 12,
+      vx: (vx || 0) * t.enemyBulletMul,
+      vy: (vy || 215) * t.enemyBulletMul,
+      fromBoss
+    });
+  }
+
+  function spawnAimedBullet(fromX, fromY, speed, fromBoss = false) {
+    const dx = (player.x + player.w/2) - fromX;
+    const dy = (player.y + player.h/2) - fromY;
+    const len = Math.max(1, Math.hypot(dx, dy));
+    spawnEnemyBullet(fromX, fromY, (dx / len) * speed, (dy / len) * speed, fromBoss);
+  }
+
+  // ===== Boss normales =====
+  function normalBossFire(dt) {
+    const t = currentTuning();
+    boss.cooldown = Math.max(0, boss.cooldown - dt);
+    if (boss.cooldown > 0) return;
+
+    const cx = boss.x + boss.w/2;
+    const cy = boss.y + boss.h + 4;
+    const id = boss.patternId;
+
+    const baseSpeed = (260 + id * 8) * t.bossFireMul;
+
+    if (id === 1) {
+      spawnAimedBullet(cx, cy, baseSpeed, true);
+      boss.cooldown = 0.85 / t.bossFireMul;
+    } else if (id === 2) {
+      const s = baseSpeed;
+      spawnEnemyBullet(cx, cy, -s*0.22, s*0.95, true);
+      spawnEnemyBullet(cx, cy, 0,        s,      true);
+      spawnEnemyBullet(cx, cy,  s*0.22, s*0.95, true);
+      boss.cooldown = 0.95 / t.bossFireMul;
+    } else if (id === 3) {
+      const s = baseSpeed;
+      for (const a of [-0.32,-0.16,0,0.16,0.32]) spawnEnemyBullet(cx, cy, s*a, s, true);
+      boss.cooldown = 1.10 / t.bossFireMul;
+    } else if (id === 4) {
+      boss.auxT += dt;
+      const s = baseSpeed;
+      spawnAimedBullet(cx, cy, s, true);
+      spawnEnemyBullet(cx, cy, Math.sin(boss.auxT*3.5) * s*0.25, s, true);
+      boss.cooldown = 0.70 / t.bossFireMul;
+    } else {
+      // más adelante: abanico con huecos
+      const s = baseSpeed;
+      for (let i = -4; i <= 4; i++) {
+        if (i === 0) continue; // hueco central para que sea esquivable
+        spawnEnemyBullet(cx, cy, s*0.13*i, s, true);
+      }
+      boss.cooldown = 1.05 / t.bossFireMul;
+    }
+  }
+
+  // ===== FINAL BOSS (oleada 100): fases + dificultad según vida perdida =====
+  function updateFinalBossPhase() {
+    const frac = boss.hp / boss.hpMax; // 1..0
+    if (frac > 0.75) boss.phase = 1;
+    else if (frac > 0.50) boss.phase = 2;
+    else if (frac > 0.25) boss.phase = 3;
+    else boss.phase = 4;
+  }
+
+  function spawnFinalBossAdds(dt) {
+    const t = currentTuning();
+    boss.addCooldown = Math.max(0, boss.addCooldown - dt);
+    if (boss.phase !== 1) return;
+
+    // invoca oleadas pequeñas de enemigos mientras está "grande" (fase 1)
+    if (boss.addCooldown === 0 && adds.length < addsCfg.max) {
+      const count = 6;
+      const gap = 44;
+      const startX = clamp(boss.x + boss.w/2 - ((count-1)*gap)/2, 60, W - 60 - (count-1)*gap);
+      const y = boss.y + boss.h + 18;
+
+      for (let i = 0; i < count; i++) {
+        if (adds.length >= addsCfg.max) break;
+        adds.push({
+          x: startX + i*gap,
+          y,
+          w: addsCfg.w,
+          h: addsCfg.h,
+          alive: true,
+          hpMax: 2,
+          hp: 2,
+          vx: (Math.random() < 0.5 ? -1 : 1) * (70 + Math.random()*50) * t.enemySpeedMul,
+        });
+      }
+
+      // cada invocación, algo más frecuente a medida que baja la vida
+      const frac = boss.hp / boss.hpMax;
+      const faster = 1 + (1 - frac) * 1.4;
+      boss.addCooldown = (2.0 / faster);
+    }
+  }
+
+  function finalBossFire(dt) {
+    const t = currentTuning();
+
+    updateFinalBossPhase();
+    boss.auxT += dt;
+
+    // dificultad continua: cuanto menos vida, más rápido dispara
+    const frac = boss.hp / boss.hpMax; // 1..0
+    const rage = 1 + (1 - frac) * 2.2; // 1..3.2 aprox
+    const phaseMul = [1.0, 1.15, 1.35, 1.70][boss.phase - 1];
+
+    const speedBase = (250 + (1 - frac) * 120) * t.bossFireMul; // sube con vida perdida
+    const cdTarget = (0.95 / (rage * phaseMul)) / t.bossFireMul; // baja con vida perdida
+
+    boss.cooldown = Math.max(0, boss.cooldown - dt);
+    if (boss.cooldown > 0) return;
+
+    const cx = boss.x + boss.w/2;
+    const cy = boss.y + boss.h + 6;
+
+    // Patrones: SIEMPRE con huecos para poder esquivar
+    if (boss.phase === 1) {
+      // "Grande": tiros lentos + algún abanico pequeño (esquivable) y aimed moderado
+      if (Math.random() < 0.55) {
+        spawnAimedBullet(cx, cy, speedBase, true);
+      } else {
+        const s = speedBase * 0.95;
+        for (let i = -2; i <= 2; i++) {
+          if (i === 0) continue; // hueco
+          spawnEnemyBullet(cx, cy, s*0.18*i, s, true);
+        }
+      }
+    } else if (boss.phase === 2) {
+      // abanico más ancho con hueco central + alterna hueco desplazado
+      const s = speedBase;
+      const shift = (Math.sin(boss.auxT * 2.2) > 0) ? 1 : -1;
+      for (let i = -4; i <= 4; i++) {
+        if (i === 0 || i === shift) continue; // 2 huecos
+        spawnEnemyBullet(cx, cy, s*0.12*i, s, true);
+      }
+    } else if (boss.phase === 3) {
+      // "chorro" de 3 carriles que se mueven (mucho dodge)
+      const s = speedBase * 1.05;
+      const wob = Math.sin(boss.auxT * 3.0) * 0.55;
+      for (const lane of [-0.30 + wob, 0 + wob, 0.30 + wob]) {
+        // deja hueco ocasional: no siempre dispara en el carril central
+        if (lane === 0 + wob && Math.random() < 0.35) continue;
+        spawnEnemyBullet(cx, cy, s*lane, s, true);
+      }
+      if (Math.random() < 0.25) spawnAimedBullet(cx, cy, s * 1.08, true);
+    } else {
+      // fase 4: muy enfadado. abanico grande PERO con huecos claros.
+      const s = speedBase * 1.12;
+      // 11 disparos con 2 huecos fijos + 1 hueco "móvil" por seno
+      const movingGap = Math.round(Math.sin(boss.auxT * 2.6) * 3); // -3..3
+      for (let i = -5; i <= 5; i++) {
+        if (i === 0 || i === 2 || i === movingGap) continue; // huecos
+        spawnEnemyBullet(cx, cy, s*0.10*i, s, true);
+      }
+      // y un aimed ocasional (esquivable)
+      if (Math.random() < 0.35) spawnAimedBullet(cx, cy, s * 1.05, true);
+    }
+
+    boss.cooldown = cdTarget;
+  }
+
+  function bossFire(dt) {
+    if (!boss.active) return;
+    if (boss.isFinal) {
+      spawnFinalBossAdds(dt);
+      finalBossFire(dt);
+    } else {
+      normalBossFire(dt);
+    }
+  }
+
+  function onPlayerHit(isBoss) {
+    triggerShake(isBoss ? 10 : 7, isBoss ? 0.18 : 0.14);
+    beep(isBoss ? 120 : 110, 0.08, "square", 0.07);
+  }
+  function onGameOver() {
+    triggerShake(16, 0.65);
+    beep(85, 0.14, "square", 0.08);
+    beep(60, 0.18, "sawtooth", 0.04);
+  }
+
+  // ===== Arranque =====
+  resetGame(true);
+
+  // ===== Daño recibido (SIEMPRE 1) =====
+  function applyIncomingHit(fromBoss) {
+    if (player.shield > 0) {
+      player.shield -= 1;
+      triggerShake(fromBoss ? 10 : 6, fromBoss ? 0.16 : 0.12);
+      beep(fromBoss ? 170 : 200, 0.06, "sine", 0.05);
+      return;
+    }
+    state.lives -= 1;
+    onPlayerHit(fromBoss);
+    if (state.lives <= 0) { state.status = "GAME_OVER"; onGameOver(); }
+  }
+
+  // ===== Update =====
+  let last = performance.now();
+
+  function update(dt) {
+    // shake decay
+    if (shake.t > 0) {
+      shake.t = Math.max(0, shake.t - dt);
+      shake.mag = Math.max(0, shake.mag - dt * 18);
+    }
+
+    // explosiones update
+    for (let i = explosions.length - 1; i >= 0; i--) {
+      const ex = explosions[i];
+      ex.t += dt;
+      if (ex.t >= ex.dur) explosions.splice(i, 1);
+    }
+
+    if (state.status !== "PLAYING") return;
+
+    // movimiento
+    const left = (keys.has("ArrowLeft") || keys.has("KeyA")) ? 1 : 0;
+    const right = (keys.has("ArrowRight") || keys.has("KeyD")) ? 1 : 0;
+    player.x = clamp(player.x + (right - left) * player.speed * dt, 12, W - player.w - 12);
+
+    // autofire
+    autoFire(dt);
+
+    // bullets jugador
+    for (let i = playerBullets.length - 1; i >= 0; i--) {
+      const b = playerBullets[i];
+      b.y += b.vy * dt;
+      if (b.y + b.h < 0) playerBullets.splice(i, 1);
+    }
+
+    // powerups
+    for (let i = powerups.length - 1; i >= 0; i--) {
+      const p = powerups[i];
+      p.y += p.vy * dt;
+      if (rectsIntersect(p, player)) { applyPowerup(p.type); powerups.splice(i, 1); continue; }
+      if (p.y > H + 30) powerups.splice(i, 1);
+    }
+
+    // ===== Boss / Normal =====
+    if (boss.active) {
+      // movimiento boss
+      boss.x += boss.dir * boss.speed * dt;
+      if (boss.x < 30) { boss.x = 30; boss.dir = 1; }
+      if (boss.x + boss.w > W - 30) { boss.x = W - 30 - boss.w; boss.dir = -1; }
+
+      // boss dispara
+      bossFire(dt);
+
+      // adds: movimiento + disparo suave
+      const t = currentTuning();
+      for (let i = adds.length - 1; i >= 0; i--) {
+        const a = adds[i];
+        if (!a.alive) { adds.splice(i, 1); continue; }
+
+        a.x += a.vx * dt;
+        if (a.x < 30) { a.x = 30; a.vx *= -1; }
+        if (a.x + a.w > W - 30) { a.x = W - 30 - a.w; a.vx *= -1; }
+
+        // disparo suave
+        if (Math.random() < addsCfg.shootChance * dt * 60) {
+          spawnEnemyBullet(a.x + a.w/2 - 3, a.y + a.h + 2, 0, addsCfg.bulletSpeed + (boss.phase-1)*10, false);
+        }
+
+        // si llegan demasiado abajo, es peligro
+        if (a.y + a.h > floorY) {
+          state.status = "GAME_OVER";
+          onGameOver();
+          return;
+        }
+      }
+
+      // colisiones balas jugador con boss
+      for (let i = playerBullets.length - 1; i >= 0; i--) {
+        const b = playerBullets[i];
+        if (rectsIntersect(b, boss)) {
+          playerBullets.splice(i, 1);
+          boss.hp -= b.dmg;
+          triggerShake(3, 0.05);
+
+          if (boss.hp <= 0) {
+            boss.active = false;
+            spawnExplosion(boss.x + boss.w/2, boss.y + boss.h/2, true);
+            state.score += boss.isFinal ? 2500 : (280 + (state.wave/5)*90);
+
+            if (state.wave >= state.maxWaves) {
+              state.status = "GAME_WON";
+              state.justWon = true;
+              setHardcoreUnlocked();
+              beep(520, 0.12, "triangle", 0.05);
+              return;
+            }
+
+            state.status = "WAVE_CLEAR";
+            setTimeout(() => {
+              if (state.status === "WAVE_CLEAR") { state.wave++; initWave(); }
+            }, 800);
+            return;
+          }
+        }
+      }
+
+      // colisiones balas jugador con adds
+      for (let i = playerBullets.length - 1; i >= 0; i--) {
+        const b = playerBullets[i];
+        let hit = false;
+        for (let j = adds.length - 1; j >= 0; j--) {
+          const a = adds[j];
+          if (!a.alive) continue;
+          if (rectsIntersect(b, a)) {
+            hit = true;
+            a.hp -= b.dmg;
+            if (a.hp <= 0) {
+              a.alive = false;
+              spawnExplosion(a.x + a.w/2, a.y + a.h/2, false);
+              state.score += 8;
+            }
+            break;
+          }
+        }
+        if (hit) playerBullets.splice(i, 1);
+      }
+
+    } else {
+      // ===== oleada normal =====
+      const aliveEnemies = enemies.alive.filter(e => e.alive);
+
+      if (aliveEnemies.length === 0) {
+        state.status = "WAVE_CLEAR";
+        setTimeout(() => {
+          if (state.status === "WAVE_CLEAR") {
+            state.wave++;
+            if (state.wave > state.maxWaves) {
+              state.status = "GAME_WON";
+              state.justWon = true;
+              setHardcoreUnlocked();
+              beep(520, 0.12, "triangle", 0.05);
+            } else initWave();
+          }
+        }, 650);
+        return;
+      }
+
+      // bounds
+      let minX = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const e of aliveEnemies) {
+        minX = Math.min(minX, e.x);
+        maxX = Math.max(maxX, e.x + e.w);
+        maxY = Math.max(maxY, e.y + e.h);
+      }
+
+      // animación bajada
+      if (enemies.dropping) {
+        enemies.dropT += dt;
+        const p = clamp(enemies.dropT / enemies.dropDuration, 0, 1);
+        const eased = easeOutCubic(p);
+        const targetApplied = enemies.dropDy * eased;
+        const delta = targetApplied - enemies.dropApplied;
+        enemies.dropApplied = targetApplied;
+        for (const e of aliveEnemies) e.y += delta;
+        if (p >= 1) { enemies.dropping = false; enemies.dropT = 0; enemies.dropApplied = 0; }
+      } else {
+        const step = enemies.dir * enemies.speed * dt;
+        for (const e of aliveEnemies) e.x += step;
+        const margin = 14;
+        if (minX + step < margin || maxX + step > W - margin) {
+          enemies.dir *= -1;
+          enemies.dropping = true;
+          enemies.dropT = 0;
+          enemies.dropDy = enemies.dropStep;
+          enemies.dropApplied = 0;
+        }
+      }
+
+      if (maxY >= floorY) { state.status = "GAME_OVER"; onGameOver(); return; }
+
+      // tiradores por columna (los más bajos)
+      const shootersByCol = new Map();
+      for (const e of aliveEnemies) {
+        const prev = shootersByCol.get(e.c);
+        if (!prev || e.y > prev.y) shootersByCol.set(e.c, e);
+      }
+      const shooters = [...shootersByCol.values()];
+
+      for (const s of shooters) {
+        if (Math.random() < enemies.shootChance * dt * 60) {
+          spawnEnemyBullet(s.x + s.w/2 - 3, s.y + s.h + 2, 0, 205 + state.wave * 1.6, false);
+        }
+      }
+
+      // colisiones bala jugador vs enemigos
+      const t = currentTuning();
+      for (let i = playerBullets.length - 1; i >= 0; i--) {
+        const b = playerBullets[i];
+        let hit = false;
+
+        for (const e of aliveEnemies) {
+          if (rectsIntersect(b, e)) {
+            hit = true;
+            e.hp -= b.dmg;
+
+            if (e.hp <= 0) {
+              e.alive = false;
+              state.score += 10;
+              spawnExplosion(e.x + e.w/2, e.y + e.h/2, false);
+
+              // Drops (sin daño)
+              if (buddies.length < 2 && Math.random() < t.buddyDropChance) {
+                powerups.push({ x: e.x + e.w/2 - 10, y: e.y + e.h/2 - 10, w:20, h:20, vy:160, type: POWERUP_BUDDY });
+              }
+              if (player.shield === 0 && Math.random() < t.shieldDropChance) {
+                powerups.push({ x: e.x + e.w/2 - 10, y: e.y + e.h/2 - 10, w:20, h:20, vy:150, type: POWERUP_SHIELD });
+              }
+              if (Math.random() < t.rapidDropChance) {
+                powerups.push({ x: e.x + e.w/2 - 10, y: e.y + e.h/2 - 10, w:20, h:20, vy:160, type: POWERUP_RAPID });
+              }
+            }
+            break;
+          }
+        }
+
+        if (hit) playerBullets.splice(i, 1);
+      }
+    }
+
+    // ===== bullets enemigos =====
+    for (let i = enemyBullets.length - 1; i >= 0; i--) {
+      const b = enemyBullets[i];
+      b.x += (b.vx || 0) * dt;
+      b.y += (b.vy || 0) * dt;
+
+      if (b.y > H + 40 || b.x < -60 || b.x > W + 60) { enemyBullets.splice(i, 1); continue; }
+
+      if (rectsIntersect(b, player)) {
+        enemyBullets.splice(i, 1);
+        applyIncomingHit(!!b.fromBoss);
+      }
+    }
+  }
+
+  // ===== Draw =====
+  function draw() {
+    // shake
+    let ox = 0, oy = 0;
+    if (shake.t > 0) {
+      const m = shake.mag;
+      ox = (Math.random() * 2 - 1) * m;
+      oy = (Math.random() * 2 - 1) * m;
+    }
+
+    ctx.save();
+    ctx.translate(ox, oy);
+
+    ctx.clearRect(-ox, -oy, W, H);
+    ctx.fillStyle = "#05070a";
+    ctx.fillRect(0, 0, W, H);
+
+    // estrellas
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = "#c7d7ff";
+    for (let i = 0; i < 70; i++) {
+      const x = (i * 97) % W;
+      const y = (i * 53) % H;
+      ctx.fillRect(x, y, 2, 2);
+    }
+    ctx.globalAlpha = 1;
+
+    // línea peligro
+    ctx.strokeStyle = "#182434";
+    ctx.beginPath();
+    ctx.moveTo(0, floorY);
+    ctx.lineTo(W, floorY);
+    ctx.stroke();
+
+    // UI
+    ctx.fillStyle = "#e8eef7";
+    ctx.font = "16px system-ui, sans-serif";
+    ctx.fillText(`Puntuación: ${state.score}`, 16, 26);
+    ctx.fillText(`Oleada: ${state.wave}/${state.maxWaves}`, 16, 48);
+    ctx.globalAlpha = 0.85;
+    ctx.fillText(`Modo: ${mode.name}`, 16, 70);
+    ctx.fillText(`Cadencia: ${player.fireRate.toFixed(1)} disp/s`, 16, 92);
+    ctx.globalAlpha = 1;
+
+    // corazones (vida)
+    const startX = W - 16 - (state.maxLives * 28);
+    const baseY = 12;
+    for (let i = 0; i < state.maxLives; i++) drawHeart(startX + i * 28, baseY, 22, i < state.lives);
+
+    // escudo (azul, relleno, sin contorno)
+    const shieldY = baseY + 26;
+    for (let i = 0; i < player.shield; i++) drawShieldHeartFilled(startX + i * 28, shieldY, 22);
+
+    // Player
+    ctx.fillStyle = "#8bd3ff";
+    ctx.fillRect(player.x, player.y, player.w, player.h);
+    ctx.fillRect(player.x + 6, player.y - 10, player.w - 12, 10);
+    ctx.fillStyle = "#d3f3ff";
+    ctx.fillRect(player.x + player.w/2 - 4, player.y - 16, 8, 6);
+
+    // Buddies
+    for (let i = 0; i < buddies.length; i++) {
+      const b = buddies[i];
+      const side = (b.slotIndex === 0) ? -1 : 1;
+      const bx = player.x + player.w/2 + side * 34;
+      const by = player.y - 6;
+
+      ctx.fillStyle = "#b8ff8a";
+      ctx.fillRect(bx - 12, by, 24, 10);
+      ctx.fillStyle = "rgba(0,0,0,.35)";
+      ctx.fillRect(bx - 6, by + 3, 4, 4);
+      ctx.fillRect(bx + 2, by + 3, 4, 4);
+    }
+
+    // bullets jugador
+    ctx.fillStyle = "#d0ff6b";
+    for (const b of playerBullets) ctx.fillRect(b.x, b.y, b.w, b.h);
+
+    // Enemigos / Boss
+    if (boss.active) {
+      // boss
+      ctx.fillStyle = boss.isFinal ? "#ff2b2b" : "#ff7a2b";
+      ctx.fillRect(boss.x, boss.y, boss.w, boss.h);
+
+      // cara simple
+      ctx.fillStyle = "rgba(0,0,0,.35)";
+      ctx.fillRect(boss.x + 26, boss.y + 22, 12, 12);
+      ctx.fillRect(boss.x + boss.w - 38, boss.y + 22, 12, 12);
+
+      // barra HP
+      const barW = 360, barH = 12;
+      const bx = (W - barW)/2, by = 18;
+      ctx.fillStyle = "rgba(255,255,255,.18)";
+      ctx.fillRect(bx, by, barW, barH);
+      ctx.fillStyle = "#ff4d7d";
+      ctx.fillRect(bx, by, barW * clamp(boss.hp / boss.hpMax, 0, 1), barH);
+      ctx.strokeStyle = "rgba(255,255,255,.18)";
+      ctx.strokeRect(bx, by, barW, barH);
+
+      ctx.fillStyle = "#e8eef7";
+      ctx.font = "14px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      if (boss.isFinal) {
+        const frac = boss.hp / boss.hpMax;
+        const phaseTxt = `FASE ${boss.phase}/4`;
+        const rageTxt = `Ira: ${(1 - frac)*100|0}%`;
+        ctx.fillText(`JEFE FINAL · ${phaseTxt} · ${rageTxt} · Daño: 1`, W/2, by + 28);
+      } else {
+        ctx.fillText(`JEFE ${boss.patternId} · Daño: 1`, W/2, by + 28);
+      }
+      ctx.textAlign = "start";
+
+      // adds
+      for (const a of adds) {
+        if (!a.alive) continue;
+        ctx.fillStyle = "#ff3b3b";
+        ctx.fillRect(a.x, a.y, a.w, a.h);
+        ctx.globalAlpha = 0.75;
+        ctx.fillStyle = "rgba(255,255,255,.20)";
+        ctx.fillRect(a.x + 3, a.y + a.h - 5, a.w - 6, 3);
+        ctx.fillStyle = "rgba(255,255,255,.55)";
+        ctx.fillRect(a.x + 3, a.y + a.h - 5, (a.w - 6) * clamp(a.hp / a.hpMax, 0, 1), 3);
+        ctx.globalAlpha = 1;
+      }
+
+    } else {
+      // enemigos normales
+      for (const e of enemies.alive) {
+        if (!e.alive) continue;
+
+        // tanques (hpMax = max del tramo) => rojo
+        if (e.hpMax > e.tierMinHp) ctx.fillStyle = "#ff3b3b";
+        else {
+          const hue = 160 + e.r * 18;
+          ctx.fillStyle = `hsl(${hue} 70% 55%)`;
+        }
+
+        ctx.fillRect(e.x, e.y, e.w, e.h);
+        ctx.fillStyle = "rgba(0,0,0,.45)";
+        ctx.fillRect(e.x + 10, e.y + 8, 6, 6);
+        ctx.fillRect(e.x + e.w - 16, e.y + 8, 6, 6);
+
+        if (e.hpMax >= 3) {
+          ctx.globalAlpha = 0.8;
+          ctx.fillStyle = "rgba(255,255,255,.20)";
+          ctx.fillRect(e.x + 4, e.y + e.h - 6, e.w - 8, 3);
+          ctx.fillStyle = "rgba(255,255,255,.55)";
+          ctx.fillRect(e.x + 4, e.y + e.h - 6, (e.w - 8) * clamp(e.hp / e.hpMax, 0, 1), 3);
+          ctx.globalAlpha = 1;
+        }
+      }
+    }
+
+    // bullets enemigos
+    for (const b of enemyBullets) {
+      ctx.fillStyle = b.fromBoss ? "#ff3b3b" : "#ff6b9e";
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+    }
+
+    // powerups
+    for (const p of powerups) {
+      if (p.type === POWERUP_RAPID) ctx.fillStyle = "rgba(255, 214, 107, .95)";
+      else if (p.type === POWERUP_SHIELD) ctx.fillStyle = "rgba(74, 168, 255, .92)";
+      else ctx.fillStyle = "rgba(184, 255, 138, .92)"; // buddy
+
+      ctx.fillRect(p.x, p.y, p.w, p.h);
+
+      ctx.fillStyle = "#0b0f14";
+      ctx.font = "bold 14px system-ui, sans-serif";
+      const letter = (p.type === POWERUP_RAPID) ? "R"
+                  : (p.type === POWERUP_SHIELD) ? "S"
+                  : "B";
+      ctx.fillText(letter, p.x + 6, p.y + 15);
+    }
+
+    // explosiones
+    for (const ex of explosions) {
+      const p = clamp(ex.t / ex.dur, 0, 1);
+      const a = 1 - p;
+
+      ctx.globalAlpha = a * 0.55;
+      ctx.strokeStyle = "#ffd66b";
+      ctx.lineWidth = ex.big ? 3 : 2;
+      ctx.beginPath();
+      ctx.arc(ex.x, ex.y, (ex.big ? 10 : 6) + p * (ex.big ? 90 : 55), 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.globalAlpha = a * 0.9;
+      ctx.fillStyle = "#ff6b9e";
+      ctx.beginPath();
+      ctx.arc(ex.x, ex.y, (ex.big ? 10 : 6) * (1 - p * 0.55), 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.globalAlpha = a;
+      ctx.fillStyle = "#ffd66b";
+      for (const prt of ex.parts) {
+        const px = ex.x + prt.vx * ex.t * 0.012;
+        const py = ex.y + prt.vy * ex.t * 0.012;
+        ctx.beginPath();
+        ctx.arc(px, py, prt.r * (1 - p * 0.7), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // overlays
+    if (state.status !== "PLAYING") {
+      ctx.fillStyle = "rgba(0,0,0,.58)";
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.fillStyle = "#ffffff";
+      ctx.textAlign = "center";
+
+      if (state.status === "MENU") {
+        ctx.font = "bold 44px system-ui, sans-serif";
+        ctx.fillText("MINI SPACE INVADERS", W/2, H/2 - 70);
+
+        ctx.font = "18px system-ui, sans-serif";
+        ctx.globalAlpha = 0.9;
+        ctx.fillText("Pulsa ENTER o clic para empezar", W/2, H/2 - 30);
+        ctx.globalAlpha = 1;
+
+        const unlocked = hasHardcoreUnlocked();
+        ctx.font = "16px system-ui, sans-serif";
+        ctx.fillText(`Modo guardado: ${unlocked ? mode.name : "NORMAL"}${unlocked ? "" : " (Hardcore bloqueado)"}`, W/2, H/2 + 8);
+
+        ctx.font = "16px system-ui, sans-serif";
+        ctx.fillText("Pulsa 1 = Normal", W/2, H/2 + 44);
+        ctx.fillText(unlocked ? "Pulsa 2 = Hardcore" : "Gana el juego para desbloquear Hardcore", W/2, H/2 + 68);
+
+        if (keys.has("Digit1")) startGameWithMode("NORMAL");
+        if (keys.has("Digit2") && unlocked) startGameWithMode("HARDCORE");
+
+      } else if (state.status === "GAME_OVER") {
+        ctx.font = "bold 52px system-ui, sans-serif";
+        ctx.fillText("GAME OVER", W/2, H/2 - 30);
+        ctx.font = "18px system-ui, sans-serif";
+        ctx.fillText("Pulsa R para volver al menú", W/2, H/2 + 18);
+
+      } else if (state.status === "WAVE_CLEAR") {
+        ctx.font = "bold 42px system-ui, sans-serif";
+        ctx.fillText("¡OLEADA SUPERADA!", W/2, H/2 - 20);
+        ctx.font = "18px system-ui, sans-serif";
+        ctx.fillText("Preparando la siguiente...", W/2, H/2 + 18);
+
+      } else if (state.status === "GAME_WON") {
+        ctx.font = "bold 50px system-ui, sans-serif";
+        ctx.fillText("¡HAS GANADO!", W/2, H/2 - 65);
+        ctx.font = "22px system-ui, sans-serif";
+        ctx.fillText("Enhorabuena 💫 Has completado las 100 oleadas.", W/2, H/2 - 30);
+
+        ctx.font = "18px system-ui, sans-serif";
+        ctx.globalAlpha = 0.95;
+        ctx.fillText("Pulsa R para volver al menú", W/2, H/2 + 16);
+        ctx.fillText("Ahora tienes disponible el modo HARDCORE", W/2, H/2 + 44);
+        ctx.globalAlpha = 1;
+      }
+
+      ctx.textAlign = "start";
+    }
+
+    ctx.restore();
+  }
+
+  // ===== Loop =====
+  function loop(t) {
+    const dt = Math.min(0.033, (t - last) / 1000);
+    last = t;
+    update(dt);
+    draw();
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
