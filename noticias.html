@@ -67,11 +67,11 @@
       line-height: 1.6;
       color: #cff;
     }
-    .back-link {
+    .back-link, .rewards-link {
       display: flex;
-      width: 140px;
+      width: 180px;
       height: 60px;
-      margin: 30px auto 0;
+      margin: 18px auto 0;
       align-items: center;
       justify-content: center;
       font-size: 12px;
@@ -84,8 +84,11 @@
       text-decoration: none;
       box-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
     }
-    .back-link:hover {
-      box-shadow: 0 0 12px rgba(255, 255, 255, 0.7), 0 0 20px rgba(231, 76, 60, 0.6);
+    .rewards-link {
+      color: #0d6efd;
+    }
+    .back-link:hover, .rewards-link:hover {
+      box-shadow: 0 0 12px rgba(255, 255, 255, 0.7), 0 0 20px rgba(13, 110, 253, 0.6);
     }
   </style>
 </head>
@@ -103,12 +106,13 @@
       <p>La asistencia de IA ya está activa en OLAP y disponible desde la página principal. Pruébala para obtener pistas, consejos o resolver tus dudas mientras juegas.</p>
     </article>
     <article class="card">
-      <h2>Nuevos minijuegos</h2>
+      <h2>Space Invaders renovado</h2>
       <time datetime="2025-11-20">20 de noviembre de 2025</time>
-      <p>Se añadieron Null's Breakout, Sonic y el renovado Space Invaders con menús e información dentro del juego. Si encuentras un bug, envíanos tus comentarios.</p>
+      <p>Space Invaders ahora tiene menús rápidos e información dentro del juego. Si encuentras algún bug en esta versión, envíanos tus comentarios.</p>
     </article>
   </section>
 
+  <a class="rewards-link" href="recompensas.html">Ver recompensas</a>
   <a class="back-link" href="index.html">Volver al inicio</a>
 
   <script>
