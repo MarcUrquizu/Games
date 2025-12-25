@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Recompensas</title>
+  <style>
+    body{ margin:0; background:#0b0f14; color:#e8eef7; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; }
+    .wrap{ max-width:900px; margin:0 auto; padding:24px; }
+    .card{
+      background: rgba(10,14,20,.92);
+      border: 1px solid rgba(120,150,200,.25);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 12px 40px rgba(0,0,0,.55);
+    }
+    .grid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap:14px; margin-top:14px; }
+    .reward{
+      border: 1px solid rgba(120,150,200,.25);
+      border-radius: 14px;
+      padding: 14px;
+      background:#111a24;
+      opacity:.55;
+      filter: grayscale(1);
+    }
+    .reward.unlocked{
+      opacity: 1;
+      filter: none;
+    }
+    .medal{
+      font-size: 44px;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    .title{ font-size: 26px; font-weight: 800; margin:0 0 6px; }
+    .sub{ opacity:.85; margin:0; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="title">RECOMPENSAS</div>
+      <p class="sub">Logros desbloqueados en el juego.</p>
+
+      <div class="grid">
+        <div id="medalHardcore" class="reward">
+          <div class="medal">🏅</div>
+          <div style="font-weight:800;">Medalla Hardcore</div>
+          <div style="opacity:.85;font-size:13px;margin-top:4px;">Gana el juego en modo HARDCORE</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const LS_MEDAL_HARDCORE = "msi_medal_hardcore";
+
+    const unlocked = localStorage.getItem(LS_MEDAL_HARDCORE) === "1";
+    const el = document.getElementById("medalHardcore");
+
+    if (unlocked) {
+      el.classList.add("unlocked");
+      el.querySelector(".medal").textContent = "🏅";
+    } else {
+      // opcional: candado si no está desbloqueada
+      el.querySelector(".medal").textContent = "🔒";
+    }
+  </script>
+</body>
+</html>

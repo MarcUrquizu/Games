@@ -113,7 +113,7 @@
   </div>
 
   <div class="hint">
-    Mover: <kbd>←</kbd><kbd>→</kbd> o <kbd>A</kbd><kbd>D</kbd> · Disparo auto · <kbd>R</kbd> menú · (secreto) <kbd>Ctrl</kbd>+<kbd>Q</kbd>
+    Mover: <kbd>←</kbd><kbd>→</kbd> o <kbd>A</kbd><kbd>D</kbd> · Disparo auto · <kbd>R</kbd> menú
   </div>
 
   <!-- ===== Menú/selector de modo ===== -->
@@ -194,6 +194,10 @@
   const LS_UNLOCK = "msi_unlocked_hardcore";
   const LS_LASTMODE = "msi_last_mode";
   const LS_CHECKPOINT = "msi_checkpoint_v1";
+
+  // ✅ (NUEVO) medalla al ganar hardcore
+  const LS_MEDAL_HARDCORE = "msi_medal_hardcore";
+  const setHardcoreMedal = () => localStorage.setItem(LS_MEDAL_HARDCORE, "1");
 
   const hasHardcoreUnlocked = () => localStorage.getItem(LS_UNLOCK) === "1";
   const setHardcoreUnlocked = () => localStorage.setItem(LS_UNLOCK, "1");
@@ -324,12 +328,12 @@
   };
 
   // ===== Transición oleadas =====
-  // (CAMBIO) más lenta: dur = 2.25
+  // ✅ (CAMBIO) más lenta
   const transition = { active:false, t:0, dur:2.25, fromOffset:260, labelT:0, label:"" };
   function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
 
-  // (CAMBIO) pausa entre oleadas para que no cambie instantáneo
-  let waveIntermission = 0; // segundos de pausa
+  // ✅ (CAMBIO) pausa entre oleadas
+  let waveIntermission = 0;
 
   // ===== Balas =====
   const playerBullets = [];
@@ -573,10 +577,9 @@
     ctx.restore();
   }
 
-  // ===== (NUEVO) DIBUJO ESCUDO AZUL ALREDEDOR DEL JUGADOR =====
+  // ✅ (NUEVO) Escudo visible alrededor del jugador cuando tiene shield
   function drawPlayerShield() {
     if (player.shield <= 0) return;
-
     const cx = player.x + player.w / 2;
     const cy = player.y + player.h / 2;
 
@@ -585,7 +588,6 @@
 
     ctx.save();
 
-    // Aro principal
     ctx.globalAlpha = 0.60;
     ctx.strokeStyle = "rgba(74,168,255,.95)";
     ctx.lineWidth = 4;
@@ -593,7 +595,6 @@
     ctx.arc(cx, cy, baseR * pulse, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Halo exterior suave
     ctx.globalAlpha = 0.16;
     ctx.lineWidth = 10;
     ctx.beginPath();
@@ -796,7 +797,11 @@
     if (next > state.maxWaves) {
       state.status = "GAME_WON";
       state.justWon = true;
+
       setHardcoreUnlocked();
+      // ✅ (NUEVO) medalla si ganas en HARDCORE
+      if (mode.name === "HARDCORE") setHardcoreMedal();
+
       showOverlay();
       refreshMenuButtons();
       beep(520, 0.12, "triangle", 0.05);
@@ -998,7 +1003,6 @@
     transition.active = false;
 
     stopShake();
-
     waveIntermission = 0;
 
     state.status = toMenu ? "MENU" : "PLAYING";
@@ -1093,7 +1097,11 @@
         if (bossDeath.wasFinalWin) {
           state.status = "GAME_WON";
           state.justWon = true;
+
           setHardcoreUnlocked();
+          // ✅ (NUEVO) medalla si ganas en HARDCORE
+          if (mode.name === "HARDCORE") setHardcoreMedal();
+
           showOverlay();
           refreshMenuButtons();
           return;
@@ -1189,7 +1197,7 @@
     } else {
       const aliveEnemies = enemies.alive.filter(e => e.alive);
 
-      // (CAMBIO) no pasar a la siguiente oleada instantáneo: pausa ~0.55s
+      // ✅ (CAMBIO) pausa entre oleadas (no cambia instantáneo)
       if (aliveEnemies.length === 0 && !transition.active) {
         waveIntermission = Math.min(0.55, waveIntermission + dt);
         if (waveIntermission >= 0.55) {
@@ -1338,7 +1346,7 @@
     ctx.fillStyle = "#d3f3ff";
     ctx.fillRect(player.x + player.w/2 - 4, player.y - 16, 8, 6);
 
-    // (NUEVO) escudo visible cuando player.shield > 0
+    // ✅ (NUEVO) círculo de escudo
     drawPlayerShield();
 
     // buddies
