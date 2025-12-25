@@ -447,7 +447,7 @@
     return { minHp: tier, maxHp: tier + 1 };
   }
 
-  // ===== Panel secreto Ctrl+Q =====
+  // ===== Panel secreto (SIN Ctrl+Q) =====
   function estimateProgressToWave(targetWave) {
     const t = currentTuning();
     const enemiesPerNormalWave = enemies.rows * enemies.cols;
@@ -1490,7 +1490,7 @@
   window.addEventListener("keydown", (e) => {
     ensureAudio();
 
-    if (e.ctrlKey && e.code === "KeyQ") { e.preventDefault(); toggleDevPanel(); return; }
+    // (ELIMINADO) Ctrl+Q
 
     if (["ArrowLeft","ArrowRight","KeyA","KeyD","KeyR","KeyC"].includes(e.code)) e.preventDefault();
 
