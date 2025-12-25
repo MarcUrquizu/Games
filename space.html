@@ -11,6 +11,30 @@
     .hint { position:fixed; bottom:14px; left:50%; transform:translateX(-50%); opacity:.75; font-size:13px; text-align:center; padding:0 12px; pointer-events:none; }
     .hint kbd { background:#111a24; border:1px solid #223247; padding:2px 6px; border-radius:6px; }
 
+    /* ===== Botones flotantes ===== */
+    .topButtons {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      display: flex;
+      gap: 8px;
+      z-index: 11000;
+    }
+    .pillBtn {
+      border: 1px solid rgba(120,150,200,.35);
+      border-radius: 999px;
+      padding: 10px 14px;
+      background: linear-gradient(180deg, rgba(80,170,255,.95), rgba(55,135,230,.95));
+      color: #e8eef7;
+      font-weight: 800;
+      letter-spacing: .3px;
+      cursor: pointer;
+      box-shadow: 0 10px 26px rgba(0,0,0,.35);
+      transition: transform .08s ease, filter .12s ease, opacity .12s ease;
+      user-select: none;
+    }
+    .pillBtn:active { transform: translateY(1px); filter: brightness(.95); }
+
     /* ===== Overlay menú con botones ===== */
     .overlay {
       position: fixed; inset: 0;
@@ -83,6 +107,11 @@
     <canvas id="game" width="800" height="600"></canvas>
   </div>
 
+  <div class="topButtons" aria-label="Acciones rápidas">
+    <button id="btnMenu" class="pillBtn" type="button">Menú</button>
+    <button id="btnInfo" class="pillBtn" type="button">Info</button>
+  </div>
+
   <div class="hint">
     Mover: <kbd>←</kbd><kbd>→</kbd> o <kbd>A</kbd><kbd>D</kbd> · Disparo auto · <kbd>R</kbd> menú · (secreto) <kbd>Ctrl</kbd>+<kbd>Q</kbd>
   </div>
@@ -112,6 +141,25 @@
     </div>
   </div>
 
+  <!-- ===== Panel de información ===== -->
+  <div id="infoOverlay" class="overlay" aria-hidden="true">
+    <div class="panel">
+      <div class="title">INFO</div>
+      <div class="subtitle">
+        Mueve tu nave con <strong>A/D</strong> o las flechas. Los disparos son automáticos.<br/>
+        Presiona <strong>R</strong> o usa el botón Menú para reiniciar y elegir modo.
+      </div>
+      <div class="miniRow">
+        <span class="miniBtn disabled" aria-disabled="true">Checkpoints cada 10 oleadas en Normal</span>
+        <span class="miniBtn disabled" aria-disabled="true">Hardcore sin checkpoints tras desbloqueo</span>
+      </div>
+      <div class="note">Tip: desbloquea Hardcore ganando la partida. Borrar checkpoint limpia el progreso guardado.</div>
+      <div class="miniRow" style="margin-top:14px;">
+        <button id="btnCloseInfo" class="btn" type="button">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
 <script>
 (() => {
   const canvas = document.getElementById("game");
@@ -128,6 +176,10 @@
 
   // ===== DOM: overlay =====
   const overlay = document.getElementById("menuOverlay");
+  const infoOverlay = document.getElementById("infoOverlay");
+  const btnMenu = document.getElementById("btnMenu");
+  const btnInfo = document.getElementById("btnInfo");
+  const btnCloseInfo = document.getElementById("btnCloseInfo");
   const btnNormal = document.getElementById("btnNormal");
   const btnHardcore = document.getElementById("btnHardcore");
   const btnContinue = document.getElementById("btnContinue");
@@ -135,6 +187,8 @@
 
   function showOverlay() { overlay.style.display = "flex"; overlay.setAttribute("aria-hidden","false"); }
   function hideOverlay() { overlay.style.display = "none"; overlay.setAttribute("aria-hidden","true"); }
+  function showInfo() { infoOverlay.style.display = "flex"; infoOverlay.setAttribute("aria-hidden","false"); }
+  function hideInfo() { infoOverlay.style.display = "none"; infoOverlay.setAttribute("aria-hidden","true"); }
 
   // ===== Persistencia =====
   const LS_UNLOCK = "msi_unlocked_hardcore";
@@ -1352,6 +1406,24 @@
     clearCheckpoint();
     refreshMenuButtons();
     beep(240, 0.06, "sine", 0.03);
+  });
+
+  btnMenu.addEventListener("click", () => {
+    ensureAudio();
+    resetGame(true);
+  });
+
+  btnInfo.addEventListener("click", () => {
+    ensureAudio();
+    showInfo();
+  });
+
+  btnCloseInfo.addEventListener("click", () => {
+    hideInfo();
+  });
+
+  infoOverlay.addEventListener("click", (e) => {
+    if (e.target === infoOverlay) hideInfo();
   });
 
   // ===== Input =====
