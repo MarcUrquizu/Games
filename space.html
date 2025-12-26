@@ -6,12 +6,30 @@
   <title>Mini Space Invaders (Canvas)</title>
   <style>
     html, body { margin:0; height:100%; background:#0b0f14; color:#e8eef7; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; }
-    .wrap { display:flex; align-items:center; justify-content:center; height:100%; }
-    canvas { background:#05070a; border:1px solid #1d2a38; border-radius:10px; box-shadow: 0 12px 40px rgba(0,0,0,.5); touch-action: manipulation; }
+    .wrap {
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      height:100%;
+      padding: 14px;                 /* ✅ NUEVO: margen para móviles */
+      box-sizing: border-box;
+    }
+
+    /* ✅ NUEVO: canvas responsive en CSS (el tamaño real lo ajusta JS) */
+    canvas {
+      width: min(100%, 960px);
+      height: auto;
+      aspect-ratio: 4 / 3;
+      background:#05070a;
+      border:1px solid #1d2a38;
+      border-radius:10px;
+      box-shadow: 0 12px 40px rgba(0,0,0,.5);
+      touch-action: none;            /* ✅ NUEVO: mejor para pointer/touch */
+    }
+
     .hint { position:fixed; bottom:14px; left:50%; transform:translateX(-50%); opacity:.75; font-size:13px; text-align:center; padding:0 12px; pointer-events:none; }
     .hint kbd { background:#111a24; border:1px solid #223247; padding:2px 6px; border-radius:6px; }
 
-    /* ===== Botones flotantes ===== */
     .topButtons {
       position: fixed;
       top: 12px;
@@ -35,7 +53,6 @@
     }
     .pillBtn:active { transform: translateY(1px); filter: brightness(.95); }
 
-    /* ===== Overlay menú con botones ===== */
     .overlay {
       position: fixed; inset: 0;
       display: none;
@@ -98,7 +115,6 @@
     }
     .miniBtn:active{ transform: translateY(1px); }
     .miniBtn.disabled{ cursor:not-allowed; opacity:.45; }
-
     .note{ margin-top: 10px; font-size: 12px; opacity: .8; line-height: 1.35; }
   </style>
 </head>
@@ -113,10 +129,9 @@
   </div>
 
   <div class="hint">
-    Mover: <kbd>←</kbd><kbd>→</kbd> o <kbd>A</kbd><kbd>D</kbd> · Disparo auto · <kbd>R</kbd> menú
+    Mover: <kbd>←</kbd><kbd>→</kbd> o <kbd>A</kbd><kbd>D</kbd> · Mantén click para mover · <kbd>ESC</kbd> pausa · Disparo auto · <kbd>R</kbd> menú
   </div>
 
-  <!-- ===== Menú/selector de modo ===== -->
   <div id="menuOverlay" class="overlay" aria-hidden="false">
     <div class="panel">
       <div class="title">MINI SPACE INVADERS</div>
@@ -141,13 +156,13 @@
     </div>
   </div>
 
-  <!-- ===== Panel de información ===== -->
   <div id="infoOverlay" class="overlay" aria-hidden="true">
     <div class="panel">
       <div class="title">INFO</div>
       <div class="subtitle">
         Mueve tu nave con <strong>A/D</strong> o las flechas. Los disparos son automáticos.<br/>
-        Presiona <strong>R</strong> o usa el botón Menú para reiniciar y elegir modo.
+        Presiona <strong>R</strong> o usa el botón Menú para reiniciar y elegir modo.<br/>
+        <strong>ESC</strong> pausa / reanuda.
       </div>
       <div class="miniRow">
         <span class="miniBtn disabled" aria-disabled="true">Checkpoints cada 10 oleadas en Normal</span>
@@ -170,9 +185,41 @@
     a.x < b.x + b.w && a.x + a.w > b.x &&
     a.y < b.y + b.h && a.y + a.h > b.y;
 
-  const W = canvas.width, H = canvas.height;
-  const floorY = H - 70;
+  // ✅ NUEVO: resolución interna fija (lógica del juego)
+  const BASE_W = 800, BASE_H = 600;
+
+  // ✅ NUEVO: variables “virtuales” (se usan en vez de canvas.width/height para lógica)
+  let W = BASE_W, H = BASE_H;
+  let floorY = H - 70;
+
   const keys = new Set();
+
+  // ✅ NUEVO: estado de pausa + input mouse
+  const pause = { on:false };
+  const mouse = { down:false, x: BASE_W/2, lastX: BASE_W/2 };
+
+  // ✅ NUEVO: resize real (ajusta buffer del canvas + escala)
+  function resizeCanvas() {
+    const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+
+    // tamaño CSS real
+    const rect = canvas.getBoundingClientRect();
+    const cssW = Math.max(1, Math.floor(rect.width));
+    const cssH = Math.max(1, Math.floor(rect.height));
+
+    // buffer real
+    canvas.width  = Math.floor(cssW * dpr);
+    canvas.height = Math.floor(cssH * dpr);
+
+    // el ctx dibuja en “coordenadas del juego” (0..BASE_W / 0..BASE_H)
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.scale(canvas.width / BASE_W, canvas.height / BASE_H);
+
+    // W/H lógicos se mantienen
+    W = BASE_W; H = BASE_H;
+    floorY = H - 70;
+  }
+  window.addEventListener("resize", resizeCanvas, { passive:true });
 
   // ===== DOM: overlay =====
   const overlay = document.getElementById("menuOverlay");
@@ -190,15 +237,46 @@
   function showInfo() { infoOverlay.style.display = "flex"; infoOverlay.setAttribute("aria-hidden","false"); }
   function hideInfo() { infoOverlay.style.display = "none"; infoOverlay.setAttribute("aria-hidden","true"); }
 
+  // ✅ NUEVO: overlay simple de PAUSA reutilizando .overlay/.panel
+  const pauseOverlay = document.createElement("div");
+  pauseOverlay.className = "overlay";
+  pauseOverlay.style.display = "none";
+  pauseOverlay.setAttribute("aria-hidden","true");
+  pauseOverlay.innerHTML = `
+    <div class="panel">
+      <div class="title">PAUSA</div>
+      <div class="subtitle">Pulsa <strong>ESC</strong> para reanudar.</div>
+      <div class="miniRow" style="margin-top:14px;">
+        <button id="btnResume" class="btn" type="button">Reanudar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(pauseOverlay);
+  const btnResume = pauseOverlay.querySelector("#btnResume");
+  function showPause() { pauseOverlay.style.display="flex"; pauseOverlay.setAttribute("aria-hidden","false"); }
+  function hidePause() { pauseOverlay.style.display="none"; pauseOverlay.setAttribute("aria-hidden","true"); }
+
+  function setPaused(v) {
+    pause.on = !!v;
+    if (pause.on) showPause(); else hidePause();
+  }
+  function togglePause() {
+    // solo tiene sentido si estás jugando (o en game over/ganado no)
+    if (state.status !== "PLAYING") return;
+    // si hay overlays de menú/info abiertos, mejor no pausar “encima”
+    if (overlay.style.display === "flex" || infoOverlay.style.display === "flex") return;
+    setPaused(!pause.on);
+  }
+
+  btnResume.addEventListener("click", () => setPaused(false));
+  pauseOverlay.addEventListener("click", (e) => { if (e.target === pauseOverlay) setPaused(false); });
+
   // ===== Persistencia =====
   const LS_UNLOCK = "msi_unlocked_hardcore";
   const LS_LASTMODE = "msi_last_mode";
   const LS_CHECKPOINT = "msi_checkpoint_v1";
-
-  // ✅ (NUEVO) medalla al ganar hardcore
   const LS_MEDAL_HARDCORE = "msi_medal_hardcore";
   const setHardcoreMedal = () => localStorage.setItem(LS_MEDAL_HARDCORE, "1");
-
   const hasHardcoreUnlocked = () => localStorage.getItem(LS_UNLOCK) === "1";
   const setHardcoreUnlocked = () => localStorage.setItem(LS_UNLOCK, "1");
 
@@ -211,24 +289,15 @@
       return obj;
     } catch { return null; }
   }
-  function saveCheckpoint(obj) {
-    try { localStorage.setItem(LS_CHECKPOINT, JSON.stringify(obj)); } catch {}
-  }
-  function clearCheckpoint() {
-    try { localStorage.removeItem(LS_CHECKPOINT); } catch {}
-  }
+  function saveCheckpoint(obj) { try { localStorage.setItem(LS_CHECKPOINT, JSON.stringify(obj)); } catch {} }
+  function clearCheckpoint() { try { localStorage.removeItem(LS_CHECKPOINT); } catch {} }
 
   function refreshMenuButtons() {
     const unlocked = hasHardcoreUnlocked();
-
     btnNormal.innerHTML = `NORMAL<small>Checkpoint cada 10 niveles</small>`;
-
     btnHardcore.classList.toggle("disabled", !unlocked);
-    if (!unlocked) {
-      btnHardcore.innerHTML = `HARDCORE <span class="lock">🔒</span><small>Desbloquéalo ganando el juego</small>`;
-    } else {
-      btnHardcore.innerHTML = `HARDCORE<small>Sin checkpoints</small>`;
-    }
+    if (!unlocked) btnHardcore.innerHTML = `HARDCORE <span class="lock">🔒</span><small>Desbloquéalo ganando el juego</small>`;
+    else btnHardcore.innerHTML = `HARDCORE<small>Sin checkpoints</small>`;
 
     const cp = loadCheckpoint();
     const cpOk = !!cp;
@@ -265,10 +334,7 @@
 
   // ===== Screen shake =====
   const shake = { t: 0, mag: 0 };
-  function triggerShake(mag = 7, dur = 0.16) {
-    shake.t = Math.max(shake.t, dur);
-    shake.mag = Math.max(shake.mag, mag);
-  }
+  function triggerShake(mag = 7, dur = 0.16) { shake.t = Math.max(shake.t, dur); shake.mag = Math.max(shake.mag, mag); }
   function stopShake() { shake.t = 0; shake.mag = 0; }
 
   // ===== Modo =====
@@ -276,30 +342,8 @@
 
   // ===== Ajustes =====
   const tuning = {
-    NORMAL: {
-      enemyShootMul: 1.0,
-      enemySpeedMul: 1.0,
-      enemyBulletMul: 1.0,
-      bossHpMul: 1.0,
-      bossFireMul: 1.0,
-      rapidDropChance: 0.10,
-      shieldDropChance: 0.05,
-      buddyDropChance: 0.002,
-      dmgDropChance: 0.0006,
-      checkpoints: true,
-    },
-    HARDCORE: {
-      enemyShootMul: 1.35,
-      enemySpeedMul: 1.15,
-      enemyBulletMul: 1.15,
-      bossHpMul: 1.15,
-      bossFireMul: 1.15,
-      rapidDropChance: 0.06,
-      shieldDropChance: 0.035,
-      buddyDropChance: 0.0016,
-      dmgDropChance: 0.0005,
-      checkpoints: false,
-    }
+    NORMAL: { enemyShootMul:1.0, enemySpeedMul:1.0, enemyBulletMul:1.0, bossHpMul:1.0, bossFireMul:1.0, rapidDropChance:0.10, shieldDropChance:0.05, buddyDropChance:0.002, dmgDropChance:0.0006, checkpoints:true },
+    HARDCORE:{ enemyShootMul:1.35, enemySpeedMul:1.15, enemyBulletMul:1.15, bossHpMul:1.15, bossFireMul:1.15, rapidDropChance:0.06, shieldDropChance:0.035, buddyDropChance:0.0016, dmgDropChance:0.0005, checkpoints:false },
   };
   function currentTuning() { return tuning[mode.name] || tuning.NORMAL; }
   function isBossWave(w) { return (w % 5 === 0); }
@@ -309,7 +353,7 @@
     lives: 3,
     maxLives: 3,
     wave: 1,
-    status: "MENU", // MENU | PLAYING | GAME_OVER | GAME_WON
+    status: "MENU",
     maxWaves: 100,
     justWon: false,
   };
@@ -327,30 +371,21 @@
     dmgUpgradesMax: 10,
   };
 
-  // ===== Transición oleadas =====
-  // ✅ (CAMBIO) más lenta
   const transition = { active:false, t:0, dur:2.25, fromOffset:260, labelT:0, label:"" };
   function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
-
-  // ✅ (CAMBIO) pausa entre oleadas
   let waveIntermission = 0;
 
-  // ===== Balas =====
   const playerBullets = [];
   const enemyBullets = [];
-
-  // ===== Compañeros =====
   const buddies = [];
   function makeBuddy(slotIndex) { return { slotIndex, cooldown: 0 }; }
 
-  // ===== Powerups =====
   const powerups = [];
   const POWERUP_RAPID  = "RAPID";
   const POWERUP_SHIELD = "SHIELD";
   const POWERUP_BUDDY  = "BUDDY";
   const POWERUP_DMG    = "DMG";
 
-  // ===== Explosiones =====
   const explosions = [];
   function spawnExplosion(x, y, big = false) {
     const dur = big ? 0.85 : 0.32;
@@ -364,7 +399,6 @@
     explosions.push({ x, y, t: 0, dur, parts, big });
   }
 
-  // ===== Secuencia muerte jefe (rayos + explosión) =====
   const bossDeath = { active:false, t:0, preDur:0.95, explodeDur:0.25, x:0, y:0, wasFinalWin:false };
   function startBossDeathSequence(centerX, centerY, wasFinalWin) {
     bossDeath.active = true;
@@ -377,7 +411,6 @@
     beep(65, 0.18, "sawtooth", 0.05);
   }
 
-  // ===== Enemigos =====
   const enemies = {
     rows: 5, cols: 10,
     padX: 14, padY: 14,
@@ -390,7 +423,6 @@
     locked: false,
   };
 
-  // ===== Adds y Boss =====
   const adds = [];
   const addsCfg = { w:34, h:20, bulletSpeed:210, shootChance:0.0018, max:16 };
   const boss = {
@@ -402,7 +434,6 @@
     locked:false, targetY:0, spawnY:0,
   };
 
-  // ===== Estilo unificado =====
   function drawInvaderBody(x, y, w, h, bodyColor) {
     ctx.fillStyle = bodyColor;
     ctx.fillRect(x, y, w, h);
@@ -441,109 +472,10 @@
     return "rgba(255, 120, 40, .92)";
   }
 
-  // ===== Vida por tramos =====
   function hpRangeForWave(wave) {
     const tier = Math.floor((wave - 1) / 5) + 1;
     return { minHp: tier, maxHp: tier + 1 };
   }
-
-  // ===== Panel secreto (SIN Ctrl+Q) =====
-  function estimateProgressToWave(targetWave) {
-    const t = currentTuning();
-    const enemiesPerNormalWave = enemies.rows * enemies.cols;
-    let normalWaves = 0;
-    for (let w = 1; w < targetWave; w++) if (!isBossWave(w)) normalWaves++;
-    const totalKills = normalWaves * enemiesPerNormalWave;
-
-    const expectedRapid = totalKills * t.rapidDropChance;
-    const approxFireRate = 2.0 + expectedRapid * player.fireRateStep;
-
-    const lambdaBuddy = totalKills * t.buddyDropChance;
-    const pGe1 = 1 - Math.exp(-lambdaBuddy);
-    const pGe2 = 1 - (1 + lambdaBuddy) * Math.exp(-lambdaBuddy);
-    const approxBuddies = clamp(Math.round(pGe1 + pGe2), 0, 2);
-
-    const expectedDmg = totalKills * t.dmgDropChance;
-    const approxDmgUp = clamp(Math.round(expectedDmg), 0, player.dmgUpgradesMax);
-    const approxDamage = 1 + approxDmgUp;
-
-    return { approxFireRate, approxBuddies, approxDamage };
-  }
-
-  const devPanel = document.createElement("div");
-  devPanel.style.cssText = `
-    position: fixed; right: 18px; top: 18px; z-index: 9999;
-    width: 320px; padding: 12px; border-radius: 12px;
-    background: rgba(10,14,20,.92);
-    border: 1px solid rgba(120,150,200,.25);
-    box-shadow: 0 12px 40px rgba(0,0,0,.55);
-    display: none;
-    color: #e8eef7;
-    font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
-  `;
-  devPanel.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
-      <div style="font-weight:700;">Panel secreto</div>
-      <button id="devClose" style="cursor:pointer;border-radius:10px;border:1px solid rgba(120,150,200,.25);background:#111a24;color:#e8eef7;padding:4px 10px;">X</button>
-    </div>
-    <div style="margin-top:10px;font-size:13px;opacity:.9;">Saltar a oleada (1–100)</div>
-    <div style="display:flex; gap:8px; margin-top:8px;">
-      <input id="devWave" type="number" min="1" max="100" value="1"
-        style="flex:1;border-radius:10px;border:1px solid rgba(120,150,200,.25);background:#0b0f14;color:#e8eef7;padding:8px 10px;" />
-      <button id="devGo" style="cursor:pointer;border-radius:10px;border:1px solid rgba(120,150,200,.25);background:#111a24;color:#e8eef7;padding:8px 10px;">Ir</button>
-    </div>
-    <div id="devEst" style="margin-top:10px;font-size:12px;opacity:.9;white-space:pre-line;line-height:1.35;">Estimación: —</div>
-  `;
-  document.body.appendChild(devPanel);
-
-  let devOpen = false;
-  function updateDevEstimate() {
-    const w = clamp(Number(devPanel.querySelector("#devWave").value || 1), 1, state.maxWaves);
-    const est = estimateProgressToWave(w);
-    devPanel.querySelector("#devEst").textContent =
-      `Estimación al llegar a oleada ${w}:\n` +
-      `• cadencia ≈ ${est.approxFireRate.toFixed(1)} disp/s\n` +
-      `• daño ≈ ${est.approxDamage}\n` +
-      `• compañeros ≈ ${est.approxBuddies}/2`;
-  }
-  function toggleDevPanel() {
-    devOpen = !devOpen;
-    devPanel.style.display = devOpen ? "block" : "none";
-    if (devOpen) {
-      devPanel.querySelector("#devWave").value = String(state.wave);
-      updateDevEstimate();
-    }
-  }
-  function gotoWaveWithApprox(n) {
-    const w = clamp(Math.floor(n || 1), 1, state.maxWaves);
-    const est = estimateProgressToWave(w);
-
-    player.fireRate = est.approxFireRate;
-    buddies.length = 0;
-    for (let i = 0; i < est.approxBuddies; i++) buddies.push(makeBuddy(i));
-
-    const up = clamp(est.approxDamage - 1, 0, player.dmgUpgradesMax);
-    player.dmgUpgrades = up;
-    player.damage = 1 + up;
-
-    player.shield = 0;
-    state.lives = state.maxLives;
-
-    playerBullets.length = 0;
-    enemyBullets.length = 0;
-
-    bossDeath.active = false;
-    boss.active = false;
-    adds.length = 0;
-
-    state.wave = w;
-    state.status = "PLAYING";
-    hideOverlay();
-    startTransitionToWave(w, false);
-  }
-  devPanel.querySelector("#devClose").addEventListener("click", () => { devOpen = false; devPanel.style.display = "none"; });
-  devPanel.querySelector("#devWave").addEventListener("input", updateDevEstimate);
-  devPanel.querySelector("#devGo").addEventListener("click", () => gotoWaveWithApprox(Number(devPanel.querySelector("#devWave").value)));
 
   // ===== Hearts =====
   function drawHeart(x, y, size, filled) {
@@ -576,40 +508,32 @@
     ctx.fill();
     ctx.restore();
   }
-
-  // ✅ (NUEVO) Escudo visible alrededor del jugador cuando tiene shield
   function drawPlayerShield() {
     if (player.shield <= 0) return;
     const cx = player.x + player.w / 2;
     const cy = player.y + player.h / 2;
-
     const baseR = Math.max(player.w, player.h) * 0.95;
     const pulse = 1 + 0.06 * Math.sin(performance.now() * 0.01);
-
     ctx.save();
-
     ctx.globalAlpha = 0.60;
     ctx.strokeStyle = "rgba(74,168,255,.95)";
     ctx.lineWidth = 4;
     ctx.beginPath();
     ctx.arc(cx, cy, baseR * pulse, 0, Math.PI * 2);
     ctx.stroke();
-
     ctx.globalAlpha = 0.16;
     ctx.lineWidth = 10;
     ctx.beginPath();
     ctx.arc(cx, cy, (baseR + 6) * pulse, 0, Math.PI * 2);
     ctx.stroke();
-
     ctx.restore();
   }
 
-  // ===== Auto fire =====
-  function shootFrom(x, y, speed = -720, dmg = 1) {
-    playerBullets.push({ x, y, w: 6, h: 12, vy: speed, dmg });
-  }
+  function shootFrom(x, y, speed = -720, dmg = 1) { playerBullets.push({ x, y, w: 6, h: 12, vy: speed, dmg }); }
+
   function autoFire(dt) {
     if (state.status !== "PLAYING") return;
+    if (pause.on) return;                 // ✅ NUEVO
     if (transition.active) return;
     if (bossDeath.active) return;
 
@@ -632,7 +556,6 @@
     }
   }
 
-  // ===== Powerups =====
   function trySpawnPowerupAt(x, y, type) { powerups.push({ x: x - 18, y: y - 13, w: 36, h: 24, vy: 155, type }); }
   function applyPowerup(type) {
     if (type === POWERUP_RAPID) { player.fireRate += 0.5; beep(520, 0.05, "triangle", 0.04); }
@@ -641,7 +564,6 @@
     else if (type === POWERUP_DMG) { if (player.dmgUpgrades < player.dmgUpgradesMax) { player.dmgUpgrades++; player.damage = 1 + player.dmgUpgrades; beep(880, 0.07, "square", 0.045); beep(660, 0.05, "triangle", 0.03); } }
   }
 
-  // ===== Enemy bullets =====
   function spawnEnemyBullet(x, y, vx, vy, fromBoss = false) {
     const t = currentTuning();
     enemyBullets.push({ x, y, w: 6, h: 12, vx: (vx||0)*t.enemyBulletMul, vy: (vy||205)*t.enemyBulletMul, fromBoss });
@@ -653,7 +575,6 @@
     spawnEnemyBullet(fromX, fromY, (dx/len)*speed, (dy/len)*speed, fromBoss);
   }
 
-  // ===== Damage received =====
   function onGameOver() {
     triggerShake(16, 0.65);
     beep(85, 0.14, "square", 0.08);
@@ -677,7 +598,6 @@
     }
   }
 
-  // ===== Boss init =====
   function initFinalBoss(spawnFromTop) {
     boss.active = true;
     boss.isFinal = true;
@@ -713,7 +633,6 @@
     boss.locked = !!spawnFromTop;
   }
 
-  // ===== Enemies init =====
   function initEnemiesForWave(wave, spawnFromTop) {
     enemies.alive = [];
     enemies.dir = 1;
@@ -743,12 +662,9 @@
     }
   }
 
-  // ===== Transition =====
   function startTransitionToWave(wave, instant = false) {
-    // SOLO balas desaparecen
     playerBullets.length = 0;
     enemyBullets.length = 0;
-
     bossDeath.active = false;
     boss.active = false;
     adds.length = 0;
@@ -797,11 +713,8 @@
     if (next > state.maxWaves) {
       state.status = "GAME_WON";
       state.justWon = true;
-
       setHardcoreUnlocked();
-      // ✅ (NUEVO) medalla si ganas en HARDCORE
       if (mode.name === "HARDCORE") setHardcoreMedal();
-
       showOverlay();
       refreshMenuButtons();
       beep(520, 0.12, "triangle", 0.05);
@@ -812,7 +725,6 @@
     startTransitionToWave(next, false);
   }
 
-  // ===== Boss patterns =====
   function normalBossFire(dt) {
     const t = currentTuning();
     boss.cooldown = Math.max(0, boss.cooldown - dt);
@@ -862,8 +774,7 @@
     for (let i = 0; i < count; i++) {
       if (adds.length >= addsCfg.max) break;
       adds.push({
-        x: startX + i*gap,
-        y,
+        x: startX + i*gap, y,
         w: addsCfg.w, h: addsCfg.h,
         alive: true,
         hpMax: 2, hp: 2,
@@ -926,19 +837,17 @@
     if (!boss.active || boss.locked) return;
     if (transition.active) return;
     if (bossDeath.active) return;
-
+    if (pause.on) return;              // ✅ NUEVO
     if (boss.isFinal) { spawnFinalBossAdds(dt); finalBossFire(dt); }
     else normalBossFire(dt);
   }
 
-  // ===== Boss 50 rewards =====
   function applyBoss50RewardLife() {
     state.lives = clamp(state.lives + 1, 0, state.maxLives);
     beep(520, 0.08, "triangle", 0.05);
     beep(660, 0.06, "sine", 0.03);
   }
 
-  // ===== Menu / start / reset =====
   function startGameWithModeFromMenu(m) {
     mode.name = m;
     localStorage.setItem(LS_LASTMODE, m);
@@ -951,7 +860,6 @@
   function startFromCheckpoint(cp) {
     mode.name = "NORMAL";
     localStorage.setItem(LS_LASTMODE, "NORMAL");
-
     resetGame(false);
     state.status = "PLAYING";
     hideOverlay();
@@ -988,7 +896,6 @@
     player.dmgUpgrades = 0;
 
     buddies.length = 0;
-
     playerBullets.length = 0;
     enemyBullets.length = 0;
 
@@ -1005,14 +912,15 @@
     stopShake();
     waveIntermission = 0;
 
+    // ✅ NUEVO: al resetear, quitamos pausa
+    setPaused(false);
+
     state.status = toMenu ? "MENU" : "PLAYING";
     if (toMenu) { showOverlay(); refreshMenuButtons(); }
   }
 
-  // ===== Rays draw =====
   function drawBossDeathRays() {
     if (!bossDeath.active) return;
-
     const t = bossDeath.t;
     const p = clamp(t / bossDeath.preDur, 0, 1);
     const fade = 1 - Math.pow(p, 1.8);
@@ -1020,7 +928,6 @@
 
     ctx.save();
     ctx.globalAlpha = 0.55 * fade;
-
     const rays = 22;
     const baseLen = 420 + 180 * Math.sin(t * 3.1);
     const rot = t * 2.4;
@@ -1056,12 +963,24 @@
     ctx.beginPath();
     ctx.arc(cx, cy, 18 + 18*Math.sin(t*7), 0, Math.PI*2);
     ctx.stroke();
-
     ctx.restore();
   }
 
-  // ===== Update =====
+  // ✅ NUEVO: helper para convertir posición de puntero a coords del juego (0..BASE_W/H)
+  function pointerToGameXY(e) {
+    const rect = canvas.getBoundingClientRect();
+    const x01 = (e.clientX - rect.left) / rect.width;
+    const y01 = (e.clientY - rect.top) / rect.height;
+    return {
+      x: clamp(x01 * BASE_W, 0, BASE_W),
+      y: clamp(y01 * BASE_H, 0, BASE_H),
+    };
+  }
+
   function update(dt) {
+    // ✅ NUEVO: si está en pausa, no avanza nada (pero sí dibujamos)
+    if (pause.on) return;
+
     if (shake.t > 0) {
       shake.t = Math.max(0, shake.t - dt);
       shake.mag = Math.max(0, shake.mag - dt * 18);
@@ -1074,18 +993,24 @@
 
     if (state.status !== "PLAYING") return;
 
-    // movimiento
-    const left = (keys.has("ArrowLeft") || keys.has("KeyA")) ? 1 : 0;
-    const right = (keys.has("ArrowRight") || keys.has("KeyD")) ? 1 : 0;
-    player.x = clamp(player.x + (right - left) * player.speed * dt, 12, W - player.w - 12);
+    // ✅ NUEVO: movimiento por mouse mantenido (prioridad: mouse > teclado)
+    let axis = 0;
+    if (mouse.down) {
+      const targetX = mouse.x - player.w/2;
+      const diff = targetX - player.x;
+      // zona muerta pequeña para no vibrar
+      axis = Math.abs(diff) < 2 ? 0 : (diff > 0 ? 1 : -1);
+    } else {
+      const left = (keys.has("ArrowLeft") || keys.has("KeyA")) ? 1 : 0;
+      const right = (keys.has("ArrowRight") || keys.has("KeyD")) ? 1 : 0;
+      axis = (right - left);
+    }
 
-    // boss death (rayos + explosión)
+    player.x = clamp(player.x + axis * player.speed * dt, 12, W - player.w - 12);
+
     if (bossDeath.active) {
       bossDeath.t += dt;
-      if (bossDeath.t < dt * 1.2) {
-        playerBullets.length = 0;
-        enemyBullets.length = 0;
-      }
+      if (bossDeath.t < dt * 1.2) { playerBullets.length = 0; enemyBullets.length = 0; }
       const total = bossDeath.preDur + bossDeath.explodeDur;
       if (bossDeath.t >= total) {
         spawnExplosion(bossDeath.x, bossDeath.y, true);
@@ -1093,15 +1018,11 @@
         beep(70, 0.18, "sawtooth", 0.06);
 
         bossDeath.active = false;
-
         if (bossDeath.wasFinalWin) {
           state.status = "GAME_WON";
           state.justWon = true;
-
           setHardcoreUnlocked();
-          // ✅ (NUEVO) medalla si ganas en HARDCORE
           if (mode.name === "HARDCORE") setHardcoreMedal();
-
           showOverlay();
           refreshMenuButtons();
           return;
@@ -1113,7 +1034,6 @@
 
     autoFire(dt);
 
-    // transición bajar desde arriba
     if (transition.active) {
       transition.t = Math.min(transition.dur, transition.t + dt);
       transition.labelT = Math.min(1, transition.labelT + dt * 1.8);
@@ -1138,14 +1058,12 @@
       }
     }
 
-    // bullets jugador
     for (let i = playerBullets.length - 1; i >= 0; i--) {
       const b = playerBullets[i];
       b.y += b.vy * dt;
       if (b.y + b.h < 0) playerBullets.splice(i, 1);
     }
 
-    // powerups
     for (let i = powerups.length - 1; i >= 0; i--) {
       const p = powerups[i];
       p.y += p.vy * dt;
@@ -1153,7 +1071,6 @@
       if (p.y > H + 30) powerups.splice(i, 1);
     }
 
-    // boss / enemies
     if (boss.active) {
       waveIntermission = 0;
 
@@ -1165,7 +1082,6 @@
 
       bossFire(dt);
 
-      // hit boss
       for (let i = playerBullets.length - 1; i >= 0; i--) {
         const b = playerBullets[i];
         if (rectsIntersect(b, boss)) {
@@ -1197,7 +1113,6 @@
     } else {
       const aliveEnemies = enemies.alive.filter(e => e.alive);
 
-      // ✅ (CAMBIO) pausa entre oleadas (no cambia instantáneo)
       if (aliveEnemies.length === 0 && !transition.active) {
         waveIntermission = Math.min(0.55, waveIntermission + dt);
         if (waveIntermission >= 0.55) {
@@ -1247,7 +1162,6 @@
           return;
         }
 
-        // shooters
         const shootersByCol = new Map();
         for (const e of aliveEnemies) {
           const prev = shootersByCol.get(e.c);
@@ -1260,7 +1174,6 @@
         }
       }
 
-      // hit enemies
       const t = currentTuning();
       for (let i = playerBullets.length - 1; i >= 0; i--) {
         const b = playerBullets[i];
@@ -1288,7 +1201,6 @@
       }
     }
 
-    // bullets enemy movement + collision
     for (let i = enemyBullets.length - 1; i >= 0; i--) {
       const b = enemyBullets[i];
       b.x += (b.vx || 0) * dt;
@@ -1298,10 +1210,9 @@
     }
   }
 
-  // ===== Draw =====
   function draw() {
     let ox = 0, oy = 0;
-    if (shake.t > 0) { ox = (Math.random()*2-1)*shake.mag; oy = (Math.random()*2-1)*shake.mag; }
+    if (shake.t > 0 && !pause.on) { ox = (Math.random()*2-1)*shake.mag; oy = (Math.random()*2-1)*shake.mag; }
 
     ctx.save();
     ctx.translate(ox, oy);
@@ -1321,7 +1232,6 @@
     ctx.lineTo(W, floorY);
     ctx.stroke();
 
-    // UI
     ctx.fillStyle = "#e8eef7";
     ctx.font = "16px system-ui, sans-serif";
     ctx.fillText(`Puntuación: ${state.score}`, 16, 26);
@@ -1332,24 +1242,32 @@
     ctx.fillText(`Daño: ${player.damage} (+${player.dmgUpgrades}/${player.dmgUpgradesMax})`, 16, 114);
     ctx.globalAlpha = 1;
 
-    // vidas
+    // ✅ NUEVO: indicador de pausa dentro del canvas (por si ocultas overlay)
+    if (pause.on) {
+      ctx.globalAlpha = 0.65;
+      ctx.fillStyle = "rgba(0,0,0,.55)";
+      ctx.fillRect(0, 0, W, 90);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 28px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("PAUSA", W/2, 58);
+      ctx.textAlign = "start";
+    }
+
     const startX = W - 16 - (state.maxLives * 28);
     const baseY = 12;
     for (let i = 0; i < state.maxLives; i++) drawHeart(startX + i*28, baseY, 22, i < state.lives);
     const shieldY = baseY + 26;
     for (let i = 0; i < player.shield; i++) drawShieldHeartFilled(startX + i*28, shieldY, 22);
 
-    // player
     ctx.fillStyle = "#8bd3ff";
     ctx.fillRect(player.x, player.y, player.w, player.h);
     ctx.fillRect(player.x + 6, player.y - 10, player.w - 12, 10);
     ctx.fillStyle = "#d3f3ff";
     ctx.fillRect(player.x + player.w/2 - 4, player.y - 16, 8, 6);
-
-    // ✅ (NUEVO) círculo de escudo
     drawPlayerShield();
 
-    // buddies
     for (let i = 0; i < buddies.length; i++) {
       const b = buddies[i];
       const side = (b.slotIndex === 0) ? -1 : 1;
@@ -1358,11 +1276,9 @@
       drawInvaderBody(bx - 14, by, 28, 18, "rgba(184,255,138,.92)");
     }
 
-    // bullets player
     ctx.fillStyle = "#d0ff6b";
     for (const b of playerBullets) ctx.fillRect(b.x, b.y, b.w, b.h);
 
-    // enemies/boss
     if (boss.active) {
       drawInvaderBody(boss.x, boss.y, boss.w, boss.h, boss.isFinal ? "#ff2b2b" : "#ff7a2b");
 
@@ -1388,19 +1304,16 @@
       }
     }
 
-    // bullets enemy
     for (const b of enemyBullets) {
       ctx.fillStyle = b.fromBoss ? "#ff3b3b" : "#ff6b9e";
       ctx.fillRect(b.x, b.y, b.w, b.h);
     }
 
-    // powerups
     for (const p of powerups) {
       drawInvaderBody(p.x, p.y, p.w, p.h, powerupColor(p.type));
       drawGlyph(p.type, p.x, p.y, p.w, p.h);
     }
 
-    // explosions
     for (const ex of explosions) {
       const p = clamp(ex.t / ex.dur, 0, 1);
       const a = 1 - p;
@@ -1423,10 +1336,8 @@
       ctx.globalAlpha = 1;
     }
 
-    // rays
     drawBossDeathRays();
 
-    // transition label
     if (transition.active) {
       const a = clamp(transition.labelT, 0, 1);
       ctx.globalAlpha = 0.55 * a;
@@ -1447,62 +1358,32 @@
 
   // ===== Menu buttons wiring =====
   btnNormal.addEventListener("click", () => { ensureAudio(); startGameWithModeFromMenu("NORMAL"); });
+  btnHardcore.addEventListener("click", () => { ensureAudio(); if (!hasHardcoreUnlocked()) return; startGameWithModeFromMenu("HARDCORE"); });
 
-  btnHardcore.addEventListener("click", () => {
-    ensureAudio();
-    if (!hasHardcoreUnlocked()) return;
-    startGameWithModeFromMenu("HARDCORE");
-  });
+  btnContinue.addEventListener("click", () => { ensureAudio(); const cp = loadCheckpoint(); if (!cp) return; startFromCheckpoint(cp); });
+  btnClearCP.addEventListener("click", () => { ensureAudio(); clearCheckpoint(); refreshMenuButtons(); beep(240, 0.06, "sine", 0.03); });
 
-  btnContinue.addEventListener("click", () => {
-    ensureAudio();
-    const cp = loadCheckpoint();
-    if (!cp) return;
-    startFromCheckpoint(cp);
-  });
-
-  btnClearCP.addEventListener("click", () => {
-    ensureAudio();
-    clearCheckpoint();
-    refreshMenuButtons();
-    beep(240, 0.06, "sine", 0.03);
-  });
-
-  btnMenu.addEventListener("click", () => {
-    ensureAudio();
-    window.location.href = "index.html";
-  });
-
-  btnInfo.addEventListener("click", () => {
-    ensureAudio();
-    showInfo();
-  });
-
-  btnCloseInfo.addEventListener("click", () => {
-    hideInfo();
-  });
-
-  infoOverlay.addEventListener("click", (e) => {
-    if (e.target === infoOverlay) hideInfo();
-  });
+  btnMenu.addEventListener("click", () => { ensureAudio(); window.location.href = "index.html"; });
+  btnInfo.addEventListener("click", () => { ensureAudio(); showInfo(); });
+  btnCloseInfo.addEventListener("click", () => { hideInfo(); });
+  infoOverlay.addEventListener("click", (e) => { if (e.target === infoOverlay) hideInfo(); });
 
   // ===== Input =====
   window.addEventListener("keydown", (e) => {
     ensureAudio();
 
-    // (ELIMINADO) Ctrl+Q
+    if (["ArrowLeft","ArrowRight","KeyA","KeyD","KeyR","KeyC","Escape"].includes(e.code)) e.preventDefault();
 
-    if (["ArrowLeft","ArrowRight","KeyA","KeyD","KeyR","KeyC"].includes(e.code)) e.preventDefault();
-
-    keys.add(e.code);
-
-    // R vuelve al menú (y para el temblor)
-    if (e.code === "KeyR") {
-      resetGame(true);
+    // ✅ NUEVO: ESC pausa/reanuda
+    if (e.code === "Escape") {
+      togglePause();
       return;
     }
 
-    // C: continuar checkpoint desde menú (solo normal)
+    keys.add(e.code);
+
+    if (e.code === "KeyR") { resetGame(true); return; }
+
     if (e.code === "KeyC" && state.status === "MENU") {
       const cp = loadCheckpoint();
       if (cp) startFromCheckpoint(cp);
@@ -1511,18 +1392,81 @@
 
   window.addEventListener("keyup", (e) => keys.delete(e.code));
 
-  canvas.addEventListener("mousedown", () => { ensureAudio(); });
+  // ✅ NUEVO: Pointer (mouse/touch) para mover manteniendo pulsado
+  canvas.addEventListener("pointerdown", (e) => {
+    ensureAudio();
+    canvas.setPointerCapture?.(e.pointerId);
+    mouse.down = true;
+    const p = pointerToGameXY(e);
+    mouse.x = p.x;
+    mouse.lastX = p.x;
+  });
+
+  canvas.addEventListener("pointermove", (e) => {
+    if (!mouse.down) return;
+    const p = pointerToGameXY(e);
+    mouse.x = p.x;
+    mouse.lastX = p.x;
+  });
+
+  function endPointer(e) {
+    try { canvas.releasePointerCapture?.(e.pointerId); } catch {}
+    mouse.down = false;
+  }
+  canvas.addEventListener("pointerup", endPointer);
+  canvas.addEventListener("pointercancel", endPointer);
+  canvas.addEventListener("pointerleave", () => { mouse.down = false; });
 
   // ===== Start on menu =====
+  function resetGame(toMenu = true) {
+    state.score = 0;
+    state.maxLives = 3;
+    state.lives = 3;
+    state.wave = 1;
+    state.justWon = false;
+
+    player.fireRate = 2.0;
+    player._cooldown = 0;
+    player.shield = 0;
+    player.damage = 1;
+    player.dmgUpgrades = 0;
+
+    buddies.length = 0;
+    playerBullets.length = 0;
+    enemyBullets.length = 0;
+    powerups.length = 0;
+    explosions.length = 0;
+
+    bossDeath.active = false;
+    boss.active = false;
+    adds.length = 0;
+    enemies.alive = [];
+    transition.active = false;
+
+    stopShake();
+    waveIntermission = 0;
+
+    setPaused(false);
+
+    state.status = toMenu ? "MENU" : "PLAYING";
+    if (toMenu) { showOverlay(); refreshMenuButtons(); }
+  }
+
+  // ✅ NUEVO: inicia responsive antes de todo
+  resizeCanvas();
+
   resetGame(true);
   refreshMenuButtons();
   showOverlay();
 
-  // ===== Loop (UN SOLO last) =====
+  // ===== Loop =====
   let last = performance.now();
   function loop(t) {
-    const dt = Math.min(0.033, (t - last) / 1000);
-    last = t;
+    // ✅ NUEVO: si pausas, congelamos el tiempo (dt=0) evitando “saltos”
+    let dt = Math.min(0.033, (t - last) / 1000);
+    if (pause.on) { dt = 0; last = t; }
+    else last = t;
+
     update(dt);
     draw();
     requestAnimationFrame(loop);
