@@ -5,16 +5,60 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Irregular Verbs · Trainer</title>
   <style>
-    body { font-family: system-ui, sans-serif; background:#0f172a; color:#e5e7eb; display:flex; justify-content:center; align-items:center; min-height:100vh; }
-    .app { background:#1e293b; padding:24px; border-radius:16px; max-width:750px; width:100%; box-shadow:0 10px 40px rgba(0,0,0,0.4); text-align:center; }
-    h1 { font-size:22px; margin-bottom:8px; }
-    p { color:#9ca3af; font-size:14px; margin-bottom:20px; }
-    .infinitive { font-size:40px; font-weight:700; text-align:center; margin:20px 0; }
-    .inputs { display:grid; gap:10px; margin-bottom:10px; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background:#0f172a;
+      color:#e5e7eb;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      min-height:100vh;
+      padding: 16px;
+    }
+    .app {
+      background:#1e293b;
+      padding:24px;
+      border-radius:16px;
+      max-width:750px;
+      width:100%;
+      box-shadow:0 10px 40px rgba(0,0,0,0.4);
+      text-align:center;
+    }
+    h1 { font-size:22px; margin:0 0 8px; }
+    p { color:#9ca3af; font-size:14px; margin:0 0 20px; }
+    .infinitive { font-size:40px; font-weight:700; margin:20px 0; }
+
+    .inputs { display:grid; gap:10px; margin-bottom: 8px; }
     .field { text-align:left; }
     .field label { font-size:13px; color:#9ca3af; display:block; margin-bottom:4px; }
-    input { width:100%; padding:10px; border-radius:8px; border:1px solid #334155; background:#0f172a; color:white; font-size:16px; }
-    button { margin-top:10px; padding:10px 16px; border:none; border-radius:8px; background:#3b82f6; color:white; font-weight:600; cursor:pointer; }
+
+    input {
+      width:100%;
+      padding:10px;
+      border-radius:8px;
+      border:1px solid #334155;
+      background:#0f172a;
+      color:white;
+      font-size:16px;
+      outline: none;
+      pointer-events: auto;
+      user-select: text;
+    }
+    input:focus { border-color:#60a5fa; }
+
+    button {
+      margin-top:10px;
+      padding:10px 16px;
+      border:none;
+      border-radius:8px;
+      background:#3b82f6;
+      color:white;
+      font-weight:600;
+      cursor:pointer;
+    }
+
     .feedback { margin-top:10px; min-height:20px; }
     .ok { color:#22c55e; }
     .bad { color:#ef4444; }
@@ -33,6 +77,7 @@
   <div class="app">
     <h1>Irregular Verbs Trainer</h1>
     <p>Write the past simple, past participle and the Catalan translation.</p>
+
     <div class="infinitive" id="verb">go</div>
 
     <div class="inputs">
@@ -50,7 +95,7 @@
       </div>
     </div>
 
-    <button id="check">Check</button>
+    <button id="check" type="button">Check</button>
     <div class="feedback" id="feedback"></div>
 
     <div class="stats">
@@ -59,44 +104,75 @@
     </div>
 
     <div class="list-controls">
-      <button id="showList">Llista</button>
-      <button id="practiceList">Practicar llista</button>
+      <button id="showList" type="button">Llista</button>
+      <button id="practiceList" type="button">Practicar llista</button>
     </div>
     <div id="listDisplay" class="list-display"></div>
   </div>
 
   <script>
- const verbs = [
-  { base: 'be',     past: ['was','were'],  ppart: ['been'],        ca: ['',''] },
-  { base: 'beat',   past: ['beat'],        ppart: ['beaten'],      ca: ['',''] },
-  { base: 'become', past: ['became'],      ppart: ['become'],      ca: ['',''] },
-  { base: 'begin',  past: ['began'],       ppart: ['begun'],       ca: ['',''] },
-  { base: 'bend',   past: ['bent'],        ppart: ['bent'],        ca: ['',''] },
-  { base: 'bet',    past: ['bet'],         ppart: ['bet'],         ca: [''] },
-  { base: 'bite',   past: ['bit'],         ppart: ['bitten'],      ca: [''] },
-  { base: 'bleed',  past: ['bled'],        ppart: ['bled'],        ca: [''] },
-  { base: 'blow',   past: ['blew'],        ppart: ['blown'],       ca: [''] },
-  { base: 'break',  past: ['broke'],       ppart: ['broken'],      ca: [''] },
-  { base: 'bring',  past: ['brought'],     ppart: ['brought'],     ca: [''] },
-  { base: 'build',  past: ['built'],       ppart: ['built'],       ca: [''] },
-  { base: 'burn',   past: ['burnt','burned'], ppart: ['burnt','burned'], ca: [''] },
-  { base: 'buy',    past: ['bought'],      ppart: ['bought'],      ca: [''] },
-  { base: 'catch',  past: ['caught'],      ppart: ['caught'],      ca: ['',''] },
-  { base: 'choose', past: ['chose'],       ppart: ['chosen'],      ca: ['',''] },
-  { base: 'come',   past: ['came'],        ppart: ['come'],        ca: [''] },
-  { base: 'cost',   past: ['cost'],        ppart: ['cost'],        ca: [''] },
-  { base: 'cut',    past: ['cut'],         ppart: ['cut'],         ca: [''] },
-  { base: 'dig',    past: ['dug'],         ppart: ['dug'],         ca: ['',''] }
-];
+    const verbs = [
+      { base:'be',past:['was','were'],ppart:['been'],ca:['ser','estar']},
+      { base:'beat',past:['beat'],ppart:['beaten'],ca:['colpejar','batre']},
+      { base:'become',past:['became'],ppart:['become'],ca:['convertir-se']},
+      { base:'begin',past:['began'],ppart:['begun'],ca:['començar']},
+      { base:'bend',past:['bent'],ppart:['bent'],ca:['doblegar']},
+      { base:'bet',past:['bet'],ppart:['bet'],ca:['apostar']},
+      { base:'bite',past:['bit'],ppart:['bitten'],ca:['mossegar']},
+      { base:'bleed',past:['bled'],ppart:['bled'],ca:['sagnar']},
+      { base:'blow',past:['blew'],ppart:['blown'],ca:['bufar']},
+      { base:'break',past:['broke'],ppart:['broken'],ca:['trencar']},
+      { base:'bring',past:['brought'],ppart:['brought'],ca:['portar']},
+      { base:'build',past:['built'],ppart:['built'],ca:['construir']},
+      { base:'burn',past:['burnt','burned'],ppart:['burnt','burned'],ca:['cremar']},
+      { base:'buy',past:['bought'],ppart:['bought'],ca:['comprar']},
+      { base:'catch',past:['caught'],ppart:['caught'],ca:['atrapar','agafar']},
+      { base:'choose',past:['chose'],ppart:['chosen'],ca:['escollir','triar']},
+      { base:'come',past:['came'],ppart:['come'],ca:['venir']},
+      { base:'cost',past:['cost'],ppart:['cost'],ca:['costar']},
+      { base:'cut',past:['cut'],ppart:['cut'],ca:['tallar']},
+      { base:'dig',past:['dug'],ppart:['dug'],ca:['cavar']},
+      { base:'do',past:['did'],ppart:['done'],ca:['fer']},
+      { base:'draw',past:['drew'],ppart:['drawn'],ca:['dibuixar']},
+      { base:'dream',past:['dreamt','dreamed'],ppart:['dreamt','dreamed'],ca:['somiar']},
+      { base:'drink',past:['drank'],ppart:['drunk'],ca:['beure']},
+      { base:'drive',past:['drove'],ppart:['driven'],ca:['conduir']},
+      { base:'eat',past:['ate'],ppart:['eaten'],ca:['menjar']},
+      { base:'fall',past:['fell'],ppart:['fallen'],ca:['caure']},
+      { base:'feed',past:['fed'],ppart:['fed'],ca:['alimentar']},
+      { base:'feel',past:['felt'],ppart:['felt'],ca:['sentir']},
+      { base:'fight',past:['fought'],ppart:['fought'],ca:['lluitar']},
+      { base:'find',past:['found'],ppart:['found'],ca:['trobar']},
+      { base:'fly',past:['flew'],ppart:['flown'],ca:['volar']},
+      { base:'forget',past:['forgot'],ppart:['forgotten'],ca:['oblidar']},
+      { base:'forgive',past:['forgave'],ppart:['forgiven'],ca:['perdonar']},
+      { base:'freeze',past:['froze'],ppart:['frozen'],ca:['congelar']},
+      { base:'get',past:['got'],ppart:['got'],ca:['obtenir','aconseguir']},
+      { base:'give',past:['gave'],ppart:['given'],ca:['donar']},
+      { base:'go',past:['went'],ppart:['gone'],ca:['anar']},
+      { base:'grow',past:['grew'],ppart:['grown'],ca:['créixer','creixer']},
+      { base:'hang',past:['hung','hanged'],ppart:['hung','hanged'],ca:['penjar']},
+      { base:'have',past:['had'],ppart:['had'],ca:['tenir']},
+      { base:'hear',past:['heard'],ppart:['heard'],ca:['sentir','escoltar']},
+      { base:'hide',past:['hid'],ppart:['hidden'],ca:['amagar']},
+      { base:'hit',past:['hit'],ppart:['hit'],ca:['colpejar']},
+      { base:'hold',past:['held'],ppart:['held'],ca:['aguantar','subjectar']},
+      { base:'hurt',past:['hurt'],ppart:['hurt'],ca:['fer mal']},
+      { base:'keep',past:['kept'],ppart:['kept'],ca:['guardar','mantenir']},
+      { base:'know',past:['knew'],ppart:['known'],ca:['saber','conèixer','coneixer']},
+      { base:'lay',past:['laid'],ppart:['laid'],ca:['posar','estirar']},
+      { base:'lead',past:['led'],ppart:['led'],ca:['guiar','liderar']},
+      { base:'learn',past:['learnt','learned'],ppart:['learnt','learned'],ca:['aprendre']},
+      { base:'leave',past:['left'],ppart:['left'],ca:['deixar','abandonar']},
+    ];
 
     let current;
     let correct = 0;
     let wrong = 0;
     let failedOnce = false;
 
-    // verbs “difícils”
-    let difficultVerbs = [];   // guarda els 'base'
-    let useListOnly = false;   // mode practicar llista
+    let difficultVerbs = [];
+    let useListOnly = false;
 
     function updateStats(){
       document.getElementById('correctCount').textContent = correct;
@@ -104,7 +180,7 @@
     }
 
     function normalize(str){
-      return str
+      return (str || '')
         .toLowerCase()
         .trim()
         .normalize("NFD")
@@ -121,48 +197,44 @@
     function newVerb(){
       const pool = getPool();
       current = pool[Math.floor(Math.random()*pool.length)];
+
       document.getElementById('verb').textContent = current.base;
       document.getElementById('past').value = '';
       document.getElementById('ppart').value = '';
       document.getElementById('catalan').value = '';
       document.getElementById('feedback').textContent = '';
       failedOnce = false;
+
+      // IMPORTANTE: poner foco para poder escribir
       document.getElementById('past').focus();
     }
 
     function addToDifficultList(verbBase){
-      if (!difficultVerbs.includes(verbBase)) {
-        difficultVerbs.push(verbBase);
-      }
+      if (!difficultVerbs.includes(verbBase)) difficultVerbs.push(verbBase);
     }
 
     function check(){
       const fb = document.getElementById('feedback');
 
-      const valPast   = normalize(document.getElementById('past').value);
-      const valPpart  = normalize(document.getElementById('ppart').value);
-      const valCa     = normalize(document.getElementById('catalan').value);
+      const valPast  = normalize(document.getElementById('past').value);
+      const valPpart = normalize(document.getElementById('ppart').value);
+      const valCa    = normalize(document.getElementById('catalan').value);
 
       const pastOk  = current.past.some(p => normalize(p) === valPast);
       const ppartOk = current.ppart.some(p => normalize(p) === valPpart);
       const caOk    = current.ca.some(c => normalize(c) === valCa);
 
       if (pastOk && ppartOk && caOk) {
-        if (!failedOnce) {
-          correct++;
-          updateStats();
-        }
-        const pastDisplay  = current.past.join('/');
-        const ppartDisplay = current.ppart.join('/');
-        const caDisplay    = current.ca.join(' / ');
-        fb.innerHTML = `<span class='ok'>✅ Correct! ${current.base} → ${pastDisplay} · ${ppartDisplay} · (${caDisplay})</span>`;
-        setTimeout(newVerb, 800);
+        if (!failedOnce) correct++;
+        updateStats();
+        fb.innerHTML = `<span class='ok'>✅ Correct!</span>`;
+        setTimeout(newVerb, 700);
       } else {
-        fb.innerHTML = `<span class='bad'>❌ Alguna de les tres formes no és correcta. Torna-ho a provar.</span>`;
         wrong++;
         failedOnce = true;
         updateStats();
         addToDifficultList(current.base);
+        fb.innerHTML = `<span class='bad'>❌ Incorrect. Try again.</span>`;
       }
     }
 
@@ -174,11 +246,9 @@
       });
     });
 
-    // Botó "Llista" → mostra/oculta taula amb TOTS els verbs + llista de difícils
     document.getElementById('showList').addEventListener('click', () => {
       const div = document.getElementById('listDisplay');
 
-      // toggle: si ja està oberta → tancar
       if (div.style.display === 'block') {
         div.style.display = 'none';
         div.innerHTML = '';
@@ -211,15 +281,14 @@
       div.innerHTML = html;
     });
 
-    // Botó "Practicar llista" (toggle)
     document.getElementById('practiceList').addEventListener('click', (e) => {
       const btn = e.target;
+
       if (!useListOnly) {
         if (difficultVerbs.length === 0) {
           const div = document.getElementById('listDisplay');
           div.style.display = 'block';
-          div.innerHTML =
-            '<em>No hi ha verbs a la llista encara. Falla algun verb i s\'afegirà aquí 😉</em>';
+          div.innerHTML = '<em>No hi ha verbs a la llista encara. Falla algun verb i s\'afegirà aquí 😉</em>';
           return;
         }
         useListOnly = true;
@@ -231,6 +300,7 @@
       newVerb();
     });
 
+    // Iniciar
     newVerb();
   </script>
 </body>
