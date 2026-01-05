@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vocabulary · Catalan Trainer</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background:#0f172a;
+      color:#e5e7eb;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      min-height:100vh;
+      padding: 16px;
+    }
+    .app {
+      background:#1e293b;
+      padding:24px;
+      border-radius:16px;
+      max-width:650px;
+      width:100%;
+      box-shadow:0 10px 40px rgba(0,0,0,0.4);
+      text-align:center;
+    }
+    h1 { font-size:22px; margin:0 0 8px; }
+    p { color:#9ca3af; font-size:14px; margin:0 0 20px; }
+    .word { font-size:40px; font-weight:700; margin:20px 0; }
+
+    .field { text-align:left; }
+    .field label { font-size:13px; color:#9ca3af; display:block; margin-bottom:4px; }
+
+    input {
+      width:100%;
+      padding:10px;
+      border-radius:8px;
+      border:1px solid #334155;
+      background:#0f172a;
+      color:white;
+      font-size:16px;
+      outline: none;
+    }
+    input:focus { border-color:#60a5fa; }
+
+    button {
+      margin-top:12px;
+      padding:10px 16px;
+      border:none;
+      border-radius:8px;
+      background:#3b82f6;
+      color:white;
+      font-weight:600;
+      cursor:pointer;
+    }
+
+    .feedback { margin-top:10px; min-height:20px; }
+    .ok { color:#22c55e; }
+    .bad { color:#ef4444; }
+
+    .stats { margin-top:15px; font-size:16px; color:#9ca3af; }
+    .stats span { margin:0 10px; }
+
+    .list-display {
+      margin-top:15px;
+      font-size:14px;
+      max-height:260px;
+      overflow:auto;
+      display:none;
+      text-align:left;
+    }
+
+    table {
+      width:100%;
+      border-collapse:collapse;
+      font-size:13px;
+    }
+    th, td {
+      border:1px solid #334155;
+      padding:6px;
+    }
+    th { background:#111827; position:sticky; top:0; }
+  </style>
+</head>
+
+<body>
+<div class="app">
+  <h1>Catalan Vocabulary Trainer</h1>
+  <p>Write the Catalan translation.</p>
+
+  <div class="word" id="word">afraid</div>
+
+  <div class="field">
+    <label for="ca">Català</label>
+    <input type="text" id="ca" autocomplete="off" />
+  </div>
+
+  <button id="check">Check</button>
+  <div class="feedback" id="feedback"></div>
+
+  <div class="stats">
+    ✅ Correct: <span id="correct">0</span>
+    ❌ Wrong: <span id="wrong">0</span>
+  </div>
+
+  <button id="showList">Llista</button>
+  <div id="list" class="list-display"></div>
+</div>
+
+<script>
+const words = [
+  { en:'afraid', ca:['espantat','tenir por'] },
+  { en:'angry', ca:['enfadat'] },
+  { en:'calm', ca:['tranquil'] },
+  { en:'caring', ca:['afectuós','atent'] },
+  { en:'helpful', ca:['servicial'] },
+  { en:'jealous', ca:['envejós'] },
+  { en:'lucky', ca:['afortunat'] },
+  { en:'nervous', ca:['nerviós'] },
+  { en:'noisy', ca:['sorollós'] },
+  { en:'patient', ca:['pacient'] },
+  { en:'polite', ca:['educat'] },
+  { en:'quiet', ca:['callat'] },
+  { en:'reliable', ca:['responsable'] },
+  { en:'rude', ca:['maleducat'] },
+  { en:'selfish', ca:['egoista'] },
+  { en:'upset', ca:['disgustat'] },
+  { en:'worried', ca:['amoïnat'] },
+
+  { en:'daughter', ca:['filla'] },
+  { en:'son', ca:['fill'] },
+  { en:'husband', ca:['marit'] },
+  { en:'wife', ca:['dona','esposa'] },
+  { en:'parent', ca:['pare','mare'] },
+  { en:'grandparent', ca:['avi','àvia'] },
+  { en:'grandson', ca:['net'] },
+  { en:'granddaughter', ca:['neta'] },
+  { en:'nephew', ca:['nebot'] },
+  { en:'niece', ca:['neboda'] },
+
+  { en:'be born', ca:['néixer'] },
+  { en:'die', ca:['morir'] },
+  { en:'fall in love', ca:['enamorar-se'] },
+  { en:'get married', ca:['casar-se'] },
+  { en:'get divorced', ca:['divorciar-se'] },
+  { en:'graduate', ca:['graduar-se'] },
+  { en:'grow up', ca:['créixer'] },
+  { en:'move', ca:['mudar-se'] },
+  { en:'separate', ca:['separar-se'] }
+];
+
+let current;
+let correct = 0;
+let wrong = 0;
+
+function normalize(str){
+  return str.toLowerCase().trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"");
+}
+
+function newWord(){
+  current = words[Math.floor(Math.random()*words.length)];
+  document.getElementById('word').textContent = current.en;
+  document.getElementById('ca').value = '';
+  document.getElementById('feedback').textContent = '';
+  document.getElementById('ca').focus();
+}
+
+function check(){
+  const value = normalize(document.getElementById('ca').value);
+  const ok = current.ca.some(c => normalize(c) === value);
+
+  if(ok){
+    correct++;
+    document.getElementById('feedback').innerHTML = "<span class='ok'>✅ Correct!</span>";
+    setTimeout(newWord, 700);
+  } else {
+    wrong++;
+    document.getElementById('feedback').innerHTML = "<span class='bad'>❌ Incorrect</span>";
+  }
+  document.getElementById('correct').textContent = correct;
+  document.getElementById('wrong').textContent = wrong;
+}
+
+document.getElementById('check').addEventListener('click', check);
+document.getElementById('ca').addEventListener('keydown', e => {
+  if(e.key === 'Enter') check();
+});
+
+document.getElementById('showList').addEventListener('click', () => {
+  const div = document.getElementById('list');
+  if(div.style.display === 'block'){
+    div.style.display = 'none';
+    return;
+  }
+  let html = '<table><tr><th>English</th><th>Català</th></tr>';
+  words.forEach(w => {
+    html += `<tr><td>${w.en}</td><td>${w.ca.join(' / ')}</td></tr>`;
+  });
+  html += '</table>';
+  div.innerHTML = html;
+  div.style.display = 'block';
+});
+
+newWord();
+</script>
+</body>
+</html>
