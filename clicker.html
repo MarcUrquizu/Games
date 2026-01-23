@@ -135,7 +135,7 @@
   .mission.done{opacity:.75}
 </style>
 </head>
-<body data-game-key="clicker">
+<body >
 
 <!-- Top chips -->
 <div class="topbar" aria-label="Acciones rápidas">
@@ -572,7 +572,6 @@ loadGame(); recalcPPS(); recalcPorClic(); updateUI(); setImageLevel(currentImage
 // Mostrar ayuda solo la primera vez
 if (!localStorage.getItem('clicker_seen_help')){ openHelp(); localStorage.setItem('clicker_seen_help','1'); }
 </script>
-  <script src="secret-features.js"></script>
   <script src="touch-controls.js"></script>
 </body>
 </html>
