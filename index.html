@@ -16,6 +16,8 @@
   </script>
   <!-- Pixel font -->
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <!-- Google Identity Services -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 
   <style>
     /* RESET Y BOX-SIZING */
@@ -90,6 +92,79 @@
     .corner-button.rewards-button {
       color: #000000;
     }
+    /* Botón de autenticación en esquina superior derecha */
+    .auth-button-container {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      z-index: 2;
+    }
+    #login-logout-btn {
+      background: #fff;
+      color: #000;
+      font-weight: bold;
+      text-decoration: none;
+      padding: 10px 18px;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      cursor: pointer;
+      font-family: 'Press Start 2P', cursive;
+      font-size: 10px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    #login-logout-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    }
+    #login-logout-btn:active {
+      transform: translateY(1px);
+    }
+    /* Modal para Google Sign-In */
+    .google-signin-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 10000;
+      justify-content: center;
+      align-items: center;
+    }
+    .google-signin-modal.active {
+      display: flex;
+    }
+    .google-signin-modal-content {
+      background: #222;
+      padding: 30px;
+      border-radius: 10px;
+      text-align: center;
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+    }
+    .google-signin-modal-content h3 {
+      color: #0ff;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+    .google-signin-modal-close {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: #fff;
+      color: #000;
+      border: none;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      cursor: pointer;
+      font-size: 18px;
+      font-weight: bold;
+    }
 
     /* GRID DE BOTONES */
     .btn-container {
@@ -142,6 +217,19 @@
   <div class="corner-links">
     <a class="corner-button" href="noticias.html">Noticias</a>
     <a class="corner-button rewards-button" href="recompensas.html">Recompensas</a>
+  </div>
+
+  <div class="auth-button-container">
+    <button id="login-logout-btn">Login</button>
+  </div>
+
+  <!-- Modal para Google Sign-In -->
+  <div id="google-signin-modal" class="google-signin-modal">
+    <div class="google-signin-modal-content" style="position: relative;">
+      <button class="google-signin-modal-close" id="close-google-modal">×</button>
+      <h3>Iniciar sesión con Google</h3>
+      <div id="google-signin-button"></div>
+    </div>
   </div>
 
   <div class="btn-container">
@@ -224,6 +312,208 @@
   <script>
     /* ===== Contador de visitas ===== */
     fetch("https://api.countapi.xyz/hit/olap.es/visits").catch(() => {});
+  </script>
+
+  <script>
+    /* ===== Autenticación con Google Sign-In ===== */
+    // IMPORTANTE: Reemplaza 'YOUR_CLIENT_ID' con tu Client ID de Google Cloud Console
+    const GOOGLE_CLIENT_ID = '960980369582-b8o0bnb4g2tc450lerhn7cbc4hpbhtqi.apps.googleusercontent.com';
+    
+    let isAuthenticated = false;
+    let userInfo = null;
+    const loginBtn = document.getElementById('login-logout-btn');
+
+    // Verificar estado de autenticación al cargar
+    function checkAuthState() {
+      const savedAuth = localStorage.getItem('google_auth');
+      if (savedAuth) {
+        try {
+          const authData = JSON.parse(savedAuth);
+          if (authData.credential && authData.expiresAt > Date.now()) {
+            isAuthenticated = true;
+            userInfo = authData.userInfo;
+            updateButtonUI();
+          } else {
+            // Token expirado, limpiar
+            localStorage.removeItem('google_auth');
+            isAuthenticated = false;
+            userInfo = null;
+            updateButtonUI();
+          }
+        } catch (e) {
+          localStorage.removeItem('google_auth');
+          isAuthenticated = false;
+          userInfo = null;
+          updateButtonUI();
+        }
+      } else {
+        updateButtonUI();
+      }
+    }
+
+    // Actualizar UI del botón según el estado
+    function updateButtonUI() {
+      if (isAuthenticated) {
+        loginBtn.textContent = 'Logout';
+        loginBtn.onclick = handleLogout;
+      } else {
+        loginBtn.textContent = 'Login';
+        loginBtn.onclick = handleLogin;
+      }
+    }
+
+    // Manejar login
+    function handleLogin() {
+      if (typeof google === 'undefined' || !google.accounts) {
+        alert('Error: Google Identity Services no está cargado. Por favor, recarga la página.');
+        return;
+      }
+
+      if (GOOGLE_CLIENT_ID === 'YOUR_CLIENT_ID') {
+        alert('Error: Por favor, configura tu Google Client ID en el código.');
+        return;
+      }
+
+      // Mostrar modal
+      const modal = document.getElementById('google-signin-modal');
+      modal.classList.add('active');
+
+      // Inicializar Google Sign-In
+      google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleCredentialResponse
+      });
+
+      // Renderizar botón de Google en el modal
+      const googleButtonContainer = document.getElementById('google-signin-button');
+      googleButtonContainer.innerHTML = ''; // Limpiar contenedor
+      
+      google.accounts.id.renderButton(googleButtonContainer, {
+        theme: 'outline',
+        size: 'large',
+        text: 'signin_with',
+        width: 'auto',
+        type: 'standard'
+      });
+    }
+
+    // Cerrar modal
+    function closeGoogleModal() {
+      const modal = document.getElementById('google-signin-modal');
+      modal.classList.remove('active');
+    }
+
+    // Event listeners para cerrar modal
+    document.addEventListener('DOMContentLoaded', () => {
+      const closeBtn = document.getElementById('close-google-modal');
+      const modal = document.getElementById('google-signin-modal');
+      
+      if (closeBtn) {
+        closeBtn.addEventListener('click', closeGoogleModal);
+      }
+      
+      // Cerrar al hacer clic fuera del modal
+      if (modal) {
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) {
+            closeGoogleModal();
+          }
+        });
+      }
+    });
+
+    // Callback cuando el usuario se autentica
+    function handleCredentialResponse(response) {
+      if (response.credential) {
+        // Decodificar el JWT para obtener información del usuario
+        try {
+          const payload = JSON.parse(atob(response.credential.split('.')[1]));
+          userInfo = {
+            email: payload.email,
+            name: payload.name,
+            picture: payload.picture
+          };
+          
+          // Guardar en localStorage
+          const authData = {
+            credential: response.credential,
+            userInfo: userInfo,
+            expiresAt: payload.exp * 1000 // Convertir a milisegundos
+          };
+          localStorage.setItem('google_auth', JSON.stringify(authData));
+          
+          isAuthenticated = true;
+          updateButtonUI();
+          
+          // Cerrar modal
+          closeGoogleModal();
+          
+          // Limpiar el contenedor del botón de Google
+          const googleButtonContainer = document.getElementById('google-signin-button');
+          if (googleButtonContainer) {
+            googleButtonContainer.innerHTML = '';
+          }
+          
+          // Reinicializar para ocultar el prompt
+          google.accounts.id.disableAutoSelect();
+        } catch (e) {
+          console.error('Error procesando credencial:', e);
+          alert('Error al procesar la autenticación. Por favor, intenta de nuevo.');
+        }
+      }
+    }
+
+    // Manejar logout
+    function handleLogout() {
+      // Limpiar datos de autenticación
+      localStorage.removeItem('google_auth');
+      isAuthenticated = false;
+      userInfo = null;
+      
+      // Revocar sesión de Google
+      if (typeof google !== 'undefined' && google.accounts) {
+        google.accounts.id.disableAutoSelect();
+        // Limpiar el contenedor del botón de Google
+        const googleButtonContainer = document.getElementById('google-signin-button');
+        if (googleButtonContainer) {
+          googleButtonContainer.innerHTML = '';
+        }
+        // Cerrar modal si está abierto
+        closeGoogleModal();
+      }
+      
+      updateButtonUI();
+    }
+
+    // Inicializar cuando la página esté lista
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initializeAuth);
+    } else {
+      initializeAuth();
+    }
+
+    function initializeAuth() {
+      // Verificar estado de autenticación
+      checkAuthState();
+      
+      // Inicializar Google Identity Services cuando esté listo
+      window.addEventListener('load', () => {
+        if (typeof google !== 'undefined' && google.accounts && GOOGLE_CLIENT_ID !== 'YOUR_CLIENT_ID') {
+          google.accounts.id.initialize({
+            client_id: GOOGLE_CLIENT_ID,
+            callback: handleCredentialResponse
+          });
+        }
+      });
+      
+      // Si Google ya está cargado
+      if (typeof google !== 'undefined' && google.accounts && GOOGLE_CLIENT_ID !== 'YOUR_CLIENT_ID') {
+        google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleCredentialResponse
+        });
+      }
+    }
   </script>
 
   <script src="touch-controls.js"></script>
