@@ -192,7 +192,6 @@
     <div class="list-controls">
       <button id="toggleSelector" type="button">Seleccionar verbs</button>
       <button id="showList" type="button">Llista</button>
-      <button id="practiceList" type="button">Practicar llista</button>
     </div>
 
     <div id="selector" class="selector">
@@ -303,7 +302,19 @@
       { base:'shine', past:['shone'], ppart:['shone'], ca:['brillar']},
       { base:'shoot', past:['shot'], ppart:['shot'], ca:['disparar']},
       { base:'show', past:['showed'], ppart:['shown'], ca:['mostrar']},
-      { base:'shut', past:['shut'], ppart:['shut'], ca:['tancar']}
+      { base:'shut', past:['shut'], ppart:['shut'], ca:['tancar']},
+
+      /* ✅ AÑADIDOS */
+      { base:'sing',  past:['sang'],  ppart:['sung'],  ca:['cantar']},
+      { base:'sink',  past:['sank'],  ppart:['sunk'],  ca:['enfonsar-se','enfonsar']},
+      { base:'sit',   past:['sat'],   ppart:['sat'],   ca:['seure']},
+      { base:'sleep', past:['slept'], ppart:['slept'], ca:['dormir']},
+      { base:'smell', past:['smelt','smelled'], ppart:['smelt','smelled'], ca:['olorar','fer olor']},
+      { base:'speak', past:['spoke'], ppart:['spoken'], ca:['parlar']},
+      { base:'spell', past:['spelt','spelled'], ppart:['spelt','spelled'], ca:['lletrejar']},
+      { base:'spend', past:['spent'], ppart:['spent'], ca:['gastar','passar (temps)']},
+      { base:'stand', past:['stood'], ppart:['stood'], ca:['estar dret']},
+      { base:'steal', past:['stole'], ppart:['stolen'], ca:['robar']}
     ];
 
     let current;
@@ -311,13 +322,14 @@
     let wrong = 0;
     let failedOnce = false;
 
+    // Lista de “difíciles” (solo para mostrar en la tabla)
     let difficultVerbs = [];
-    let useListOnly = false;
 
     // Selección (sin Ctrl)
     let selectedVerbs = new Set(); // bases seleccionadas (vacío => todos)
     let lastClickedIndex = null;   // para Shift-range
     let renderedBases = [];        // bases en el orden actual (filtrado + orden)
+    let noneSelected = false;      // “cap” real
 
     function updateStats(){
       document.getElementById('correctCount').textContent = correct;
@@ -333,20 +345,13 @@
     }
 
     function getActiveVerbs(){
+      if (noneSelected) return [];
       if (selectedVerbs.size === 0) return verbs;
       return verbs.filter(v => selectedVerbs.has(v.base));
     }
 
-    function getPool(){
-      const active = getActiveVerbs();
-      if (useListOnly && difficultVerbs.length > 0) {
-        return active.filter(v => difficultVerbs.includes(v.base));
-      }
-      return active;
-    }
-
     function newVerb(){
-      const pool = getPool();
+      const pool = getActiveVerbs();
 
       if (pool.length === 0) {
         document.getElementById('verb').textContent = '—';
@@ -446,29 +451,6 @@
       div.innerHTML = html;
     });
 
-    /* PRACTICAR LISTA */
-    document.getElementById('practiceList').addEventListener('click', (e) => {
-      const btn = e.target;
-      const active = getActiveVerbs();
-      const difficultActive = difficultVerbs.filter(b => active.some(v => v.base === b));
-
-      if (!useListOnly) {
-        if (difficultActive.length === 0) {
-          const div = document.getElementById('listDisplay');
-          div.style.display = 'block';
-          div.innerHTML =
-            '<em>No hi ha verbs a la llista (o no són dins la selecció actual). Falla algun verb i s\'afegirà aquí 😉</em>';
-          return;
-        }
-        useListOnly = true;
-        btn.textContent = 'Practicar tots';
-      } else {
-        useListOnly = false;
-        btn.textContent = 'Practicar llista';
-      }
-      newVerb();
-    });
-
     /* ================== SELECTOR SIN CTRL (checkboxes) ================== */
     const selectorWrap = document.getElementById('selector');
     const verbListEl = document.getElementById('verbList');
@@ -481,6 +463,10 @@
 
     function updateSelectionInfo(){
       const total = verbs.length;
+      if (noneSelected) {
+        selectionInfo.textContent = `Actius: cap (0 de ${total}).`;
+        return;
+      }
       const sel = selectedVerbs.size;
       selectionInfo.textContent = sel === 0 ? `Actius: tots (${total}).` : `Actius: ${sel} de ${total}.`;
     }
@@ -500,7 +486,7 @@
 
       let html = '';
       list.forEach((v, idx) => {
-        const checked = (selectedVerbs.size === 0) ? false : selectedVerbs.has(v.base);
+        const checked = (!noneSelected && selectedVerbs.size !== 0 && selectedVerbs.has(v.base));
         html += `
           <div class="verb-item" data-base="${v.base}" data-idx="${idx}">
             <input type="checkbox" ${checked ? 'checked' : ''} />
@@ -516,28 +502,12 @@
       updateSelectionInfo();
     }
 
-    function setChecked(base, on){
-      if (on) selectedVerbs.add(base);
-      else selectedVerbs.delete(base);
-    }
-
-    function ensureNotAllImplicit(){
-      // Si el usuario empieza a seleccionar, queremos dejar de estar en "todos (vacío)".
-      // Pero no sabemos intención. Solución:
-      // - Si selectedVerbs está vacío y el usuario marca 1, creamos un set explícito.
-      // - Si selectedVerbs está vacío y el usuario desmarca (no tiene sentido), ignoramos.
-    }
-
     function clickItem(base, idx, shiftKey){
-      // Comportamiento:
-      // - Click normal: toggle del ítem.
-      // - Shift+click: marca un rango (todos ON) desde el último clic hasta el actual.
-      //   (sin Ctrl, esto es lo más útil y predecible)
+      // Click normal: toggle del ítem.
+      // Shift+click: marca un rango ON desde el último clic hasta el actual.
       if (shiftKey && lastClickedIndex !== null) {
-        // si estábamos en modo "todos (vacío)", no hay base para rango -> hacemos explícito:
-        if (selectedVerbs.size === 0) {
-          selectedVerbs = new Set(); // explícito
-        }
+        noneSelected = false;
+        if (selectedVerbs.size === 0) selectedVerbs = new Set(); // pasar a explícito
         const a = Math.min(lastClickedIndex, idx);
         const b = Math.max(lastClickedIndex, idx);
         for (let i=a; i<=b; i++){
@@ -545,17 +515,14 @@
           if (bse) selectedVerbs.add(bse);
         }
       } else {
-        // toggle
+        noneSelected = false;
         if (selectedVerbs.size === 0) {
-          // pasar de "todos" a selección explícita solo con este verbo
+          // pasar de "tots" (vacío) a selección explícita
           selectedVerbs = new Set([base]);
         } else {
           if (selectedVerbs.has(base)) selectedVerbs.delete(base);
           else selectedVerbs.add(base);
-          // si el usuario deselecciona todo, volvemos a "todos"
-          if (selectedVerbs.size === 0) {
-            // mantener vacío como "todos"
-          }
+          // si se queda vacío => vuelve a "tots"
         }
         lastClickedIndex = idx;
       }
@@ -571,7 +538,7 @@
     });
 
     filterInput.addEventListener('input', () => {
-      lastClickedIndex = null; // evitar rangos raros tras filtrar
+      lastClickedIndex = null;
       renderVerbList();
     });
 
@@ -582,61 +549,42 @@
     });
 
     document.getElementById('selectAll').addEventListener('click', () => {
-      // vacío = todos
-      selectedVerbs = new Set(); 
+      noneSelected = false;
+      selectedVerbs = new Set(); // vacío = todos
       renderVerbList();
     });
 
     document.getElementById('selectNone').addEventListener('click', () => {
-      // ninguno: usamos un set especial: dejamos explícitamente vacío pero marcamos flag
-      // para no romper tu lógica, aquí sí hacemos "ninguno real" guardando un set vacío
-      // y forzando un modo "noneSelected".
-      // Mejor: usamos una variable:
       noneSelected = true;
       selectedVerbs = new Set();
       renderVerbList();
-      updateSelectionInfo();
-      selectionInfo.textContent = `Actius: cap (0 de ${verbs.length}).`;
     });
 
     document.getElementById('invertSel').addEventListener('click', () => {
-      noneSelected = false;
-      if (selectedVerbs.size === 0) {
-        // si estaba "todos", invertir => ninguno (pero como ninguno real no existe en tu lógica), lo hacemos explícito con all-1? no.
-        // mejor: convertir a explícito con ninguno => usamos noneSelected
+      const all = new Set(verbs.map(v=>v.base));
+
+      if (noneSelected) {
+        // ninguno -> todos
+        noneSelected = false;
+        selectedVerbs = new Set();
+      } else if (selectedVerbs.size === 0) {
+        // todos -> ninguno
         noneSelected = true;
         selectedVerbs = new Set();
       } else {
-        const all = new Set(verbs.map(v=>v.base));
+        // invertir selección explícita
         const inv = new Set();
         all.forEach(b => { if (!selectedVerbs.has(b)) inv.add(b); });
         selectedVerbs = inv;
-        if (selectedVerbs.size === 0) noneSelected = true;
+        if (selectedVerbs.size === 0) {
+          // si queda vacío => "tots"
+          noneSelected = false;
+        }
       }
       renderVerbList();
-      if (noneSelected) selectionInfo.textContent = `Actius: cap (0 de ${verbs.length}).`;
     });
 
-    let noneSelected = false;
-
-    function getActiveVerbsPatched(){
-      if (noneSelected) return [];
-      if (selectedVerbs.size === 0) return verbs;
-      return verbs.filter(v => selectedVerbs.has(v.base));
-    }
-
-    // parche: sustituimos la función activa por esta versión
-    getActiveVerbs = getActiveVerbsPatched;
-
     document.getElementById('applySelection').addEventListener('click', () => {
-      // si no hay checks marcados y noneSelected=false => todos
-      // si noneSelected=true => ninguno
-      const active = getActiveVerbs();
-      const difficultActive = difficultVerbs.filter(b => active.some(v => v.base === b));
-      if (useListOnly && difficultActive.length === 0) {
-        useListOnly = false;
-        document.getElementById('practiceList').textContent = 'Practicar llista';
-      }
       newVerb();
     });
 
