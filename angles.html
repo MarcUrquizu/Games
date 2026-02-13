@@ -21,7 +21,7 @@
       background:#1e293b;
       padding:24px;
       border-radius:16px;
-      max-width:750px;
+      max-width:980px;
       width:100%;
       box-shadow:0 10px 40px rgba(0,0,0,0.4);
       text-align:center;
@@ -34,7 +34,7 @@
     .field { text-align:left; }
     .field label { font-size:13px; color:#9ca3af; display:block; margin-bottom:4px; }
 
-    input {
+    input[type="text"]{
       width:100%;
       padding:10px;
       border-radius:8px;
@@ -43,10 +43,8 @@
       color:white;
       font-size:16px;
       outline: none;
-      pointer-events: auto;
-      user-select: text;
     }
-    input:focus { border-color:#60a5fa; }
+    input[type="text"]:focus { border-color:#60a5fa; }
 
     button {
       margin-top:10px;
@@ -71,6 +69,94 @@
     .verb-table { width:100%; border-collapse:collapse; font-size:13px; margin-top:8px; }
     .verb-table th, .verb-table td { border:1px solid #334155; padding:4px 6px; }
     .verb-table th { background:#111827; position:sticky; top:0; }
+
+    /* Selector (checkbox list) */
+    .selector {
+      margin-top: 14px;
+      padding: 12px;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      background: #111827;
+      text-align: left;
+      display: none;
+    }
+    .selector-top{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-bottom: 10px;
+    }
+    .selector-top strong { font-size: 14px; }
+    .selector-top small { color:#9ca3af; display:block; margin-top:2px; }
+    .selector-actions { display:flex; gap:8px; flex-wrap:wrap; }
+    .selector-actions button {
+      margin-top: 0;
+      padding: 8px 10px;
+      border-radius: 10px;
+      background:#334155;
+    }
+    .selector-actions button.primary { background:#3b82f6; }
+    .selector-actions button.danger { background:#ef4444; }
+
+    .filter-row{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      margin: 10px 0 8px;
+      flex-wrap:wrap;
+    }
+    .filter-row input{
+      flex: 1;
+      min-width: 220px;
+      padding:10px;
+      border-radius:10px;
+      border:1px solid #334155;
+      background:#0f172a;
+      color:#e5e7eb;
+      outline:none;
+    }
+    .filter-row input:focus{ border-color:#60a5fa; }
+
+    .verb-list{
+      border:1px solid #334155;
+      border-radius:12px;
+      overflow:hidden;
+      max-height: 320px;
+      overflow:auto;
+      background:#0f172a;
+    }
+    .verb-item{
+      display:flex;
+      gap:10px;
+      padding:8px 10px;
+      border-bottom:1px solid #1f2937;
+      align-items:flex-start;
+      cursor:pointer;
+    }
+    .verb-item:last-child{ border-bottom:none; }
+    .verb-item:hover{ background:#0b1224; }
+    .verb-item input[type="checkbox"]{
+      margin-top: 3px;
+      transform: scale(1.15);
+      cursor:pointer;
+    }
+    .verb-text{
+      font-size: 13px;
+      line-height: 1.3;
+    }
+    .verb-text b{ font-size: 14px; }
+    .meta-line{
+      margin-top:8px;
+      color:#9ca3af;
+      font-size:13px;
+    }
+    .hint{
+      color:#9ca3af;
+      font-size:12px;
+      margin-top:6px;
+    }
   </style>
 </head>
 <body>
@@ -104,9 +190,33 @@
     </div>
 
     <div class="list-controls">
+      <button id="toggleSelector" type="button">Seleccionar verbs</button>
       <button id="showList" type="button">Llista</button>
-      <button id="practiceList" type="button">Practicar llista</button>
     </div>
+
+    <div id="selector" class="selector">
+      <div class="selector-top">
+        <div>
+          <strong>Selector de verbs (sense Ctrl)</strong>
+          <small>Clica per marcar/desmarcar · Mayús(Shift) marca un rang.</small>
+        </div>
+        <div class="selector-actions">
+          <button id="selectAll" type="button">Tots</button>
+          <button id="selectNone" type="button" class="danger">Cap</button>
+          <button id="invertSel" type="button">Invertir</button>
+          <button id="applySelection" type="button" class="primary">Aplicar</button>
+        </div>
+      </div>
+
+      <div class="filter-row">
+        <input id="filterInput" type="text" placeholder="Filtrar (ex: go, made, veure...)" />
+      </div>
+
+      <div id="verbList" class="verb-list"></div>
+      <div class="meta-line" id="selectionInfo"></div>
+      <div class="hint">Nota: Si no marques cap verb, es faran servir tots.</div>
+    </div>
+
     <div id="listDisplay" class="list-display"></div>
   </div>
 
@@ -164,6 +274,47 @@
       { base:'lead',past:['led'],ppart:['led'],ca:['guiar','liderar']},
       { base:'learn',past:['learnt','learned'],ppart:['learnt','learned'],ca:['aprendre']},
       { base:'leave',past:['left'],ppart:['left'],ca:['deixar','abandonar']},
+
+      { base:'lend', past:['lent'], ppart:['lent'], ca:['prestar']},
+      { base:'let', past:['let'], ppart:['let'], ca:['deixar','permetre']},
+      { base:'lie', past:['lay'], ppart:['lain'], ca:['jeure','estar estirat']},
+      { base:'light', past:['lit','lighted'], ppart:['lit','lighted'], ca:['encendre']},
+      { base:'lose', past:['lost'], ppart:['lost'], ca:['perdre']},
+      { base:'make', past:['made'], ppart:['made'], ca:['fer','fabricar']},
+      { base:'mean', past:['meant'], ppart:['meant'], ca:['significar','voler dir']},
+      { base:'meet', past:['met'], ppart:['met'], ca:['conèixer','trobar-se']},
+      { base:'overcome', past:['overcame'], ppart:['overcome'], ca:['superar']},
+      { base:'pay', past:['paid'], ppart:['paid'], ca:['pagar']},
+      { base:'put', past:['put'], ppart:['put'], ca:['posar']},
+      { base:'quit', past:['quit'], ppart:['quit'], ca:['deixar','abandonar']},
+      { base:'read', past:['read'], ppart:['read'], ca:['llegir']},
+      { base:'ride', past:['rode'], ppart:['ridden'], ca:['muntar','anar en']},
+      { base:'ring', past:['rang'], ppart:['rung'], ca:['sonar','trucar']},
+      { base:'rise', past:['rose'], ppart:['risen'], ca:['aixecar-se','pujar']},
+      { base:'run', past:['ran'], ppart:['run'], ca:['córrer']},
+      { base:'say', past:['said'], ppart:['said'], ca:['dir']},
+      { base:'see', past:['saw'], ppart:['seen'], ca:['veure']},
+      { base:'sell', past:['sold'], ppart:['sold'], ca:['vendre']},
+      { base:'send', past:['sent'], ppart:['sent'], ca:['enviar']},
+      { base:'set', past:['set'], ppart:['set'], ca:['posar','establir']},
+
+      { base:'shake', past:['shook'], ppart:['shaken'], ca:['sacsejar']},
+      { base:'shine', past:['shone'], ppart:['shone'], ca:['brillar']},
+      { base:'shoot', past:['shot'], ppart:['shot'], ca:['disparar']},
+      { base:'show', past:['showed'], ppart:['shown'], ca:['mostrar']},
+      { base:'shut', past:['shut'], ppart:['shut'], ca:['tancar']},
+
+      /* ✅ AÑADIDOS */
+      { base:'sing',  past:['sang'],  ppart:['sung'],  ca:['cantar']},
+      { base:'sink',  past:['sank'],  ppart:['sunk'],  ca:['enfonsar-se','enfonsar']},
+      { base:'sit',   past:['sat'],   ppart:['sat'],   ca:['seure']},
+      { base:'sleep', past:['slept'], ppart:['slept'], ca:['dormir']},
+      { base:'smell', past:['smelt','smelled'], ppart:['smelt','smelled'], ca:['olorar','fer olor']},
+      { base:'speak', past:['spoke'], ppart:['spoken'], ca:['parlar']},
+      { base:'spell', past:['spelt','spelled'], ppart:['spelt','spelled'], ca:['lletrejar']},
+      { base:'spend', past:['spent'], ppart:['spent'], ca:['gastar','passar (temps)']},
+      { base:'stand', past:['stood'], ppart:['stood'], ca:['estar dret']},
+      { base:'steal', past:['stole'], ppart:['stolen'], ca:['robar']}
     ];
 
     let current;
@@ -171,8 +322,14 @@
     let wrong = 0;
     let failedOnce = false;
 
+    // Lista de “difíciles” (solo para mostrar en la tabla)
     let difficultVerbs = [];
-    let useListOnly = false;
+
+    // Selección (sin Ctrl)
+    let selectedVerbs = new Set(); // bases seleccionadas (vacío => todos)
+    let lastClickedIndex = null;   // para Shift-range
+    let renderedBases = [];        // bases en el orden actual (filtrado + orden)
+    let noneSelected = false;      // “cap” real
 
     function updateStats(){
       document.getElementById('correctCount').textContent = correct;
@@ -187,15 +344,22 @@
         .replace(/[\u0300-\u036f]/g, "");
     }
 
-    function getPool(){
-      if (useListOnly && difficultVerbs.length > 0) {
-        return verbs.filter(v => difficultVerbs.includes(v.base));
-      }
-      return verbs;
+    function getActiveVerbs(){
+      if (noneSelected) return [];
+      if (selectedVerbs.size === 0) return verbs;
+      return verbs.filter(v => selectedVerbs.has(v.base));
     }
 
     function newVerb(){
-      const pool = getPool();
+      const pool = getActiveVerbs();
+
+      if (pool.length === 0) {
+        document.getElementById('verb').textContent = '—';
+        document.getElementById('feedback').innerHTML =
+          `<span class='bad'>No hi ha verbs disponibles amb aquesta selecció.</span>`;
+        return;
+      }
+
       current = pool[Math.floor(Math.random()*pool.length)];
 
       document.getElementById('verb').textContent = current.base;
@@ -205,7 +369,6 @@
       document.getElementById('feedback').textContent = '';
       failedOnce = false;
 
-      // IMPORTANTE: poner foco para poder escribir
       document.getElementById('past').focus();
     }
 
@@ -214,6 +377,8 @@
     }
 
     function check(){
+      if (!current) return;
+
       const fb = document.getElementById('feedback');
 
       const valPast  = normalize(document.getElementById('past').value);
@@ -246,6 +411,7 @@
       });
     });
 
+    /* LISTA */
     document.getElementById('showList').addEventListener('click', () => {
       const div = document.getElementById('listDisplay');
 
@@ -257,11 +423,13 @@
 
       div.style.display = 'block';
 
-      let html = '<strong>Taula de tots els verbs:</strong>';
+      const active = getActiveVerbs();
+
+      let html = '<strong>Taula de verbs (actius):</strong>';
       html += '<table class="verb-table">';
       html += '<thead><tr><th>Infinitive</th><th>Past Simple</th><th>Past Participle</th><th>Català</th></tr></thead><tbody>';
 
-      verbs.forEach(v => {
+      active.forEach(v => {
         html += `<tr>
           <td>${v.base}</td>
           <td>${v.past.join(' / ')}</td>
@@ -272,35 +440,156 @@
 
       html += '</tbody></table>';
 
-      if (difficultVerbs.length > 0) {
-        html += `<p><strong>Verbs per practicar:</strong> ${difficultVerbs.join(', ')}</p>`;
+      const difficultActive = difficultVerbs.filter(b => active.some(v => v.base === b));
+
+      if (difficultActive.length > 0) {
+        html += `<p><strong>Verbs per practicar (dins dels actius):</strong> ${difficultActive.join(', ')}</p>`;
       } else {
-        html += `<p><em>Encara no hi ha verbs marcats com a difícils.</em></p>`;
+        html += `<p><em>Encara no hi ha verbs marcats com a difícils (dins dels actius).</em></p>`;
       }
 
       div.innerHTML = html;
     });
 
-    document.getElementById('practiceList').addEventListener('click', (e) => {
-      const btn = e.target;
+    /* ================== SELECTOR SIN CTRL (checkboxes) ================== */
+    const selectorWrap = document.getElementById('selector');
+    const verbListEl = document.getElementById('verbList');
+    const filterInput = document.getElementById('filterInput');
+    const selectionInfo = document.getElementById('selectionInfo');
 
-      if (!useListOnly) {
-        if (difficultVerbs.length === 0) {
-          const div = document.getElementById('listDisplay');
-          div.style.display = 'block';
-          div.innerHTML = '<em>No hi ha verbs a la llista encara. Falla algun verb i s\'afegirà aquí 😉</em>';
-          return;
-        }
-        useListOnly = true;
-        btn.textContent = 'Practicar tots';
-      } else {
-        useListOnly = false;
-        btn.textContent = 'Practicar llista';
+    function sortedVerbs(){
+      return [...verbs].sort((a,b)=>a.base.localeCompare(b.base));
+    }
+
+    function updateSelectionInfo(){
+      const total = verbs.length;
+      if (noneSelected) {
+        selectionInfo.textContent = `Actius: cap (0 de ${total}).`;
+        return;
       }
+      const sel = selectedVerbs.size;
+      selectionInfo.textContent = sel === 0 ? `Actius: tots (${total}).` : `Actius: ${sel} de ${total}.`;
+    }
+
+    function passesFilter(v, q){
+      if (!q) return true;
+      const s = normalize(q);
+      const hay = normalize([v.base, v.past.join(' '), v.ppart.join(' '), v.ca.join(' ')].join(' '));
+      return hay.includes(s);
+    }
+
+    function renderVerbList(){
+      const q = filterInput.value || '';
+      const list = sortedVerbs().filter(v => passesFilter(v, q));
+
+      renderedBases = list.map(v => v.base);
+
+      let html = '';
+      list.forEach((v, idx) => {
+        const checked = (!noneSelected && selectedVerbs.size !== 0 && selectedVerbs.has(v.base));
+        html += `
+          <div class="verb-item" data-base="${v.base}" data-idx="${idx}">
+            <input type="checkbox" ${checked ? 'checked' : ''} />
+            <div class="verb-text">
+              <b>${v.base}</b><br>
+              <span>${v.past.join(' / ')} · ${v.ppart.join(' / ')} · ${v.ca.join(' / ')}</span>
+            </div>
+          </div>
+        `;
+      });
+
+      verbListEl.innerHTML = html || `<div class="verb-item"><div class="verb-text">No results.</div></div>`;
+      updateSelectionInfo();
+    }
+
+    function clickItem(base, idx, shiftKey){
+      // Click normal: toggle del ítem.
+      // Shift+click: marca un rango ON desde el último clic hasta el actual.
+      if (shiftKey && lastClickedIndex !== null) {
+        noneSelected = false;
+        if (selectedVerbs.size === 0) selectedVerbs = new Set(); // pasar a explícito
+        const a = Math.min(lastClickedIndex, idx);
+        const b = Math.max(lastClickedIndex, idx);
+        for (let i=a; i<=b; i++){
+          const bse = renderedBases[i];
+          if (bse) selectedVerbs.add(bse);
+        }
+      } else {
+        noneSelected = false;
+        if (selectedVerbs.size === 0) {
+          // pasar de "tots" (vacío) a selección explícita
+          selectedVerbs = new Set([base]);
+        } else {
+          if (selectedVerbs.has(base)) selectedVerbs.delete(base);
+          else selectedVerbs.add(base);
+          // si se queda vacío => vuelve a "tots"
+        }
+        lastClickedIndex = idx;
+      }
+      renderVerbList();
+    }
+
+    verbListEl.addEventListener('click', (e) => {
+      const item = e.target.closest('.verb-item');
+      if (!item) return;
+      const base = item.dataset.base;
+      const idx = Number(item.dataset.idx);
+      clickItem(base, idx, e.shiftKey);
+    });
+
+    filterInput.addEventListener('input', () => {
+      lastClickedIndex = null;
+      renderVerbList();
+    });
+
+    document.getElementById('toggleSelector').addEventListener('click', () => {
+      const showing = selectorWrap.style.display === 'block';
+      selectorWrap.style.display = showing ? 'none' : 'block';
+      if (!showing) renderVerbList();
+    });
+
+    document.getElementById('selectAll').addEventListener('click', () => {
+      noneSelected = false;
+      selectedVerbs = new Set(); // vacío = todos
+      renderVerbList();
+    });
+
+    document.getElementById('selectNone').addEventListener('click', () => {
+      noneSelected = true;
+      selectedVerbs = new Set();
+      renderVerbList();
+    });
+
+    document.getElementById('invertSel').addEventListener('click', () => {
+      const all = new Set(verbs.map(v=>v.base));
+
+      if (noneSelected) {
+        // ninguno -> todos
+        noneSelected = false;
+        selectedVerbs = new Set();
+      } else if (selectedVerbs.size === 0) {
+        // todos -> ninguno
+        noneSelected = true;
+        selectedVerbs = new Set();
+      } else {
+        // invertir selección explícita
+        const inv = new Set();
+        all.forEach(b => { if (!selectedVerbs.has(b)) inv.add(b); });
+        selectedVerbs = inv;
+        if (selectedVerbs.size === 0) {
+          // si queda vacío => "tots"
+          noneSelected = false;
+        }
+      }
+      renderVerbList();
+    });
+
+    document.getElementById('applySelection').addEventListener('click', () => {
       newVerb();
     });
 
     // Iniciar
+    updateSelectionInfo();
     newVerb();
   </script>
 </body>
