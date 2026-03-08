@@ -196,8 +196,7 @@
     <div id="selector" class="selector">
       <div class="selector-top">
         <div>
-          <strong>Selector de verbs (sense Ctrl)</strong>
-          <small>Clica per marcar/desmarcar · Mayús(Shift) marca un rang.</small>
+          <strong>Selector de verbs</strong>
         </div>
         <div class="selector-actions">
           <button id="selectAll" type="button">Tots</button>
@@ -213,7 +212,7 @@
 
       <div id="verbList" class="verb-list"></div>
       <div class="meta-line" id="selectionInfo"></div>
-      <div class="hint">Nota: Si no marques cap verb, es faran servir tots.</div>
+      <div class="hint">Si no marques cap verb, es faran servir tots.</div>
     </div>
 
     <div id="listDisplay" class="list-display"></div>
@@ -327,7 +326,6 @@
     let correct = 0;
     let wrong = 0;
     let failedOnce = false;
-    let difficultVerbs = [];
     let selectedVerbs = new Set();
     let lastClickedIndex = null;
     let renderedBases = [];
@@ -374,10 +372,6 @@
       document.getElementById('past').focus();
     }
 
-    function addToDifficultList(verbBase){
-      if (!difficultVerbs.includes(verbBase)) difficultVerbs.push(verbBase);
-    }
-
     function check(){
       if (!current) return;
 
@@ -400,7 +394,6 @@
         wrong++;
         failedOnce = true;
         updateStats();
-        addToDifficultList(current.base);
         fb.innerHTML = `<span class='bad'>❌ Incorrect. Try again.</span>`;
       }
     }
@@ -440,15 +433,6 @@
       });
 
       html += '</tbody></table>';
-
-      const difficultActive = difficultVerbs.filter(b => active.some(v => v.base === b));
-
-      if (difficultActive.length > 0) {
-        html += `<p><strong>Verbs per practicar (dins dels actius):</strong> ${difficultActive.join(', ')}</p>`;
-      } else {
-        html += `<p><em> </em></p>`;
-      }
-
       div.innerHTML = html;
     });
 
