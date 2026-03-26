@@ -317,7 +317,7 @@
     /* ===== Autenticación con Google Sign-In ===== */
     // IMPORTANTE: Reemplaza 'YOUR_CLIENT_ID' con tu Client ID de Google Cloud Console
     const GOOGLE_CLIENT_ID = '960980369582-b8o0bnb4g2tc450lerhn7cbc4hpbhtqi.apps.googleusercontent.com';
-    const PROGRESS_API_BASE = 'http://localhost:3000';
+    const PROGRESS_API_BASE = window.location.protocol === 'file:' ? 'http://localhost:3000' : window.location.origin;
     const PROGRESS_SYNC_META_KEY = 'progress_sync_meta';
     
     let isAuthenticated = false;
@@ -595,5 +595,6 @@
   </script>
 
   <script src="touch-controls.js"></script>
+  <script src="progress-sync.js"></script>
 </body>
 </html>
