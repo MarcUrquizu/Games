@@ -1,6 +1,8 @@
 (function () {
   const AUTH_KEY = 'google_auth';
   const META_KEY = 'progress_sync_meta';
+  let isApplyingRemote = false;
+  let hasSyncedAfterLogin = false;
 
   function getApiBase() {
     if (window.PROGRESS_API_BASE) return window.PROGRESS_API_BASE;
@@ -52,7 +54,10 @@
 
   async function syncFromRemote() {
     const auth = readAuth();
-    if (!auth) return;
+    if (!auth) {
+      hasSyncedAfterLogin = false;
+      return;
+    }
 
     const email = encodeURIComponent(auth.userInfo.email);
     const response = await fetch(`${getApiBase()}/progress?email=${email}`);
@@ -69,15 +74,19 @@
 
     const remoteUpdatedAt = Number(remote.updatedAt || 0);
     if (remoteUpdatedAt > localUpdatedAt) {
+      isApplyingRemote = true;
       Object.entries(remote.progress).forEach(([key, value]) => {
         if (key === AUTH_KEY || key === META_KEY) return;
         localStorage.setItem(key, value);
       });
+      isApplyingRemote = false;
       localStorage.setItem(META_KEY, JSON.stringify({ updatedAt: remoteUpdatedAt }));
       window.dispatchEvent(new Event('progress-synced'));
     } else {
       await uploadProgress();
     }
+
+    hasSyncedAfterLogin = true;
   }
 
   let pendingUpload = null;
@@ -92,13 +101,23 @@
   const originalSetItem = localStorage.setItem.bind(localStorage);
   localStorage.setItem = function (key, value) {
     originalSetItem(key, value);
-    if (key !== AUTH_KEY && key !== META_KEY) queueUpload(1500);
+    if (key === AUTH_KEY) {
+      syncFromRemote().catch((err) => console.warn('No se pudo sincronizar tras login:', err));
+      return;
+    }
+
+    if (!isApplyingRemote && key !== META_KEY) queueUpload(1500);
   };
 
   const originalRemoveItem = localStorage.removeItem.bind(localStorage);
   localStorage.removeItem = function (key) {
     originalRemoveItem(key);
-    if (key !== AUTH_KEY && key !== META_KEY) queueUpload(1500);
+    if (key === AUTH_KEY) {
+      hasSyncedAfterLogin = false;
+      return;
+    }
+
+    if (!isApplyingRemote && key !== META_KEY) queueUpload(1500);
   };
 
   setInterval(() => {
@@ -126,4 +145,9 @@
   });
 
   syncFromRemote().catch((err) => console.warn('No se pudo sincronizar progreso:', err));
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible' || hasSyncedAfterLogin) return;
+    syncFromRemote().catch(() => {});
+  });
 })();
