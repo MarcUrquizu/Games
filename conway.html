@@ -264,5 +264,6 @@
     var resultsEl=document.getElementById('testResults'); tests.forEach(function(t){ var ok=false; try{ ok=!!t.run(); }catch(_){ ok=false; } var li=document.createElement('li'); li.className=ok?'pass':'fail'; li.textContent=(ok?'✔':'✘')+' '+t.name; resultsEl.appendChild(li); });
   })();
   </script>
+  <script src="progress-sync.js"></script>
 </body>
 </html>
