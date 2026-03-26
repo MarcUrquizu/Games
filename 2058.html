@@ -92,6 +92,7 @@
     const gameEl = document.getElementById('game');
     const maxTileEl = document.getElementById('maxTile');
     const gameOverEl = document.getElementById('gameOver');
+    const LS_MEDAL_2048 = 'msi_medal_2048';
 
     function initGrid() {
       gameOver = false;
@@ -140,6 +141,7 @@
         if (val > max) max = val;
       });
       maxTileEl.textContent = max;
+      if (max >= 2048) localStorage.setItem(LS_MEDAL_2048, '1');
     }
 
     function slideArray(arr) {

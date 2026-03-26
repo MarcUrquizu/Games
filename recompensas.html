@@ -48,23 +48,37 @@
           <div style="font-weight:800;">Medalla Hardcore</div>
           <div style="opacity:.85;font-size:13px;margin-top:4px;">Gana el juego en modo HARDCORE</div>
         </div>
+
+        <div id="medal2048" class="reward">
+          <div class="medal">🧠</div>
+          <div style="font-weight:800;">Maestro del 2048</div>
+          <div style="opacity:.85;font-size:13px;margin-top:4px;">Consigue un bloque 2048</div>
+        </div>
       </div>
     </div>
   </div>
 
   <script>
     const LS_MEDAL_HARDCORE = "msi_medal_hardcore";
+    const LS_MEDAL_2048 = "msi_medal_2048";
 
-    const unlocked = localStorage.getItem(LS_MEDAL_HARDCORE) === "1";
-    const el = document.getElementById("medalHardcore");
+    const rewards = [
+      { id: "medalHardcore", key: LS_MEDAL_HARDCORE, icon: "🏅" },
+      { id: "medal2048", key: LS_MEDAL_2048, icon: "🧠" }
+    ];
 
-    if (unlocked) {
-      el.classList.add("unlocked");
-      el.querySelector(".medal").textContent = "🏅";
-    } else {
-      // opcional: candado si no está desbloqueada
-      el.querySelector(".medal").textContent = "🔒";
-    }
+    rewards.forEach(({ id, key, icon }) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const unlocked = localStorage.getItem(key) === "1";
+
+      if (unlocked) {
+        el.classList.add("unlocked");
+        el.querySelector(".medal").textContent = icon;
+      } else {
+        el.querySelector(".medal").textContent = "🔒";
+      }
+    });
   </script>
 </body>
 </html>
