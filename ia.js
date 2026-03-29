@@ -20,6 +20,7 @@ const themeToggle = document.getElementById('theme-toggle');
 const mobileMenuBtn = document.getElementById('mobile-menu-btn');
 const sidebar = document.getElementById('sidebar');
 const historyList = document.getElementById('history-list');
+const CHAT_HISTORY_KEY = 'chatHistory';
 
 // Inicialización
 document.addEventListener('DOMContentLoaded', () => {
@@ -139,17 +140,17 @@ function scrollToBottom() {
 // --- HISTORIAL ---
 
 function saveConversation() {
-  const history = JSON.parse(localStorage.getItem('chatHistory') || '{}');
+  const history = JSON.parse(localStorage.getItem(CHAT_HISTORY_KEY) || '{}');
   history[currentSessionId] = {
     title: conversation[0]?.parts[0]?.text.substring(0, 30) + (conversation[0]?.parts[0]?.text.length > 30 ? '...' : '') || 'Nueva conversación',
     conversation
   };
-  localStorage.setItem('chatHistory', JSON.stringify(history));
+  localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(history));
   renderHistory();
 }
 
 function loadHistory() {
-  const saved = localStorage.getItem('chatHistory');
+  const saved = localStorage.getItem(CHAT_HISTORY_KEY);
   if (saved) {
     const history = JSON.parse(saved);
     const ids = Object.keys(history);
@@ -163,7 +164,7 @@ function loadHistory() {
 
 function renderHistory() {
   historyList.innerHTML = '';
-  const history = JSON.parse(localStorage.getItem('chatHistory') || '{}');
+  const history = JSON.parse(localStorage.getItem(CHAT_HISTORY_KEY) || '{}');
   Object.entries(history)
     .reverse()
     .forEach(([id, data]) => {
@@ -176,7 +177,7 @@ function renderHistory() {
 }
 
 function loadSession(id) {
-  const history = JSON.parse(localStorage.getItem('chatHistory') || '{}');
+  const history = JSON.parse(localStorage.getItem(CHAT_HISTORY_KEY) || '{}');
   if (history[id]) {
     currentSessionId = id;
     conversation = history[id].conversation || [];
@@ -218,9 +219,9 @@ clearChatBtn.addEventListener('click', () => {
   if (confirm('¿Borrar esta conversación?')) {
     conversation = [];
     chatContainer.querySelector('.max-w-3xl').innerHTML = '';
-    const history = JSON.parse(localStorage.getItem('chatHistory') || '{}');
+    const history = JSON.parse(localStorage.getItem(CHAT_HISTORY_KEY) || '{}');
     delete history[currentSessionId];
-    localStorage.setItem('chatHistory', JSON.stringify(history));
+    localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(history));
     currentSessionId = Date.now().toString();
     renderHistory();
   }
@@ -240,6 +241,11 @@ themeToggle.addEventListener('click', () => {
 
 mobileMenuBtn.addEventListener('click', () => {
   sidebar.classList.toggle('-translate-x-full');
+});
+
+window.addEventListener('progress-synced', () => {
+  loadHistory();
+  renderHistory();
 });
 
 // --- UTILIDADES ---

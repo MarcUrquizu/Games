@@ -15,7 +15,7 @@
       const raw = localStorage.getItem(AUTH_KEY);
       if (!raw) return null;
       const auth = JSON.parse(raw);
-      if (!auth?.userInfo?.email || !auth?.expiresAt || auth.expiresAt <= Date.now()) return null;
+      if (!auth?.credential || !auth?.userInfo?.email || !auth?.expiresAt || auth.expiresAt <= Date.now()) return null;
       return auth;
     } catch {
       return null;
@@ -39,9 +39,12 @@
     const updatedAt = Date.now();
     const response = await fetch(`${getApiBase()}/progress`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${auth.credential}`,
+      },
       body: JSON.stringify({
-        email: auth.userInfo.email,
+        credential: auth.credential,
         progress: getSnapshot(),
         updatedAt,
       }),
@@ -59,8 +62,11 @@
       return;
     }
 
-    const email = encodeURIComponent(auth.userInfo.email);
-    const response = await fetch(`${getApiBase()}/progress?email=${email}`);
+    const response = await fetch(`${getApiBase()}/progress`, {
+      headers: {
+        Authorization: `Bearer ${auth.credential}`,
+      },
+    });
     if (!response.ok) return;
 
     const remote = await response.json();
@@ -75,6 +81,15 @@
     const remoteUpdatedAt = Number(remote.updatedAt || 0);
     if (remoteUpdatedAt > localUpdatedAt) {
       isApplyingRemote = true;
+      const keysToDelete = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key || key === AUTH_KEY || key === META_KEY) continue;
+        if (!Object.prototype.hasOwnProperty.call(remote.progress, key)) {
+          keysToDelete.push(key);
+        }
+      }
+      keysToDelete.forEach((key) => localStorage.removeItem(key));
       Object.entries(remote.progress).forEach(([key, value]) => {
         if (key === AUTH_KEY || key === META_KEY) return;
         localStorage.setItem(key, value);
@@ -126,10 +141,10 @@
 
   window.addEventListener('beforeunload', () => {
     const auth = readAuth();
-    if (!auth?.userInfo?.email || !navigator.sendBeacon) return;
+    if (!auth?.credential || !navigator.sendBeacon) return;
 
     const payload = JSON.stringify({
-      email: auth.userInfo.email,
+      credential: auth.credential,
       progress: getSnapshot(),
       updatedAt: Date.now(),
     });
@@ -143,6 +158,11 @@
       uploadProgress().catch(() => {});
     }
   });
+
+  window.progressSync = {
+    syncNow: () => syncFromRemote(),
+    uploadNow: () => uploadProgress(),
+  };
 
   syncFromRemote().catch((err) => console.warn('No se pudo sincronizar progreso:', err));
 

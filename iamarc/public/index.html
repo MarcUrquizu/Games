@@ -34,6 +34,29 @@
     const form = document.getElementById('form');
     const input = document.getElementById('input');
     const chat = document.getElementById('chat');
+    const AGENT_CHAT_KEY = 'iamarc_agent_chat_history';
+
+    function appendMessage(text, cssClass) {
+      const item = document.createElement('div');
+      item.className = `mensaje ${cssClass}`;
+      item.textContent = text;
+      chat.appendChild(item);
+    }
+
+    function saveAgentHistory() {
+      localStorage.setItem(AGENT_CHAT_KEY, chat.innerHTML);
+    }
+
+    function loadAgentHistory() {
+      const saved = localStorage.getItem(AGENT_CHAT_KEY);
+      if (saved) {
+        chat.innerHTML = saved;
+        chat.scrollTop = chat.scrollHeight;
+      }
+    }
+
+    loadAgentHistory();
+    window.addEventListener('progress-synced', loadAgentHistory);
 
     form.addEventListener('submit', async e => {
       e.preventDefault();
@@ -41,10 +64,8 @@
       if (!texto) return;
 
       // Mostrar tu mensaje
-      const userDiv = document.createElement('div');
-      userDiv.className = 'mensaje user';
-      userDiv.textContent = texto;
-      chat.appendChild(userDiv);
+      appendMessage(texto, 'user');
+      saveAgentHistory();
       input.value = '';
 
       // Llamada al servidor
@@ -56,10 +77,8 @@
         });
         const data = await resp.json();
 
-        const botDiv = document.createElement('div');
-        botDiv.className = 'mensaje bot';
-        botDiv.textContent = data.respuesta;
-        chat.appendChild(botDiv);
+        appendMessage(data.respuesta, 'bot');
+        saveAgentHistory();
 
         // Scroll al final
         chat.scrollTop = chat.scrollHeight;
@@ -68,6 +87,7 @@
       }
     });
   </script>
+  <script src="../../progress-sync.js"></script>
   <script src="touch-controls.js"></script>
 </body>
 </html>

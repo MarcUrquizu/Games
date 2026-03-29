@@ -13,6 +13,17 @@ app.use(express.json());
 
 
 const PROGRESS_DB_PATH = path.resolve('./progress-store.json');
+const GOOGLE_TOKENINFO_URL = 'https://oauth2.googleapis.com/tokeninfo?id_token=';
+const GOOGLE_CLIENT_IDS = new Set(
+  String(process.env.GOOGLE_CLIENT_IDS || process.env.GOOGLE_CLIENT_ID || '')
+    .split(',')
+    .map((id) => id.trim())
+    .filter(Boolean)
+);
+
+if (GOOGLE_CLIENT_IDS.size === 0) {
+  GOOGLE_CLIENT_IDS.add('960980369582-b8o0bnb4g2tc450lerhn7cbc4hpbhtqi.apps.googleusercontent.com');
+}
 
 async function readProgressStore() {
   try {
@@ -28,15 +39,61 @@ async function writeProgressStore(store) {
   await fs.writeFile(PROGRESS_DB_PATH, JSON.stringify(store, null, 2), 'utf8');
 }
 
+function parseBearerToken(headerValue = '') {
+  const [scheme, token] = String(headerValue).split(' ');
+  if (scheme?.toLowerCase() !== 'bearer' || !token) return '';
+  return token.trim();
+}
+
+async function verifyGoogleCredential(credential) {
+  const token = String(credential || '').trim();
+  if (!token) return null;
+
+  const response = await fetch(`${GOOGLE_TOKENINFO_URL}${encodeURIComponent(token)}`);
+  if (!response.ok) return null;
+
+  const tokenInfo = await response.json();
+  const expMs = Number(tokenInfo.exp || 0) * 1000;
+  if (!tokenInfo.email || !expMs || expMs <= Date.now()) return null;
+
+  if (GOOGLE_CLIENT_IDS.size > 0 && !GOOGLE_CLIENT_IDS.has(String(tokenInfo.aud || '').trim())) {
+    return null;
+  }
+
+  return {
+    userId: String(tokenInfo.sub || tokenInfo.email).trim().toLowerCase(),
+    email: String(tokenInfo.email).trim().toLowerCase(),
+  };
+}
+
+async function requireVerifiedUser(req, res) {
+  try {
+    const bodyCredential = typeof req.body === 'object' ? req.body?.credential : null;
+    const queryCredential = req.query?.credential;
+    const bearerCredential = parseBearerToken(req.headers.authorization);
+    const credential = bearerCredential || bodyCredential || queryCredential;
+
+    const verified = await verifyGoogleCredential(credential);
+    if (!verified) {
+      res.status(401).json({ error: 'Token de Google inválido o expirado' });
+      return null;
+    }
+    return verified;
+  } catch (err) {
+    console.error('Error verificando token Google:', err);
+    res.status(401).json({ error: 'No se pudo validar la sesión' });
+    return null;
+  }
+}
+
 app.get('/progress', async (req, res) => {
   try {
-    const email = String(req.query.email || '').trim().toLowerCase();
-    if (!email) {
-      return res.status(400).json({ error: 'Falta email' });
-    }
+    const verifiedUser = await requireVerifiedUser(req, res);
+    if (!verifiedUser) return;
 
     const store = await readProgressStore();
-    res.json(store[email] || null);
+    const record = store[verifiedUser.userId] || null;
+    res.json(record);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'No se pudo leer el progreso' });
@@ -45,26 +102,34 @@ app.get('/progress', async (req, res) => {
 
 app.post('/progress', async (req, res) => {
   try {
-    const email = String(req.body.email || '').trim().toLowerCase();
+    const verifiedUser = await requireVerifiedUser(req, res);
+    if (!verifiedUser) return;
+
     const progress = req.body.progress;
     const updatedAt = Number(req.body.updatedAt || Date.now());
 
-    if (!email) {
-      return res.status(400).json({ error: 'Falta email' });
-    }
     if (!progress || typeof progress !== 'object') {
       return res.status(400).json({ error: 'Falta progress válido' });
     }
 
     const store = await readProgressStore();
-    store[email] = {
-      email,
+    const existing = store[verifiedUser.userId];
+    const existingUpdatedAt = Number(existing?.updatedAt || 0);
+    const nextUpdatedAt = Number.isFinite(updatedAt) ? updatedAt : Date.now();
+
+    if (existing && existingUpdatedAt > nextUpdatedAt) {
+      return res.json({ ok: true, skipped: true, updatedAt: existingUpdatedAt });
+    }
+
+    store[verifiedUser.userId] = {
+      userId: verifiedUser.userId,
+      email: verifiedUser.email,
       progress,
-      updatedAt,
+      updatedAt: nextUpdatedAt,
     };
     await writeProgressStore(store);
 
-    res.json({ ok: true });
+    res.json({ ok: true, updatedAt: nextUpdatedAt });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'No se pudo guardar el progreso' });
