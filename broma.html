@@ -2,158 +2,182 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Página Blanca</title>
     <style>
+        * { margin: 0; padding: 0; }
         body {
-            margin: 0;
-            padding: 0;
             background: white;
             height: 100vh;
+            overflow: hidden;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-family: Arial, sans-serif;
         }
         button {
-            padding: 15px 30px;
-            font-size: 18px;
-            background: #ff4444;
+            padding: 20px 40px;
+            font-size: 24px;
+            background: #ff0000;
             color: white;
             border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             cursor: pointer;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-        }
-        button:hover {
-            background: #cc0000;
-        }
-        button:active {
-            transform: translateY(2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
-    <button onclick="activarTerror()">¡ACTIVAR!</button>
+    <button id="infectarBtn">🦠 INFECTAR ORDENADOR 🦠</button>
 
     <script>
-        function activarTerror() {
-            // Crear ventana emergente fullscreen
-            const terrorWindow = window.open('', 'Terror', 'width=100%,height=100%,fullscreen=yes');
+        document.getElementById('infectarBtn').addEventListener('click', infectarSistema);
+
+        function infectarSistema() {
+            // Crear múltiples ventanas infectadas
+            for(let i = 0; i < 5; i++) {
+                setTimeout(() => abrirVentanaVirus(), i * 100);
+            }
             
-            terrorWindow.document.write(`
+            // Ocultar botón y página original
+            document.body.innerHTML = '<h1 style="color:red;font-size:50px;text-align:center;">💀 SISTEMA INFECTADO 💀</h1>';
+            
+            // SONIDO CONTINUO INSOPORTABLE
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator1 = audioContext.createOscillator();
+            const oscillator2 = audioContext.createOscillator();
+            const gainNode1 = audioContext.createGain();
+            const gainNode2 = audioContext.createGain();
+            
+            // Dos tonos discordantes para máximo dolor
+            oscillator1.frequency.value = 800;
+            oscillator2.frequency.value = 1000;
+            
+            gainNode1.gain.value = 1.0; // VOLUMEN MÁXIMO
+            gainNode2.gain.value = 1.0;
+            
+            oscillator1.connect(gainNode1);
+            oscillator2.connect(gainNode2);
+            gainNode1.connect(audioContext.destination);
+            gainNode2.connect(audioContext.destination);
+            
+            oscillator1.start();
+            oscillator2.start();
+            
+            // Parar después de 2 segundos
+            setTimeout(() => {
+                oscillator1.stop();
+                oscillator2.stop();
+            }, 2000);
+        }
+
+        function abrirVentanaVirus() {
+            const virusWin = window.open('', 'VIRUS', 'width=800,height=600,scrollbars=no,resizable=no');
+            
+            virusWin.document.write(`
                 <!DOCTYPE html>
                 <html>
                 <head>
-                    <title>BLOQUEADO</title>
+                    <title>💀 VIRUS DETECTADO 💀</title>
                     <style>
-                        * { margin: 0; padding: 0; }
+                        * { margin: 0; padding: 0; user-select: none; }
                         body {
-                            background: black;
-                            color: red;
-                            font-family: Arial, sans-serif;
-                            font-size: 48px;
-                            text-align: center;
+                            background: #000;
+                            color: #f00;
+                            font-family: 'Courier New', monospace;
                             overflow: hidden;
                             height: 100vh;
+                        }
+                        .virus-screen {
+                            position: absolute;
+                            top: 0; left: 0; right: 0; bottom: 0;
                             display: flex;
                             flex-direction: column;
                             justify-content: center;
                             align-items: center;
+                            font-size: 24px;
+                            text-shadow: 0 0 10px red;
                         }
-                        h1 { font-size: 72px; margin-bottom: 20px; text-shadow: 0 0 20px red; }
-                        .countdown { font-size: 120px; font-weight: bold; }
+                        .title { font-size: 48px; margin-bottom: 20px; animation: blink 0.5s infinite; }
+                        .countdown { font-size: 80px; font-weight: bold; margin: 20px 0; }
+                        @keyframes blink { 0%,50% { opacity: 1; } 51%,100% { opacity: 0.3; } }
+                        canvas { position: absolute; top: 0; left: 0; pointer-events: none; }
                     </style>
                 </head>
                 <body>
-                    <h1>¡BLOQUEADO!</h1>
-                    <div class="countdown" id="countdown">60</div>
-                    <p>¡No puedes salir!</p>
-                    <audio id="terrorSound" loop autoplay>
-                        <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSb2SQDzP/Otw8A" type="audio/wav">
-                    </audio>
+                    <canvas id="mouseTrap"></canvas>
+                    <div class="virus-screen">
+                        <div class="title">🔴 SISTEMA BLOQUEADO 🔴</div>
+                        <div class="countdown" id="timer">2</div>
+                        <div>Alt+F4 = INÚTIL</div>
+                        <div>Ctrl+W = INÚTIL</div>
+                        <div>ESC = INÚTIL</div>
+                    </div>
+
+                    <script>
+                        // SONIDO LOCAL EN CADA VENTANA
+                        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        osc.frequency.value = 900;
+                        gain.gain.value = 1.0;
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+                        osc.start();
+                        setTimeout(() => osc.stop(), 2000);
+
+                        // BLOQUEO TOTAL DE TECLAS
+                        document.addEventListener('keydown', e => {
+                            e.preventDefault();
+                            e.stopImmediatePropagation();
+                            return false;
+                        }, true);
+
+                        document.addEventListener('keyup', e => {
+                            e.preventDefault();
+                            return false;
+                        }, true);
+
+                        // BLOQUEAR MOUSE
+                        const canvas = document.getElementById('mouseTrap');
+                        canvas.width = window.innerWidth;
+                        canvas.height = window.innerHeight;
+                        
+                        canvas.addEventListener('click', e => e.preventDefault(), true);
+                        canvas.addEventListener('mousedown', e => e.preventDefault(), true);
+                        canvas.addEventListener('mousemove', e => e.preventDefault(), true);
+                        
+                        // Intentar pointer lock
+                        canvas.requestPointerLock();
+
+                        // COUNTDOWN
+                        let count = 2;
+                        const timerEl = document.getElementById('timer');
+                        const int = setInterval(() => {
+                            count--;
+                            timerEl.textContent = count;
+                            if (count <= 0) {
+                                clearInterval(int);
+                                window.close();
+                            }
+                        }, 1000);
+
+                        // PREVENIR CIERRE
+                        window.onbeforeunload = () => 'VIRUS ACTIVO';
+                        window.onunload = () => {};
+                    </script>
                 </body>
                 </html>
             `);
-
-            terrorWindow.document.close();
-
-            // Subir volumen al máximo usando Web Audio API
-            const audioContext = terrorWindow.AudioContext || terrorWindow.webkitAudioContext;
-            if (audioContext) {
-                const ctx = new audioContext();
-                const oscillator = ctx.createOscillator();
-                const gainNode = ctx.createGain();
-                
-                oscillator.connect(gainNode);
-                gainNode.connect(ctx.destination);
-                
-                oscillator.frequency.setValueAtTime(800, ctx.currentTime);
-                gainNode.gain.setValueAtTime(1, ctx.currentTime); // Volumen máximo
-                
-                oscillator.start();
-                setTimeout(() => oscillator.stop(), 60000);
-            }
-
-            // Bloquear mouse (capturar pointer lock)
-            const canvas = terrorWindow.document.createElement('canvas');
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            terrorWindow.document.body.appendChild(canvas);
             
-            canvas.requestPointerLock = canvas.requestPointerLock || canvas.mozRequestPointerLock || canvas.webkitRequestPointerLock;
-            canvas.requestPointerLock();
-
-            // Countdown y bloqueo de teclas
-            let tiempo = 60;
-            const countdownElement = terrorWindow.document.getElementById('countdown');
-            
-            const intervalo = setInterval(() => {
-                tiempo--;
-                if (countdownElement) {
-                    countdownElement.textContent = tiempo;
-                }
-                
-                if (tiempo <= 0) {
-                    clearInterval(intervalo);
-                    terrorWindow.close();
-                }
-            }, 1000);
-
-            // Bloquear todas las teclas comunes de escape
-            terrorWindow.document.addEventListener('keydown', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                e.stopImmediatePropagation();
-                
-                // Bloquear específicamente Alt+F4, Ctrl+W, etc.
-                if (e.key === 'Escape' || 
-                    (e.ctrlKey && e.key === 'w') || 
-                    (e.altKey && e.key === 'F4') ||
-                    e.key === 'F11' ||
-                    (e.ctrlKey && e.key === 'q')) {
-                    e.preventDefault();
-                    return false;
-                }
-            }, true);
-
-            // Prevenir cierre por otros métodos
-            terrorWindow.onbeforeunload = function() { return "¡NO PUEDES SALIR!"; };
-            terrorWindow.onunload = function() {};
-            
-            // Bloquear mouse movement y clicks
-            terrorWindow.document.addEventListener('mousemove', function(e) {
-                e.preventDefault();
-            }, true);
-            
-            terrorWindow.document.addEventListener('click', function(e) {
-                e.preventDefault();
-            }, true);
-            
-            terrorWindow.document.addEventListener('contextmenu', function(e) {
-                e.preventDefault();
-            }, true);
+            virusWin.document.close();
+            virusWin.focus();
         }
+
+        // BLOQUEAR TECLAS EN PÁGINA PRINCIPAL
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape' || (e.ctrlKey && e.key === 'w') || (e.altKey && e.key === 'F4')) {
+                e.preventDefault();
+            }
+        }, true);
     </script>
 </body>
 </html>
