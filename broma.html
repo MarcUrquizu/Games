@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Página Blanca</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: white;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: Arial, sans-serif;
+        }
+        button {
+            padding: 15px 30px;
+            font-size: 18px;
+            background: #ff4444;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        button:hover {
+            background: #cc0000;
+        }
+        button:active {
+            transform: translateY(2px);
+        }
+    </style>
+</head>
+<body>
+    <button onclick="activarTerror()">¡ACTIVAR!</button>
+
+    <script>
+        function activarTerror() {
+            // Crear ventana emergente fullscreen
+            const terrorWindow = window.open('', 'Terror', 'width=100%,height=100%,fullscreen=yes');
+            
+            terrorWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>BLOQUEADO</title>
+                    <style>
+                        * { margin: 0; padding: 0; }
+                        body {
+                            background: black;
+                            color: red;
+                            font-family: Arial, sans-serif;
+                            font-size: 48px;
+                            text-align: center;
+                            overflow: hidden;
+                            height: 100vh;
+                            display: flex;
+                            flex-direction: column;
+                            justify-content: center;
+                            align-items: center;
+                        }
+                        h1 { font-size: 72px; margin-bottom: 20px; text-shadow: 0 0 20px red; }
+                        .countdown { font-size: 120px; font-weight: bold; }
+                    </style>
+                </head>
+                <body>
+                    <h1>¡BLOQUEADO!</h1>
+                    <div class="countdown" id="countdown">60</div>
+                    <p>¡No puedes salir!</p>
+                    <audio id="terrorSound" loop autoplay>
+                        <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSb2SQDzP/Otw8A" type="audio/wav">
+                    </audio>
+                </body>
+                </html>
+            `);
+
+            terrorWindow.document.close();
+
+            // Subir volumen al máximo usando Web Audio API
+            const audioContext = terrorWindow.AudioContext || terrorWindow.webkitAudioContext;
+            if (audioContext) {
+                const ctx = new audioContext();
+                const oscillator = ctx.createOscillator();
+                const gainNode = ctx.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(ctx.destination);
+                
+                oscillator.frequency.setValueAtTime(800, ctx.currentTime);
+                gainNode.gain.setValueAtTime(1, ctx.currentTime); // Volumen máximo
+                
+                oscillator.start();
+                setTimeout(() => oscillator.stop(), 60000);
+            }
+
+            // Bloquear mouse (capturar pointer lock)
+            const canvas = terrorWindow.document.createElement('canvas');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            terrorWindow.document.body.appendChild(canvas);
+            
+            canvas.requestPointerLock = canvas.requestPointerLock || canvas.mozRequestPointerLock || canvas.webkitRequestPointerLock;
+            canvas.requestPointerLock();
+
+            // Countdown y bloqueo de teclas
+            let tiempo = 60;
+            const countdownElement = terrorWindow.document.getElementById('countdown');
+            
+            const intervalo = setInterval(() => {
+                tiempo--;
+                if (countdownElement) {
+                    countdownElement.textContent = tiempo;
+                }
+                
+                if (tiempo <= 0) {
+                    clearInterval(intervalo);
+                    terrorWindow.close();
+                }
+            }, 1000);
+
+            // Bloquear todas las teclas comunes de escape
+            terrorWindow.document.addEventListener('keydown', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                
+                // Bloquear específicamente Alt+F4, Ctrl+W, etc.
+                if (e.key === 'Escape' || 
+                    (e.ctrlKey && e.key === 'w') || 
+                    (e.altKey && e.key === 'F4') ||
+                    e.key === 'F11' ||
+                    (e.ctrlKey && e.key === 'q')) {
+                    e.preventDefault();
+                    return false;
+                }
+            }, true);
+
+            // Prevenir cierre por otros métodos
+            terrorWindow.onbeforeunload = function() { return "¡NO PUEDES SALIR!"; };
+            terrorWindow.onunload = function() {};
+            
+            // Bloquear mouse movement y clicks
+            terrorWindow.document.addEventListener('mousemove', function(e) {
+                e.preventDefault();
+            }, true);
+            
+            terrorWindow.document.addEventListener('click', function(e) {
+                e.preventDefault();
+            }, true);
+            
+            terrorWindow.document.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+            }, true);
+        }
+    </script>
+</body>
+</html>
