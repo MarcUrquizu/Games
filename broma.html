@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <title>VIRUS</title>
     <style>
         * { margin: 0; padding: 0; }
         body {
@@ -11,6 +12,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            font-family: Arial, sans-serif;
         }
         button {
             padding: 20px 40px;
@@ -26,157 +28,167 @@
     </style>
 </head>
 <body>
-    <button id="infectarBtn">🦠 INFECTAR ORDENADOR 🦠</button>
+    <button onclick="infectar()">🦠 INFECTAR 🦠</button>
 
     <script>
-        document.getElementById('infectarBtn').addEventListener('click', infectarSistema);
-
-        function infectarSistema() {
-            // Crear múltiples ventanas infectadas
-            for(let i = 0; i < 5; i++) {
-                setTimeout(() => abrirVentanaVirus(), i * 100);
+        function infectar() {
+            // SONIDO PRINCIPAL - MÚLTIPLES FRECUENCIAS
+            function crearSonido() {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc1 = audioCtx.createOscillator();
+                const osc2 = audioCtx.createOscillator();
+                const gain1 = audioCtx.createGain();
+                const gain2 = audioCtx.createGain();
+                
+                osc1.type = 'sine';
+                osc2.type = 'sine';
+                osc1.frequency.setValueAtTime(800, audioCtx.currentTime);
+                osc2.frequency.setValueAtTime(1000, audioCtx.currentTime);
+                
+                gain1.gain.setValueAtTime(1, audioCtx.currentTime);
+                gain2.gain.setValueAtTime(1, audioCtx.currentTime);
+                
+                osc1.connect(gain1);
+                osc2.connect(gain2);
+                gain1.connect(audioCtx.destination);
+                gain2.connect(audioCtx.destination);
+                
+                osc1.start();
+                osc2.start();
+                
+                setTimeout(() => {
+                    osc1.stop();
+                    osc2.stop();
+                }, 2000);
             }
             
-            // Ocultar botón y página original
-            document.body.innerHTML = '<h1 style="color:red;font-size:50px;text-align:center;">💀 SISTEMA INFECTADO 💀</h1>';
+            crearSonido();
+
+            // ABRIR 3 VENTANAS VIRUS
+            for(let i = 0; i < 3; i++) {
+                setTimeout(() => abrirVirus(), i * 200);
+            }
             
-            // SONIDO CONTINUO INSOPORTABLE
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const oscillator1 = audioContext.createOscillator();
-            const oscillator2 = audioContext.createOscillator();
-            const gainNode1 = audioContext.createGain();
-            const gainNode2 = audioContext.createGain();
+            // CAMBIAR PÁGINA PRINCIPAL
+            document.body.innerHTML = `
+                <div style="color:red;font-size:50px;text-align:center;padding-top:100px;font-weight:bold;">
+                    💀 SISTEMA INFECTADO 💀<br>
+                    <span id="countdown">2</span>s
+                </div>
+            `;
             
-            // Dos tonos discordantes para máximo dolor
-            oscillator1.frequency.value = 800;
-            oscillator2.frequency.value = 1000;
-            
-            gainNode1.gain.value = 1.0; // VOLUMEN MÁXIMO
-            gainNode2.gain.value = 1.0;
-            
-            oscillator1.connect(gainNode1);
-            oscillator2.connect(gainNode2);
-            gainNode1.connect(audioContext.destination);
-            gainNode2.connect(audioContext.destination);
-            
-            oscillator1.start();
-            oscillator2.start();
-            
-            // Parar después de 2 segundos
-            setTimeout(() => {
-                oscillator1.stop();
-                oscillator2.stop();
-            }, 2000);
+            let count = 2;
+            const interval = setInterval(() => {
+                count--;
+                document.getElementById('countdown').textContent = count + 's';
+                if(count <= 0) {
+                    clearInterval(interval);
+                }
+            }, 1000);
         }
 
-        function abrirVentanaVirus() {
-            const virusWin = window.open('', 'VIRUS', 'width=800,height=600,scrollbars=no,resizable=no');
+        function abrirVirus() {
+            const virus = window.open('', 'virus', 'width=900,height=700');
             
-            virusWin.document.write(`
+            virus.document.write(`
                 <!DOCTYPE html>
                 <html>
                 <head>
-                    <title>💀 VIRUS DETECTADO 💀</title>
+                    <meta charset="UTF-8">
+                    <title>ERROR CRÍTICO</title>
                     <style>
-                        * { margin: 0; padding: 0; user-select: none; }
+                        * {margin:0;padding:0;user-select:none;}
                         body {
-                            background: #000;
-                            color: #f00;
-                            font-family: 'Courier New', monospace;
-                            overflow: hidden;
-                            height: 100vh;
+                            background:black;
+                            color:#ff0000;
+                            font-family:'Courier New',monospace;
+                            overflow:hidden;
+                            height:100vh;
+                            display:flex;
+                            flex-direction:column;
+                            justify-content:center;
+                            align-items:center;
+                            font-size:28px;
                         }
-                        .virus-screen {
-                            position: absolute;
-                            top: 0; left: 0; right: 0; bottom: 0;
-                            display: flex;
-                            flex-direction: column;
-                            justify-content: center;
-                            align-items: center;
-                            font-size: 24px;
-                            text-shadow: 0 0 10px red;
+                        .titulo {font-size:60px;margin-bottom:30px;animation:pulso 0.3s infinite;}
+                        .contador {font-size:100px;font-weight:bold;margin:20px;}
+                        .texto {margin:10px;font-size:22px;}
+                        @keyframes pulso {
+                            0%,100%{transform:scale(1);color:#ff0000;}
+                            50%{transform:scale(1.05);color:#ff6666;}
                         }
-                        .title { font-size: 48px; margin-bottom: 20px; animation: blink 0.5s infinite; }
-                        .countdown { font-size: 80px; font-weight: bold; margin: 20px 0; }
-                        @keyframes blink { 0%,50% { opacity: 1; } 51%,100% { opacity: 0.3; } }
-                        canvas { position: absolute; top: 0; left: 0; pointer-events: none; }
+                        canvas {position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;}
                     </style>
                 </head>
                 <body>
-                    <canvas id="mouseTrap"></canvas>
-                    <div class="virus-screen">
-                        <div class="title">🔴 SISTEMA BLOQUEADO 🔴</div>
-                        <div class="countdown" id="timer">2</div>
-                        <div>Alt+F4 = INÚTIL</div>
-                        <div>Ctrl+W = INÚTIL</div>
-                        <div>ESC = INÚTIL</div>
-                    </div>
+                    <canvas id="trap"></canvas>
+                    <div class="titulo">🔴 VIRUS ACTIVADO 🔴</div>
+                    <div class="contador" id="timer">2</div>
+                    <div class="texto">ALT+F4 BLOQUEADO</div>
+                    <div class="texto">CTRL+W BLOQUEADO</div>
+                    <div class="texto">ESCAPE BLOQUEADO</div>
 
                     <script>
-                        // SONIDO LOCAL EN CADA VENTANA
-                        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                        const osc = ctx.createOscillator();
-                        const gain = ctx.createGain();
-                        osc.frequency.value = 900;
-                        gain.gain.value = 1.0;
-                        osc.connect(gain);
-                        gain.connect(ctx.destination);
-                        osc.start();
-                        setTimeout(() => osc.stop(), 2000);
+                        // SONIDO EN CADA VENTANA
+                        try {
+                            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                            const tono = ctx.createOscillator();
+                            const volumen = ctx.createGain();
+                            tono.frequency.value = 850;
+                            volumen.gain.value = 1;
+                            tono.connect(volumen);
+                            volumen.connect(ctx.destination);
+                            tono.start();
+                            setTimeout(()=>tono.stop(),2000);
+                        } catch(e) {}
 
-                        // BLOQUEO TOTAL DE TECLAS
-                        document.addEventListener('keydown', e => {
+                        // BLOQUEO TOTAL
+                        document.onkeydown = document.onkeyup = document.onkeypress = function(e) {
                             e.preventDefault();
-                            e.stopImmediatePropagation();
+                            e.stopPropagation();
                             return false;
-                        }, true);
+                        };
 
-                        document.addEventListener('keyup', e => {
+                        document.onmousedown = document.onmouseup = document.onmousemove = function(e) {
                             e.preventDefault();
                             return false;
-                        }, true);
+                        };
 
-                        // BLOQUEAR MOUSE
-                        const canvas = document.getElementById('mouseTrap');
-                        canvas.width = window.innerWidth;
-                        canvas.height = window.innerHeight;
-                        
-                        canvas.addEventListener('click', e => e.preventDefault(), true);
-                        canvas.addEventListener('mousedown', e => e.preventDefault(), true);
-                        canvas.addEventListener('mousemove', e => e.preventDefault(), true);
-                        
-                        // Intentar pointer lock
-                        canvas.requestPointerLock();
+                        document.oncontextmenu = function(e) {e.preventDefault();return false;};
+
+                        // POINTER LOCK
+                        const canvas = document.getElementById('trap');
+                        canvas.width = screen.width;
+                        canvas.height = screen.height;
+                        if(canvas.requestPointerLock) canvas.requestPointerLock();
 
                         // COUNTDOWN
-                        let count = 2;
-                        const timerEl = document.getElementById('timer');
-                        const int = setInterval(() => {
-                            count--;
-                            timerEl.textContent = count;
-                            if (count <= 0) {
-                                clearInterval(int);
+                        let t = 2;
+                        const timer = document.getElementById('timer');
+                        const intv = setInterval(()=>{
+                            t--;
+                            timer.textContent = t;
+                            if(t<=0){
+                                clearInterval(intv);
                                 window.close();
                             }
-                        }, 1000);
+                        },1000);
 
-                        // PREVENIR CIERRE
-                        window.onbeforeunload = () => 'VIRUS ACTIVO';
-                        window.onunload = () => {};
+                        // ANTI-CIERRE
+                        window.onbeforeunload = function(){return'ERROR SISTEMA';};
                     </script>
                 </body>
                 </html>
             `);
             
-            virusWin.document.close();
-            virusWin.focus();
+            virus.document.close();
+            virus.focus();
+            virus.blur();
         }
 
-        // BLOQUEAR TECLAS EN PÁGINA PRINCIPAL
-        document.addEventListener('keydown', e => {
-            if (e.key === 'Escape' || (e.ctrlKey && e.key === 'w') || (e.altKey && e.key === 'F4')) {
-                e.preventDefault();
-            }
+        // BLOQUEO PREVENTIVO
+        document.addEventListener('keydown', function(e){
+            e.preventDefault();
         }, true);
     </script>
 </body>
