@@ -7,7 +7,7 @@
   <title>Olap</title>
   <link rel="icon" type="image/png" href="img/favicon.png">
   <!-- Google tag (gtag.js) -->
-  <script async src="https://googletagmanager.com"></script>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-Q25WGL1GDZ"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
@@ -15,9 +15,9 @@
     gtag('config', 'G-Q25WGL1GDZ');
   </script>
   <!-- Pixel font -->
-  <link href="https://googleapis.com" rel="stylesheet">
-  
-  <script src="https://google.com" async defer></script>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <!-- Google Identity Services -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 
   <style>
     /* RESET Y BOX-SIZING */
@@ -262,59 +262,262 @@
 
   <header><h4>Comentarios y sugerencias a olap.comentarios@gmail.com</h4></header>
 
+  <!-- ===== Overlay de “Descargando virus…” con lluvia de 0 y 1 ===== -->
+
   <script>
-    /* ===== SECCIÓN SECUENCIA 1001 ===== */
-    let sequence = "";
-    document.addEventListener('keydown', (e) => {
-      // Solo aceptamos números
-      if (e.key >= '0' && e.key <= '9') {
-        sequence += e.key;
-        // Solo guardamos los últimos 4 caracteres
-        if (sequence.length > 4) {
-          sequence = sequence.substring(sequence.length - 4);
+    /* ===== Fondo de estrellas ===== */
+    const canvas = document.getElementById('stars');
+    const ctx = canvas.getContext('2d');
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('load', () => {
+      resizeCanvas();
+      initStars();
+      loop();
+    });
+    window.addEventListener('resize', () => {
+      resizeCanvas();
+      initStars();
+    });
+
+    let stars = [];
+    function initStars() {
+      stars = Array.from({ length: 500 }).map(() => ({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        r: Math.random() * 1.6 + 0.4,
+        d: Math.random() * 0.7 + 0.3
+      }));
+    }
+    function drawStars() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#fff';
+      stars.forEach(s => {
+        ctx.globalAlpha = s.d;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+    }
+    function loop() {
+      drawStars();
+      requestAnimationFrame(loop);
+    }
+  </script>
+
+  <script>
+    /* ===== Contador de visitas ===== */
+    fetch("https://api.countapi.xyz/hit/olap.es/visits").catch(() => {});
+  </script>
+
+  <script>
+    /* ===== Autenticación con Google Sign-In ===== */
+    // IMPORTANTE: Reemplaza 'YOUR_CLIENT_ID' con tu Client ID de Google Cloud Console
+    const GOOGLE_CLIENT_ID = '960980369582-b8o0bnb4g2tc450lerhn7cbc4hpbhtqi.apps.googleusercontent.com';
+    let isAuthenticated = false;
+    let userInfo = null;
+    const loginBtn = document.getElementById('login-logout-btn');
+
+    // Verificar estado de autenticación al cargar
+    function checkAuthState() {
+      const savedAuth = localStorage.getItem('google_auth');
+      if (savedAuth) {
+        try {
+          const authData = JSON.parse(savedAuth);
+          if (authData.credential && authData.expiresAt > Date.now()) {
+            isAuthenticated = true;
+            userInfo = authData.userInfo;
+            updateButtonUI();
+            window.progressSync?.syncNow?.().catch(err => console.error('Error sincronizando progreso:', err));
+          } else {
+            // Token expirado, limpiar
+            localStorage.removeItem('google_auth');
+            isAuthenticated = false;
+            userInfo = null;
+            updateButtonUI();
+          }
+        } catch (e) {
+          localStorage.removeItem('google_auth');
+          isAuthenticated = false;
+          userInfo = null;
+          updateButtonUI();
         }
-        // Si la secuencia coincide, redirigimos
-        if (sequence === "1001") {
-          window.location.href = "broma.html";
-        }
+      } else {
+        updateButtonUI();
+      }
+    }
+
+    // Actualizar UI del botón según el estado
+    function updateButtonUI() {
+      if (isAuthenticated) {
+        loginBtn.textContent = 'Logout';
+        loginBtn.onclick = handleLogout;
+      } else {
+        loginBtn.textContent = 'Login';
+        loginBtn.onclick = handleLogin;
+      }
+    }
+
+    // Manejar login
+    function handleLogin() {
+      if (typeof google === 'undefined' || !google.accounts) {
+        alert('Error: Google Identity Services no está cargado. Por favor, recarga la página.');
+        return;
+      }
+
+      if (GOOGLE_CLIENT_ID === 'YOUR_CLIENT_ID') {
+        alert('Error: Por favor, configura tu Google Client ID en el código.');
+        return;
+      }
+
+      // Mostrar modal
+      const modal = document.getElementById('google-signin-modal');
+      modal.classList.add('active');
+
+      // Inicializar Google Sign-In
+      google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleCredentialResponse
+      });
+
+      // Renderizar botón de Google en el modal
+      const googleButtonContainer = document.getElementById('google-signin-button');
+      googleButtonContainer.innerHTML = ''; // Limpiar contenedor
+      
+      google.accounts.id.renderButton(googleButtonContainer, {
+        theme: 'outline',
+        size: 'large',
+        text: 'signin_with',
+        width: 'auto',
+        type: 'standard'
+      });
+    }
+
+    // Cerrar modal
+    function closeGoogleModal() {
+      const modal = document.getElementById('google-signin-modal');
+      modal.classList.remove('active');
+    }
+
+    // Event listeners para cerrar modal
+    document.addEventListener('DOMContentLoaded', () => {
+      const closeBtn = document.getElementById('close-google-modal');
+      const modal = document.getElementById('google-signin-modal');
+      
+      if (closeBtn) {
+        closeBtn.addEventListener('click', closeGoogleModal);
+      }
+      
+      // Cerrar al hacer clic fuera del modal
+      if (modal) {
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) {
+            closeGoogleModal();
+          }
+        });
       }
     });
 
-    /* ===== Fondo de estrellas (Completado) ===== */
-    const canvas = document.getElementById('stars');
-    const ctx = canvas.getContext('2d');
-    let width, height, stars = [];
-
-    function init() {
-      width = canvas.width = window.innerWidth;
-      height = canvas.height = window.innerHeight;
-      stars = [];
-      for (let i = 0; i < 200; i++) {
-        stars.push({
-          x: Math.random() * width,
-          y: Math.random() * height,
-          size: Math.random() * 2,
-          speed: Math.random() * 0.5 + 0.1
-        });
+    // Callback cuando el usuario se autentica
+    function handleCredentialResponse(response) {
+      if (response.credential) {
+        // Decodificar el JWT para obtener información del usuario
+        try {
+          const payload = JSON.parse(atob(response.credential.split('.')[1]));
+          userInfo = {
+            email: payload.email,
+            name: payload.name,
+            picture: payload.picture
+          };
+          
+          // Guardar en localStorage
+          const authData = {
+            credential: response.credential,
+            userInfo: userInfo,
+            expiresAt: payload.exp * 1000 // Convertir a milisegundos
+          };
+          localStorage.setItem('google_auth', JSON.stringify(authData));
+          
+          isAuthenticated = true;
+          updateButtonUI();
+          window.progressSync?.syncNow?.().catch(err => console.error('Error sincronizando progreso:', err));
+          
+          // Cerrar modal
+          closeGoogleModal();
+          
+          // Limpiar el contenedor del botón de Google
+          const googleButtonContainer = document.getElementById('google-signin-button');
+          if (googleButtonContainer) {
+            googleButtonContainer.innerHTML = '';
+          }
+          
+          // Reinicializar para ocultar el prompt
+          google.accounts.id.disableAutoSelect();
+        } catch (e) {
+          console.error('Error procesando credencial:', e);
+          alert('Error al procesar la autenticación. Por favor, intenta de nuevo.');
+        }
       }
     }
 
-    function animate() {
-      ctx.clearRect(0, 0, width, height);
-      ctx.fillStyle = '#fff';
-      stars.forEach(s => {
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
-        ctx.fill();
-        s.y += s.speed;
-        if (s.y > height) s.y = 0;
-      });
-      requestAnimationFrame(animate);
+    // Manejar logout
+    function handleLogout() {
+      // Limpiar datos de autenticación
+      window.progressSync?.uploadNow?.().catch(() => {});
+      localStorage.removeItem('google_auth');
+      isAuthenticated = false;
+      userInfo = null;
+      
+      // Revocar sesión de Google
+      if (typeof google !== 'undefined' && google.accounts) {
+        google.accounts.id.disableAutoSelect();
+        // Limpiar el contenedor del botón de Google
+        const googleButtonContainer = document.getElementById('google-signin-button');
+        if (googleButtonContainer) {
+          googleButtonContainer.innerHTML = '';
+        }
+        // Cerrar modal si está abierto
+        closeGoogleModal();
+      }
+      
+      updateButtonUI();
     }
 
-    window.addEventListener('resize', init);
-    init();
-    animate();
+    // Inicializar cuando la página esté lista
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initializeAuth);
+    } else {
+      initializeAuth();
+    }
+
+    function initializeAuth() {
+      // Verificar estado de autenticación
+      checkAuthState();
+      
+      // Inicializar Google Identity Services cuando esté listo
+      window.addEventListener('load', () => {
+        if (typeof google !== 'undefined' && google.accounts && GOOGLE_CLIENT_ID !== 'YOUR_CLIENT_ID') {
+          google.accounts.id.initialize({
+            client_id: GOOGLE_CLIENT_ID,
+            callback: handleCredentialResponse
+          });
+        }
+      });
+      
+      // Si Google ya está cargado
+      if (typeof google !== 'undefined' && google.accounts && GOOGLE_CLIENT_ID !== 'YOUR_CLIENT_ID') {
+        google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleCredentialResponse
+        });
+      }
+    }
   </script>
+
+  <script src="touch-controls.js"></script>
+  <script src="progress-sync.js"></script>
 </body>
 </html>
