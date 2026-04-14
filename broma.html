@@ -2,107 +2,134 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>VIRUS</title>
+    <title>INFECCION</title>
     <style>
-        * { margin: 0; padding: 0; }
-        body {
-            background: white;
-            height: 100vh;
+        * {
+            margin: 0;
+            padding: 0;
             overflow: hidden;
+        }
+        body {
+            background: black;
+            color: #ff0000;
+            font-family: 'Courier New', monospace;
+            height: 100vh;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
-            font-family: Arial, sans-serif;
+            font-size: 32px;
         }
-        button {
-            padding: 20px 40px;
-            font-size: 24px;
-            background: #ff0000;
-            color: white;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        .titulo {
+            font-size: 72px;
+            animation: pulso 0.3s infinite;
+            margin-bottom: 40px;
+        }
+        .contador {
+            font-size: 120px;
             font-weight: bold;
+            margin: 30px;
+        }
+        .texto {
+            margin: 15px;
+            font-size: 26px;
+        }
+        @keyframes pulso {
+            0%, 100% {
+                transform: scale(1);
+                color: #ff0000;
+                text-shadow: 0 0 20px red;
+            }
+            50% {
+                transform: scale(1.08);
+                color: #ff6666;
+                text-shadow: 0 0 30px #ff6666;
+            }
+        }
+        canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
         }
     </style>
 </head>
 <body>
-    <button onclick="infectar()">🦠 INFECTAR 🦠</button>
+    <canvas id="mouseblock"></canvas>
+    <div class="titulo">🦠 SISTEMA INFECTADO 🦠</div>
+    <div class="contador" id="timer">2</div>
+    <div class="texto">🔒 MOUSE BLOQUEADO</div>
+    <div class="texto">⌨️ TECLAS BLOQUEADAS</div>
+    <div class="texto">🔊 SONIDO MAXIMO</div>
 
     <script>
-        function infectar() {
-            // SONIDO PRINCIPAL - MÚLTIPLES FRECUENCIAS
-            function crearSonido() {
+        // INICIO AUTOMÁTICO
+        window.addEventListener('load', function() {
+            // SONIDO BRUTAL
+            try {
                 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 const osc1 = audioCtx.createOscillator();
                 const osc2 = audioCtx.createOscillator();
                 const gain1 = audioCtx.createGain();
                 const gain2 = audioCtx.createGain();
-                
-                osc1.type = 'sine';
-                osc2.type = 'sine';
-                osc1.frequency.setValueAtTime(800, audioCtx.currentTime);
-                osc2.frequency.setValueAtTime(1000, audioCtx.currentTime);
-                
-                gain1.gain.setValueAtTime(1, audioCtx.currentTime);
-                gain2.gain.setValueAtTime(1, audioCtx.currentTime);
-                
+
+                osc1.frequency.value = 850;
+                osc2.frequency.value = 950;
+                osc1.type = 'sawtooth';
+                osc2.type = 'sawtooth';
+
+                gain1.gain.value = 1;
+                gain2.gain.value = 1;
+
                 osc1.connect(gain1);
-                osc2.connect(gain2);
                 gain1.connect(audioCtx.destination);
+                osc2.connect(gain2);
                 gain2.connect(audioCtx.destination);
-                
+
                 osc1.start();
                 osc2.start();
-                
-                setTimeout(() => {
+
+                setTimeout(function() {
                     osc1.stop();
                     osc2.stop();
                 }, 2000);
+            } catch(e) {
+                console.log('Audio bloqueado');
             }
-            
-            crearSonido();
 
-            // ABRIR 3 VENTANAS VIRUS
-            for(let i = 0; i < 3; i++) {
-                setTimeout(() => abrirVirus(), i * 200);
+            // SPAWN VENTANAS
+            for(let i = 0; i < 4; i++) {
+                setTimeout(spawnVirus, i * 150);
             }
-            
-            // CAMBIAR PÁGINA PRINCIPAL
-            document.body.innerHTML = `
-                <div style="color:red;font-size:50px;text-align:center;padding-top:100px;font-weight:bold;">
-                    💀 SISTEMA INFECTADO 💀<br>
-                    <span id="countdown">2</span>s
-                </div>
-            `;
-            
-            let count = 2;
-            const interval = setInterval(() => {
-                count--;
-                document.getElementById('countdown').textContent = count + 's';
-                if(count <= 0) {
-                    clearInterval(interval);
+
+            // COUNTDOWN
+            let tiempo = 2;
+            const timerEl = document.getElementById('timer');
+            const intervalo = setInterval(function() {
+                tiempo--;
+                timerEl.textContent = tiempo;
+                if(tiempo <= 0) {
+                    clearInterval(intervalo);
                 }
             }, 1000);
-        }
+        });
 
-        function abrirVirus() {
-            const virus = window.open('', 'virus', 'width=900,height=700');
-            
-            virus.document.write(`
+        function spawnVirus() {
+            const hija = window.open('', 'infectado', 'width=850,height=650');
+            hija.document.write(`
                 <!DOCTYPE html>
                 <html>
                 <head>
                     <meta charset="UTF-8">
-                    <title>ERROR CRÍTICO</title>
+                    <title>CRASH</title>
                     <style>
-                        * {margin:0;padding:0;user-select:none;}
-                        body {
-                            background:black;
-                            color:#ff0000;
-                            font-family:'Courier New',monospace;
-                            overflow:hidden;
+                        *{margin:0;padding:0;overflow:hidden;}
+                        body{
+                            background:#000;
+                            color:#f00;
+                            font-family:Courier;
                             height:100vh;
                             display:flex;
                             flex-direction:column;
@@ -110,86 +137,104 @@
                             align-items:center;
                             font-size:28px;
                         }
-                        .titulo {font-size:60px;margin-bottom:30px;animation:pulso 0.3s infinite;}
-                        .contador {font-size:100px;font-weight:bold;margin:20px;}
-                        .texto {margin:10px;font-size:22px;}
-                        @keyframes pulso {
-                            0%,100%{transform:scale(1);color:#ff0000;}
-                            50%{transform:scale(1.05);color:#ff6666;}
+                        .t{font-size:55px;margin-bottom:25px;animation:shake 0.2s infinite;}
+                        .c{font-size:95px;font-weight:bold;margin:20px;}
+                        .w{margin:12px;font-size:24px;}
+                        @keyframes shake{
+                            0%,100%{transform:translateX(0);}
+                            25%{transform:translateX(-3px);}
+                            75%{transform:translateX(3px);}
                         }
-                        canvas {position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;}
+                        canvas{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;}
                     </style>
                 </head>
                 <body>
-                    <canvas id="trap"></canvas>
-                    <div class="titulo">🔴 VIRUS ACTIVADO 🔴</div>
-                    <div class="contador" id="timer">2</div>
-                    <div class="texto">ALT+F4 BLOQUEADO</div>
-                    <div class="texto">CTRL+W BLOQUEADO</div>
-                    <div class="texto">ESCAPE BLOQUEADO</div>
-
+                    <canvas id="lk"></canvas>
+                    <div class="t">⚠️ ERROR FATAL ⚠️</div>
+                    <div class="c" id="t2">2</div>
+                    <div class="w">F4 BLOQUEADO</div>
+                    <div class="w">ESC BLOQUEADO</div>
+                    <div class="w">MOUSE BLOQUEADO</div>
                     <script>
-                        // SONIDO EN CADA VENTANA
-                        try {
-                            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                            const tono = ctx.createOscillator();
-                            const volumen = ctx.createGain();
-                            tono.frequency.value = 850;
-                            volumen.gain.value = 1;
-                            tono.connect(volumen);
-                            volumen.connect(ctx.destination);
-                            tono.start();
-                            setTimeout(()=>tono.stop(),2000);
-                        } catch(e) {}
+                        try{
+                            const a = new (window.AudioContext || window.webkitAudioContext)();
+                            const o = a.createOscillator();
+                            const g = a.createGain();
+                            o.frequency.value = 900;
+                            g.gain.value = 1;
+                            o.connect(g);
+                            g.connect(a.destination);
+                            o.start();
+                            setTimeout(function(){o.stop();}, 2000);
+                        }catch(e){}
 
-                        // BLOQUEO TOTAL
-                        document.onkeydown = document.onkeyup = document.onkeypress = function(e) {
+                        document.onkeydown = document.onkeyup = document.onkeypress = function(e){
                             e.preventDefault();
                             e.stopPropagation();
                             return false;
                         };
 
-                        document.onmousedown = document.onmouseup = document.onmousemove = function(e) {
+                        document.oncontextmenu = document.onselectstart = document.ondragstart = function(e){
                             e.preventDefault();
                             return false;
                         };
 
-                        document.oncontextmenu = function(e) {e.preventDefault();return false;};
+                        document.onmousedown = document.onmousemove = function(e){
+                            e.preventDefault();
+                            return false;
+                        };
 
-                        // POINTER LOCK
-                        const canvas = document.getElementById('trap');
-                        canvas.width = screen.width;
-                        canvas.height = screen.height;
-                        if(canvas.requestPointerLock) canvas.requestPointerLock();
+                        const c = document.getElementById('lk');
+                        c.width = screen.width;
+                        c.height = screen.height;
+                        if(c.requestPointerLock) c.requestPointerLock();
 
-                        // COUNTDOWN
-                        let t = 2;
-                        const timer = document.getElementById('timer');
-                        const intv = setInterval(()=>{
-                            t--;
-                            timer.textContent = t;
-                            if(t<=0){
-                                clearInterval(intv);
+                        let x = 2;
+                        const t3 = document.getElementById('t2');
+                        const i = setInterval(function(){
+                            x--;
+                            t3.textContent = x;
+                            if(x <= 0){
+                                clearInterval(i);
                                 window.close();
                             }
-                        },1000);
+                        }, 1000);
 
-                        // ANTI-CIERRE
-                        window.onbeforeunload = function(){return'ERROR SISTEMA';};
-                    </script>
+                        window.onbeforeunload = function(){return 'CRASH';};
+                    <\/script>
                 </body>
                 </html>
             `);
-            
-            virus.document.close();
-            virus.focus();
-            virus.blur();
+            hija.document.close();
+            hija.focus();
         }
 
-        // BLOQUEO PREVENTIVO
-        document.addEventListener('keydown', function(e){
+        // BLOQUEO GLOBAL
+        document.onkeydown = document.onkeyup = document.onkeypress = function(e) {
             e.preventDefault();
-        }, true);
+            e.stopPropagation();
+            return false;
+        };
+
+        document.oncontextmenu = document.onselectstart = function(e) {
+            e.preventDefault();
+            return false;
+        };
+
+        document.onmousedown = document.onmousemove = function(e) {
+            e.preventDefault();
+        };
+
+        const canvas = document.getElementById('mouseblock');
+        canvas.width = screen.width;
+        canvas.height = screen.height;
+        if(canvas.requestPointerLock) {
+            canvas.requestPointerLock();
+        }
+
+        window.onbeforeunload = function() {
+            return 'INFECCION ACTIVA';
+        };
     </script>
 </body>
 </html>
