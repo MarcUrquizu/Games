@@ -116,6 +116,8 @@
   </div>
 
   <script>
+    const LS_MEDAL_LABERINTO2 = "msi_medal_laberinto2_10";
+
     let level = 1;
     const maxLevels = 10;
     const minCols = 15, minRows = 10;
@@ -306,6 +308,7 @@
           setTimeout(initLevel, 1000);
         } else {
           infoDiv.textContent = `¡Completaste los ${maxLevels} niveles en ${t}s!`;
+          localStorage.setItem(LS_MEDAL_LABERINTO2, "1");
         }
       }
     }

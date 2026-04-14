@@ -41,6 +41,8 @@
 
   <canvas id="gameCanvas" width="320" height="480"></canvas>
   <script>
+    const LS_MEDAL_FLAPPY = "msi_medal_flappy_50";
+
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
@@ -106,6 +108,9 @@
         if (!p.passed && p.x + p.w < bX) {
           p.passed = true;
           score += 1;
+          if (score >= 50) {
+            localStorage.setItem(LS_MEDAL_FLAPPY, "1");
+          }
         }
       });
 

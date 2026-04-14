@@ -6,6 +6,22 @@
   <title>Recompensas</title>
   <style>
     body{ margin:0; background:#0b0f14; color:#e8eef7; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; }
+    .game-buttons{
+      background-color:#000;
+      color:#fff;
+      font-weight:700;
+      text-decoration:none;
+      padding:8px 16px;
+      border-radius:5px;
+      position:fixed;
+      top:10px;
+      z-index:10;
+      border:none;
+      cursor:pointer;
+      font-family:inherit;
+    }
+    .menu-button{ right:10px; }
+    .help-button{ left:10px; }
     .wrap{ max-width:900px; margin:0 auto; padding:24px; }
     .card{
       background: rgba(10,14,20,.92);
@@ -37,6 +53,8 @@
   </style>
 </head>
 <body>
+  <a href="./index.html" class="menu-button game-buttons">Menu</a>
+  <button class="help-button game-buttons" data-help="Aquí puedes ver todas las recompensas desbloqueadas en los juegos.">Info</button>
   <div class="wrap">
     <div class="card">
       <div class="title">RECOMPENSAS</div>
@@ -54,6 +72,30 @@
           <div style="font-weight:800;">Maestro del 2048</div>
           <div style="opacity:.85;font-size:13px;margin-top:4px;">Consigue un bloque 2048 en el juego 2048</div>
         </div>
+
+        <div id="medalSkyhooper" class="reward">
+          <div class="medal">🚀</div>
+          <div style="font-weight:800;">Escalador del cielo</div>
+          <div style="opacity:.85;font-size:13px;margin-top:4px;">Alcanza 1500 m en Sky Hopper</div>
+        </div>
+
+        <div id="medalFlappy" class="reward">
+          <div class="medal">🐦</div>
+          <div style="font-weight:800;">Aleteo legendario</div>
+          <div style="opacity:.85;font-size:13px;margin-top:4px;">Llega a 50 puntos en Flappy Bird</div>
+        </div>
+
+        <div id="medalPacman" class="reward">
+          <div class="medal">🟡</div>
+          <div style="font-weight:800;">Rey del Pacman</div>
+          <div style="opacity:.85;font-size:13px;margin-top:4px;">Completa el nivel 10 en Pacman</div>
+        </div>
+
+        <div id="medalLaberinto2" class="reward">
+          <div class="medal">🧩</div>
+          <div style="font-weight:800;">Maestro del Laberinto 2</div>
+          <div style="opacity:.85;font-size:13px;margin-top:4px;">Completa los 10 niveles de Laberinto 2</div>
+        </div>
       </div>
     </div>
   </div>
@@ -61,10 +103,18 @@
   <script>
     const LS_MEDAL_HARDCORE = "msi_medal_hardcore";
     const LS_MEDAL_2048 = "msi_medal_2048";
+    const LS_MEDAL_SKYHOOPER = "msi_medal_skyhooper_1500";
+    const LS_MEDAL_FLAPPY = "msi_medal_flappy_50";
+    const LS_MEDAL_PACMAN = "msi_medal_pacman_level10";
+    const LS_MEDAL_LABERINTO2 = "msi_medal_laberinto2_10";
 
     const rewards = [
       { id: "medalHardcore", key: LS_MEDAL_HARDCORE, icon: "🏅" },
-      { id: "medal2048", key: LS_MEDAL_2048, icon: "🧠" }
+      { id: "medal2048", key: LS_MEDAL_2048, icon: "🧠" },
+      { id: "medalSkyhooper", key: LS_MEDAL_SKYHOOPER, icon: "🚀" },
+      { id: "medalFlappy", key: LS_MEDAL_FLAPPY, icon: "🐦" },
+      { id: "medalPacman", key: LS_MEDAL_PACMAN, icon: "🟡" },
+      { id: "medalLaberinto2", key: LS_MEDAL_LABERINTO2, icon: "🧩" }
     ];
 
     rewards.forEach(({ id, key, icon }) => {
@@ -80,6 +130,7 @@
       }
     });
   </script>
+  <script src="help-modal.js"></script>
   <script src="progress-sync.js"></script>
 </body>
 </html>

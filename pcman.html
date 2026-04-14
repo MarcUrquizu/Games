@@ -115,6 +115,7 @@
 
 var NONE=4,UP=3,LEFT=2,DOWN=1,RIGHT=11,WAITING=5,PAUSE=6,PLAYING=7,COUNTDOWN=8,EATEN_PAUSE=9,DYING=10,Pacman={};
 Pacman.FPS=30;
+var LS_MEDAL_PACMAN = "msi_medal_pacman_level10";
 
 /* --- Ghost --- */
 Pacman.Ghost=function(game,map,colour){
@@ -380,7 +381,10 @@ var PACMAN=(function(){
     drawFooter();
   }
   function eatenPill(){ audio.play("eatpill"); timerStart=tick; eatenCount=0; for(i=0;i<ghosts.length;i++){ ghosts[i].makeEatable(ctx); } }
-  function completedLevel(){ setState(WAITING); level+=1; map.reset(); user.newLevel(); startLevel(); }
+  function completedLevel(){
+    if(level>=10){ localStorage.setItem(LS_MEDAL_PACMAN, "1"); }
+    setState(WAITING); level+=1; map.reset(); user.newLevel(); startLevel();
+  }
   function keyPress(e){ if(state!==WAITING && state!==PAUSE){ e.preventDefault(); e.stopPropagation(); } }
   function init(wrapper,root){
     var i,len,ghost, blockSize = wrapper.offsetWidth/19, canvas=document.createElement("canvas");

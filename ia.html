@@ -43,6 +43,23 @@
   </script>
 
   <style>
+    .game-buttons {
+      background-color: #000;
+      color: #fff;
+      font-weight: 700;
+      text-decoration: none;
+      padding: 8px 16px;
+      border-radius: 5px;
+      position: fixed;
+      top: 10px;
+      z-index: 60;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .menu-button { right: 10px; }
+    .help-button { left: 10px; }
+
     /* Mejora de bloques de código (sin @apply, porque con CDN no compila) */
     pre[class*="language-"] {
       border-radius: 0.75rem;
@@ -58,6 +75,8 @@
 </head>
 
 <body class="bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100 transition-colors duration-300">
+  <a href="./index.html" class="menu-button game-buttons">Menu</a>
+  <button class="help-button game-buttons" data-help="IA Olap: escribe tu pregunta y obtén respuestas con código y matemáticas renderizadas.">Info</button>
   <div class="flex h-screen overflow-hidden">
     <!-- Sidebar -->
     <aside id="sidebar" class="w-64 bg-white dark:bg-gray-800 flex flex-col border-r border-gray-200 dark:border-gray-700 transition-transform duration-300 md:translate-x-0 -translate-x-full">
@@ -483,6 +502,7 @@
       }
     };
   </script>
+  <script src="help-modal.js"></script>
   <script src="progress-sync.js"></script>
 </body>
 </html>
