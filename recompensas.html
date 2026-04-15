@@ -81,7 +81,7 @@
       }
       100% {
         opacity: 0;
-        transform: translate(-50%, -50%) scale(22);
+        transform: translate(-50%, -50%) scale(120);
       }
     }
     @keyframes rewardShake {
@@ -142,6 +142,9 @@
     .medal-shard.s3{ transform-origin: 20% 80%; clip-path: polygon(50% 50%, 0% 100%, 0% 0%); }
     .medal-shard.s4{ transform-origin: 80% 80%; clip-path: polygon(50% 50%, 100% 100%, 0% 100%); }
     .reward:not(.unlocked) .medal-color{ opacity:.15; }
+
+    .reward.unlocked .medal-locked{ opacity:0; }
+    .reward.unlocked .medal-color{ opacity:1; }
 
     .reward.unlock-break .medal-locked{
       animation: medalCrackFade 480ms ease-in forwards;
