@@ -50,6 +50,174 @@
     }
     .title{ font-size: 26px; font-weight: 800; margin:0 0 6px; }
     .sub{ opacity:.85; margin:0; }
+
+    .secret-pulse{
+      position:fixed;
+      left:50%;
+      top:50%;
+      width:24px;
+      height:24px;
+      border-radius:50%;
+      transform:translate(-50%,-50%) scale(0.25);
+      background:radial-gradient(circle, rgba(120,255,255,.95) 0%, rgba(71,172,255,.9) 35%, rgba(157,82,255,.65) 70%, rgba(157,82,255,0) 100%);
+      box-shadow:
+        0 0 20px rgba(110,245,255,.9),
+        0 0 60px rgba(110,245,255,.7),
+        0 0 110px rgba(140,110,255,.65);
+      pointer-events:none;
+      z-index:2000;
+      animation: secretPulse 900ms ease-out forwards;
+    }
+    .rainbow-waves {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1900;
+      display: grid;
+      place-items: center;
+    }
+    .rainbow-wave {
+      position: absolute;
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      border: 3px solid #fff;
+      opacity: 0;
+      mix-blend-mode: screen;
+      animation: rainbowWaveExpand 1200ms ease-out forwards, rainbowColorShift 900ms linear infinite;
+      box-shadow: 0 0 18px rgba(255,255,255,.8);
+    }
+    .reward.unlock-shake{
+      animation: rewardShake 600ms ease-in-out;
+    }
+    @keyframes secretPulse {
+      0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.2);
+      }
+      20% {
+        opacity: 1;
+      }
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(120);
+      }
+    }
+    @keyframes rewardShake {
+      0%, 100% { transform: translateX(0) rotate(0deg); }
+      15% { transform: translateX(-6px) rotate(-1.4deg); }
+      30% { transform: translateX(6px) rotate(1.4deg); }
+      45% { transform: translateX(-5px) rotate(-1deg); }
+      60% { transform: translateX(5px) rotate(1deg); }
+      75% { transform: translateX(-3px) rotate(-.6deg); }
+      90% { transform: translateX(3px) rotate(.6deg); }
+    }
+
+    .reward.unlock-pop{
+      animation: rewardPop 220ms ease-out;
+    }
+    .medal{
+      position: relative;
+      width: 1.2em;
+      height: 1.2em;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      overflow: visible;
+      isolation: isolate;
+    }
+    .medal-layer,
+    .medal-shard{
+      position:absolute;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      will-change: transform, opacity;
+    }
+    .medal-color{
+      opacity: 1;
+      transform: scale(1);
+      transition: opacity 200ms ease, transform 240ms ease;
+    }
+    .medal-locked{
+      filter: grayscale(1) brightness(.35);
+      opacity: .95;
+      transition: opacity 200ms ease;
+    }
+    .medal-shards{
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      opacity:0;
+    }
+    .medal-shard{
+      clip-path: polygon(50% 50%, 0% 0%, 100% 0%);
+      transform: translate(0,0) rotate(0deg) scale(.9);
+      opacity:0;
+    }
+    .medal-shard.s1{ transform-origin: 20% 20%; }
+    .medal-shard.s2{ transform-origin: 80% 20%; clip-path: polygon(50% 50%, 100% 0%, 100% 100%); }
+    .medal-shard.s3{ transform-origin: 20% 80%; clip-path: polygon(50% 50%, 0% 100%, 0% 0%); }
+    .medal-shard.s4{ transform-origin: 80% 80%; clip-path: polygon(50% 50%, 100% 100%, 0% 100%); }
+    .reward:not(.unlocked) .medal-color{ opacity:.15; }
+
+    .reward.unlocked .medal-locked{ opacity:0; }
+    .reward.unlocked .medal-color{ opacity:1; }
+
+    .reward.unlock-break .medal-locked{
+      animation: medalCrackFade 480ms ease-in forwards;
+    }
+    .reward.unlock-break .medal-shards{
+      opacity:1;
+    }
+    .reward.unlock-break .medal-shard{
+      opacity:1;
+      filter: drop-shadow(0 0 6px rgba(255,255,255,.35));
+    }
+    .reward.unlock-break .medal-shard.s1{ animation: shardFly1 500ms ease-out forwards; }
+    .reward.unlock-break .medal-shard.s2{ animation: shardFly2 500ms ease-out forwards; }
+    .reward.unlock-break .medal-shard.s3{ animation: shardFly3 500ms ease-out forwards; }
+    .reward.unlock-break .medal-shard.s4{ animation: shardFly4 500ms ease-out forwards; }
+    .reward.unlock-break .medal-color{
+      animation: medalReveal 420ms ease-out forwards;
+    }
+
+    @keyframes rainbowWaveExpand {
+      0% {
+        opacity: .95;
+        transform: scale(.2);
+      }
+      100% {
+        opacity: 0;
+        transform: scale(40);
+      }
+    }
+    @keyframes rainbowColorShift {
+      0% { border-color: #ff3c8e; box-shadow: 0 0 20px #ff3c8e; }
+      25% { border-color: #ffbf00; box-shadow: 0 0 20px #ffbf00; }
+      50% { border-color: #3cff8a; box-shadow: 0 0 20px #3cff8a; }
+      75% { border-color: #39b9ff; box-shadow: 0 0 20px #39b9ff; }
+      100% { border-color: #b168ff; box-shadow: 0 0 20px #b168ff; }
+    }
+    @keyframes rewardPop {
+      0% { transform: scale(1); }
+      60% { transform: scale(1.08); }
+      100% { transform: scale(1); }
+    }
+    @keyframes medalCrackFade {
+      0% { opacity: .95; transform: scale(1); }
+      45% { opacity: .9; }
+      100% { opacity: 0; transform: scale(1.12); }
+    }
+    @keyframes medalReveal {
+      0% { transform: scale(.7); opacity:.25; }
+      100% { transform: scale(1); opacity:1; }
+    }
+    @keyframes shardFly1 { from { opacity:1; transform: translate(0,0) rotate(0deg) scale(.95); } to { opacity:0; transform: translate(-20px,-18px) rotate(-32deg) scale(.62); } }
+    @keyframes shardFly2 { from { opacity:1; transform: translate(0,0) rotate(0deg) scale(.95); } to { opacity:0; transform: translate(20px,-14px) rotate(28deg) scale(.62); } }
+    @keyframes shardFly3 { from { opacity:1; transform: translate(0,0) rotate(0deg) scale(.95); } to { opacity:0; transform: translate(-18px,18px) rotate(-24deg) scale(.58); } }
+    @keyframes shardFly4 { from { opacity:1; transform: translate(0,0) rotate(0deg) scale(.95); } to { opacity:0; transform: translate(18px,20px) rotate(34deg) scale(.58); } }
   </style>
 </head>
 <body>
@@ -117,16 +285,288 @@
       { id: "medalLaberinto2", key: LS_MEDAL_LABERINTO2, icon: "🧩" }
     ];
 
-    rewards.forEach(({ id, key, icon }) => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      const unlocked = localStorage.getItem(key) === "1";
+    function ensureMedalStructure(medalElement, icon) {
+      if (!medalElement || medalElement.dataset.iconInitialized === "1") return;
+      medalElement.innerHTML = `
+        <span class="medal-layer medal-color">${icon}</span>
+        <span class="medal-layer medal-locked">${icon}</span>
+        <span class="medal-shards" aria-hidden="true">
+          <span class="medal-shard s1">${icon}</span>
+          <span class="medal-shard s2">${icon}</span>
+          <span class="medal-shard s3">${icon}</span>
+          <span class="medal-shard s4">${icon}</span>
+        </span>
+      `;
+      medalElement.dataset.iconInitialized = "1";
+    }
 
-      if (unlocked) {
-        el.classList.add("unlocked");
-        el.querySelector(".medal").textContent = icon;
+    const LS_REWARDS_CELEBRATED = "msi_rewards_celebrated_v1";
+    const SECRET_SEQUENCE = "111000222";
+    const PULSE_DURATION_MS = 900;
+    const SHAKE_DURATION_MS = 600;
+    const POP_DURATION_MS = 220;
+    const BREAK_DURATION_MS = 500;
+    let recentKeys = "";
+    let isSecretAnimationRunning = false;
+    let victoryCelebrationRunning = false;
+    let audioCtx = null;
+
+    function getAudioCtx() {
+      if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) audioCtx = new AudioContextClass();
+      }
+      if (audioCtx && audioCtx.state === "suspended") {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    function playTone(freq, start, duration, type = "sine", gainValue = 0.075) {
+      const ctx = getAudioCtx();
+      if (!ctx) return;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, start);
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(gainValue, start + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + duration + 0.02);
+    }
+
+    function playDing() {
+      const ctx = getAudioCtx();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+      playTone(880, now, 0.16, "triangle", 0.085);
+      playTone(1320, now + 0.08, 0.2, "sine", 0.062);
+    }
+
+    function playVictoryJingle() {
+      const ctx = getAudioCtx();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+
+      const melody = [
+        { note: 523.25, at: 0.00, dur: 0.24 },
+        { note: 659.25, at: 0.16, dur: 0.24 },
+        { note: 783.99, at: 0.32, dur: 0.28 },
+        { note: 1046.5, at: 0.52, dur: 0.34 },
+        { note: 1318.51, at: 0.74, dur: 0.40 },
+        { note: 1567.98, at: 0.98, dur: 0.45 }
+      ];
+
+      const epicChords = [
+        { root: 261.63, at: 0.00, dur: 0.65 },
+        { root: 329.63, at: 0.36, dur: 0.65 },
+        { root: 392.0, at: 0.72, dur: 0.75 },
+        { root: 523.25, at: 1.08, dur: 0.90 }
+      ];
+
+      melody.forEach(({ note, at, dur }) => {
+        playTone(note, now + at, dur, "triangle", 0.096);
+      });
+
+      epicChords.forEach(({ root, at, dur }) => {
+        playTone(root, now + at, dur, "sawtooth", 0.062);
+        playTone(root * 1.25, now + at, dur, "triangle", 0.054);
+        playTone(root * 1.5, now + at, dur, "triangle", 0.05);
+      });
+
+      const bassNotes = [130.81, 164.81, 196.0, 261.63];
+      bassNotes.forEach((note, index) => {
+        playTone(note, now + index * 0.36, 0.5, "square", 0.044);
+      });
+    }
+
+    function playRainbowWaves() {
+      const container = document.createElement("div");
+      container.className = "rainbow-waves";
+      for (let i = 0; i < 4; i++) {
+        const wave = document.createElement("div");
+        wave.className = "rainbow-wave";
+        wave.style.animationDelay = `${i * 140}ms, ${i * 90}ms`;
+        container.appendChild(wave);
+      }
+      document.body.appendChild(container);
+      setTimeout(() => container.remove(), 1800);
+    }
+
+    function areAllRewardsUnlocked() {
+      return rewards.every(({ key }) => localStorage.getItem(key) === "1");
+    }
+
+    function triggerVictoryCelebration() {
+      if (victoryCelebrationRunning) return;
+      victoryCelebrationRunning = true;
+      playVictoryJingle();
+      playRainbowWaves();
+      setTimeout(() => {
+        victoryCelebrationRunning = false;
+      }, 1900);
+    }
+
+    function getCelebratedRewardKeys() {
+      try {
+        const raw = localStorage.getItem(LS_REWARDS_CELEBRATED);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function setCelebratedRewardKeys(keys) {
+      const uniqueKeys = [...new Set(keys)];
+      localStorage.setItem(LS_REWARDS_CELEBRATED, JSON.stringify(uniqueKeys));
+    }
+
+    function markRewardsAsCelebrated(rewardItems) {
+      const celebrated = getCelebratedRewardKeys();
+      const merged = [...celebrated, ...rewardItems.map(({ key }) => key)];
+      setCelebratedRewardKeys(merged);
+    }
+
+    function getNewlyUnlockedRewards() {
+      const celebratedSet = new Set(getCelebratedRewardKeys());
+      return rewards.filter(({ key }) => localStorage.getItem(key) === "1" && !celebratedSet.has(key));
+    }
+
+    function renderRewards({ breakIds = null, holdLockedIds = null } = {}) {
+      rewards.forEach(({ id, key, icon }) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+
+        const medalEl = el.querySelector(".medal");
+        ensureMedalStructure(medalEl, icon);
+
+        const unlocked = localStorage.getItem(key) === "1";
+
+        if (unlocked) {
+          if (holdLockedIds && holdLockedIds.has(id)) {
+            el.classList.remove("unlocked", "unlock-break");
+            el.dataset.unlocked = "0";
+            return;
+          }
+
+          if (breakIds && breakIds.has(id)) {
+            el.classList.remove("unlocked", "unlock-break");
+            void el.offsetWidth;
+            el.classList.add("unlock-break");
+            setTimeout(() => {
+              el.classList.remove("unlock-break");
+              el.classList.add("unlocked");
+              el.dataset.unlocked = "1";
+            }, BREAK_DURATION_MS);
+            el.dataset.unlocked = "0";
+            return;
+          }
+
+          el.classList.add("unlocked");
+        } else {
+          el.classList.remove("unlocked", "unlock-break");
+        }
+
+        el.dataset.unlocked = unlocked ? "1" : "0";
+      });
+    }
+
+    const newlyUnlockedRewards = getNewlyUnlockedRewards();
+    const newlyUnlockedIds = new Set(newlyUnlockedRewards.map(({ id }) => id));
+    renderRewards({ holdLockedIds: newlyUnlockedIds });
+
+    function playSecretPulse() {
+      return new Promise((resolve) => {
+        const pulse = document.createElement("div");
+        pulse.className = "secret-pulse";
+        document.body.appendChild(pulse);
+
+        pulse.addEventListener("animationend", () => {
+          pulse.remove();
+          resolve();
+        }, { once: true });
+
+        setTimeout(() => {
+          if (document.body.contains(pulse)) {
+            pulse.remove();
+            resolve();
+          }
+        }, PULSE_DURATION_MS + 100);
+      });
+    }
+
+    function playRewardsCelebration(rewardItems, { withPulse = false, unlockBeforeAnimation = false } = {}) {
+      const rewardElements = rewardItems
+        .map(({ id }) => document.getElementById(id))
+        .filter(Boolean);
+
+      if (!rewardElements.length) return;
+
+      const startAnimation = () => {
+        playDing();
+        rewardElements.forEach((el) => el.classList.add("unlock-shake"));
+
+        setTimeout(() => {
+          rewardElements.forEach((el) => {
+            el.classList.remove("unlock-shake");
+            el.classList.add("unlock-pop");
+          });
+
+          setTimeout(() => {
+            rewardElements.forEach((el) => el.classList.remove("unlock-pop"));
+
+            if (unlockBeforeAnimation) {
+              rewardItems.forEach(({ key }) => localStorage.setItem(key, "1"));
+            }
+
+            const breakIds = new Set(rewardItems.map(({ id }) => id));
+            renderRewards({ breakIds });
+            markRewardsAsCelebrated(rewardItems);
+            if (areAllRewardsUnlocked()) {
+              triggerVictoryCelebration();
+            }
+          }, POP_DURATION_MS);
+        }, SHAKE_DURATION_MS);
+      };
+
+      if (withPulse) {
+        playSecretPulse().then(startAnimation);
       } else {
-        el.querySelector(".medal").textContent = "🔒";
+        startAnimation();
+      }
+    }
+
+    function triggerSecretUnlockAnimation() {
+      if (isSecretAnimationRunning) return;
+      isSecretAnimationRunning = true;
+
+      playRewardsCelebration(rewards, { withPulse: true, unlockBeforeAnimation: true });
+
+      setTimeout(() => {
+        isSecretAnimationRunning = false;
+      }, PULSE_DURATION_MS + SHAKE_DURATION_MS + POP_DURATION_MS + BREAK_DURATION_MS);
+    }
+
+    if (newlyUnlockedRewards.length) {
+      isSecretAnimationRunning = true;
+      playRewardsCelebration(newlyUnlockedRewards, { withPulse: true, unlockBeforeAnimation: false });
+      setTimeout(() => {
+        isSecretAnimationRunning = false;
+      }, PULSE_DURATION_MS + SHAKE_DURATION_MS + POP_DURATION_MS + BREAK_DURATION_MS);
+    }
+
+    document.addEventListener("keydown", (event) => {
+      if (!/^\d$/.test(event.key)) return;
+      recentKeys = (recentKeys + event.key).slice(-SECRET_SEQUENCE.length);
+
+      if (recentKeys === SECRET_SEQUENCE) {
+        recentKeys = "";
+        triggerSecretUnlockAnimation();
       }
     });
   </script>
