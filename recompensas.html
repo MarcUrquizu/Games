@@ -50,6 +50,49 @@
     }
     .title{ font-size: 26px; font-weight: 800; margin:0 0 6px; }
     .sub{ opacity:.85; margin:0; }
+
+    .secret-pulse{
+      position:fixed;
+      left:50%;
+      top:50%;
+      width:24px;
+      height:24px;
+      border-radius:50%;
+      transform:translate(-50%,-50%) scale(0.25);
+      background:radial-gradient(circle, rgba(120,255,255,.95) 0%, rgba(71,172,255,.9) 35%, rgba(157,82,255,.65) 70%, rgba(157,82,255,0) 100%);
+      box-shadow:
+        0 0 20px rgba(110,245,255,.9),
+        0 0 60px rgba(110,245,255,.7),
+        0 0 110px rgba(140,110,255,.65);
+      pointer-events:none;
+      z-index:2000;
+      animation: secretPulse 900ms ease-out forwards;
+    }
+    .reward.unlock-shake{
+      animation: rewardShake 600ms ease-in-out;
+    }
+    @keyframes secretPulse {
+      0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.2);
+      }
+      20% {
+        opacity: 1;
+      }
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(22);
+      }
+    }
+    @keyframes rewardShake {
+      0%, 100% { transform: translateX(0) rotate(0deg); }
+      15% { transform: translateX(-6px) rotate(-1.4deg); }
+      30% { transform: translateX(6px) rotate(1.4deg); }
+      45% { transform: translateX(-5px) rotate(-1deg); }
+      60% { transform: translateX(5px) rotate(1deg); }
+      75% { transform: translateX(-3px) rotate(-.6deg); }
+      90% { transform: translateX(3px) rotate(.6deg); }
+    }
   </style>
 </head>
 <body>
@@ -136,16 +179,64 @@
     renderRewards();
 
     const SECRET_SEQUENCE = "111000222";
+    const PULSE_DURATION_MS = 900;
+    const SHAKE_DURATION_MS = 600;
     let recentKeys = "";
+    let isSecretAnimationRunning = false;
+
+    function playSecretPulse() {
+      return new Promise((resolve) => {
+        const pulse = document.createElement("div");
+        pulse.className = "secret-pulse";
+        document.body.appendChild(pulse);
+
+        pulse.addEventListener("animationend", () => {
+          pulse.remove();
+          resolve();
+        }, { once: true });
+
+        setTimeout(() => {
+          if (document.body.contains(pulse)) {
+            pulse.remove();
+            resolve();
+          }
+        }, PULSE_DURATION_MS + 100);
+      });
+    }
+
+    function shakeRewardsAndUnlock() {
+      const rewardElements = rewards
+        .map(({ id }) => document.getElementById(id))
+        .filter(Boolean);
+
+      rewardElements.forEach((el) => el.classList.add("unlock-shake"));
+
+      setTimeout(() => {
+        rewardElements.forEach((el) => el.classList.remove("unlock-shake"));
+        rewards.forEach(({ key }) => localStorage.setItem(key, "1"));
+        renderRewards();
+      }, SHAKE_DURATION_MS);
+    }
+
+    async function triggerSecretUnlockAnimation() {
+      if (isSecretAnimationRunning) return;
+      isSecretAnimationRunning = true;
+
+      await playSecretPulse();
+      shakeRewardsAndUnlock();
+
+      setTimeout(() => {
+        isSecretAnimationRunning = false;
+      }, SHAKE_DURATION_MS);
+    }
 
     document.addEventListener("keydown", (event) => {
       if (!/^\d$/.test(event.key)) return;
       recentKeys = (recentKeys + event.key).slice(-SECRET_SEQUENCE.length);
 
       if (recentKeys === SECRET_SEQUENCE) {
-        rewards.forEach(({ key }) => localStorage.setItem(key, "1"));
-        renderRewards();
         recentKeys = "";
+        triggerSecretUnlockAnimation();
       }
     });
   </script>
