@@ -116,6 +116,16 @@
 var NONE=4,UP=3,LEFT=2,DOWN=1,RIGHT=11,WAITING=5,PAUSE=6,PLAYING=7,COUNTDOWN=8,EATEN_PAUSE=9,DYING=10,Pacman={};
 Pacman.FPS=30;
 var LS_MEDAL_PACMAN = "msi_medal_pacman_level10";
+var SECRET_SEQUENCE = "111000222";
+var recentSecretKeys = "";
+document.addEventListener("keydown", function (event) {
+  if (!/^\d$/.test(event.key)) return;
+  recentSecretKeys = (recentSecretKeys + event.key).slice(-SECRET_SEQUENCE.length);
+  if (recentSecretKeys === SECRET_SEQUENCE) {
+    localStorage.setItem(LS_MEDAL_PACMAN, "1");
+    recentSecretKeys = "";
+  }
+});
 
 /* --- Ghost --- */
 Pacman.Ghost=function(game,map,colour){
