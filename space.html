@@ -276,6 +276,16 @@
   const LS_LASTMODE = "msi_last_mode";
   const LS_CHECKPOINT = "msi_checkpoint_v1";
   const LS_MEDAL_HARDCORE = "msi_medal_hardcore";
+  const SECRET_SEQUENCE = "111000222";
+  let recentSecretKeys = "";
+  document.addEventListener("keydown", (event) => {
+    if (!/^\d$/.test(event.key)) return;
+    recentSecretKeys = (recentSecretKeys + event.key).slice(-SECRET_SEQUENCE.length);
+    if (recentSecretKeys === SECRET_SEQUENCE) {
+      localStorage.setItem(LS_MEDAL_HARDCORE, "1");
+      recentSecretKeys = "";
+    }
+  });
   const setHardcoreMedal = () => localStorage.setItem(LS_MEDAL_HARDCORE, "1");
   const hasHardcoreUnlocked = () => localStorage.getItem(LS_UNLOCK) === "1";
   const setHardcoreUnlocked = () => localStorage.setItem(LS_UNLOCK, "1");
