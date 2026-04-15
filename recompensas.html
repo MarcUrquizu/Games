@@ -311,13 +311,20 @@
         const unlocked = localStorage.getItem(key) === "1";
 
         if (unlocked) {
-          el.classList.add("unlocked");
           if (breakIds && breakIds.has(id)) {
-            el.classList.remove("unlock-break");
+            el.classList.remove("unlocked", "unlock-break");
             void el.offsetWidth;
             el.classList.add("unlock-break");
-            setTimeout(() => el.classList.remove("unlock-break"), BREAK_DURATION_MS);
+            setTimeout(() => {
+              el.classList.remove("unlock-break");
+              el.classList.add("unlocked");
+              el.dataset.unlocked = "1";
+            }, BREAK_DURATION_MS);
+            el.dataset.unlocked = "0";
+            return;
           }
+
+          el.classList.add("unlocked");
         } else {
           el.classList.remove("unlocked", "unlock-break");
         }
