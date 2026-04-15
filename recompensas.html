@@ -264,7 +264,43 @@
       medalElement.dataset.iconInitialized = "1";
     }
 
-    function renderRewards({ breakOnUnlock = false } = {}) {
+    const LS_REWARDS_CELEBRATED = "msi_rewards_celebrated_v1";
+    const SECRET_SEQUENCE = "111000222";
+    const PULSE_DURATION_MS = 900;
+    const SHAKE_DURATION_MS = 600;
+    const POP_DURATION_MS = 220;
+    const BREAK_DURATION_MS = 500;
+    let recentKeys = "";
+    let isSecretAnimationRunning = false;
+
+    function getCelebratedRewardKeys() {
+      try {
+        const raw = localStorage.getItem(LS_REWARDS_CELEBRATED);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function setCelebratedRewardKeys(keys) {
+      const uniqueKeys = [...new Set(keys)];
+      localStorage.setItem(LS_REWARDS_CELEBRATED, JSON.stringify(uniqueKeys));
+    }
+
+    function markRewardsAsCelebrated(rewardItems) {
+      const celebrated = getCelebratedRewardKeys();
+      const merged = [...celebrated, ...rewardItems.map(({ key }) => key)];
+      setCelebratedRewardKeys(merged);
+    }
+
+    function getNewlyUnlockedRewards() {
+      const celebratedSet = new Set(getCelebratedRewardKeys());
+      return rewards.filter(({ key }) => localStorage.getItem(key) === "1" && !celebratedSet.has(key));
+    }
+
+    function renderRewards({ breakIds = null } = {}) {
       rewards.forEach(({ id, key, icon }) => {
         const el = document.getElementById(id);
         if (!el) return;
@@ -273,11 +309,10 @@
         ensureMedalStructure(medalEl, icon);
 
         const unlocked = localStorage.getItem(key) === "1";
-        const wasUnlocked = el.dataset.unlocked === "1";
 
         if (unlocked) {
           el.classList.add("unlocked");
-          if (breakOnUnlock && !wasUnlocked) {
+          if (breakIds && breakIds.has(id)) {
             el.classList.remove("unlock-break");
             void el.offsetWidth;
             el.classList.add("unlock-break");
@@ -292,14 +327,6 @@
     }
 
     renderRewards();
-
-    const SECRET_SEQUENCE = "111000222";
-    const PULSE_DURATION_MS = 900;
-    const SHAKE_DURATION_MS = 600;
-    const POP_DURATION_MS = 220;
-    const BREAK_DURATION_MS = 500;
-    let recentKeys = "";
-    let isSecretAnimationRunning = false;
 
     function playSecretPulse() {
       return new Promise((resolve) => {
@@ -321,37 +348,61 @@
       });
     }
 
-    function shakeRewardsAndUnlock() {
-      const rewardElements = rewards
+    function playRewardsCelebration(rewardItems, { withPulse = false, unlockBeforeAnimation = false } = {}) {
+      const rewardElements = rewardItems
         .map(({ id }) => document.getElementById(id))
         .filter(Boolean);
 
-      rewardElements.forEach((el) => el.classList.add("unlock-shake"));
+      if (!rewardElements.length) return;
 
-      setTimeout(() => {
-        rewardElements.forEach((el) => {
-          el.classList.remove("unlock-shake");
-          el.classList.add("unlock-pop");
-        });
+      const startAnimation = () => {
+        rewardElements.forEach((el) => el.classList.add("unlock-shake"));
 
         setTimeout(() => {
-          rewardElements.forEach((el) => el.classList.remove("unlock-pop"));
-          rewards.forEach(({ key }) => localStorage.setItem(key, "1"));
-          renderRewards({ breakOnUnlock: true });
-        }, POP_DURATION_MS);
-      }, SHAKE_DURATION_MS);
+          rewardElements.forEach((el) => {
+            el.classList.remove("unlock-shake");
+            el.classList.add("unlock-pop");
+          });
+
+          setTimeout(() => {
+            rewardElements.forEach((el) => el.classList.remove("unlock-pop"));
+
+            if (unlockBeforeAnimation) {
+              rewardItems.forEach(({ key }) => localStorage.setItem(key, "1"));
+            }
+
+            const breakIds = new Set(rewardItems.map(({ id }) => id));
+            renderRewards({ breakIds });
+            markRewardsAsCelebrated(rewardItems);
+          }, POP_DURATION_MS);
+        }, SHAKE_DURATION_MS);
+      };
+
+      if (withPulse) {
+        playSecretPulse().then(startAnimation);
+      } else {
+        startAnimation();
+      }
     }
 
-    async function triggerSecretUnlockAnimation() {
+    function triggerSecretUnlockAnimation() {
       if (isSecretAnimationRunning) return;
       isSecretAnimationRunning = true;
 
-      await playSecretPulse();
-      shakeRewardsAndUnlock();
+      playRewardsCelebration(rewards, { withPulse: true, unlockBeforeAnimation: true });
 
       setTimeout(() => {
         isSecretAnimationRunning = false;
-      }, SHAKE_DURATION_MS + POP_DURATION_MS + BREAK_DURATION_MS);
+      }, PULSE_DURATION_MS + SHAKE_DURATION_MS + POP_DURATION_MS + BREAK_DURATION_MS);
+    }
+
+    const newlyUnlockedRewards = getNewlyUnlockedRewards();
+    if (newlyUnlockedRewards.length) {
+      isSecretAnimationRunning = true;
+      playRewardsCelebration(newlyUnlockedRewards, { withPulse: true, unlockBeforeAnimation: false });
+      setTimeout(() => {
+        isSecretAnimationRunning = false;
+      }, PULSE_DURATION_MS + SHAKE_DURATION_MS + POP_DURATION_MS + BREAK_DURATION_MS);
     }
 
     document.addEventListener("keydown", (event) => {
