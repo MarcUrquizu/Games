@@ -322,7 +322,7 @@
       return audioCtx;
     }
 
-    function playTone(freq, start, duration, type = "sine", gainValue = 0.06) {
+    function playTone(freq, start, duration, type = "sine", gainValue = 0.075) {
       const ctx = getAudioCtx();
       if (!ctx) return;
       const osc = ctx.createOscillator();
@@ -342,8 +342,8 @@
       const ctx = getAudioCtx();
       if (!ctx) return;
       const now = ctx.currentTime;
-      playTone(880, now, 0.16, "triangle", 0.07);
-      playTone(1320, now + 0.08, 0.2, "sine", 0.05);
+      playTone(880, now, 0.16, "triangle", 0.085);
+      playTone(1320, now + 0.08, 0.2, "sine", 0.062);
     }
 
     function playVictoryJingle() {
@@ -368,18 +368,18 @@
       ];
 
       melody.forEach(({ note, at, dur }) => {
-        playTone(note, now + at, dur, "triangle", 0.08);
+        playTone(note, now + at, dur, "triangle", 0.096);
       });
 
       epicChords.forEach(({ root, at, dur }) => {
-        playTone(root, now + at, dur, "sawtooth", 0.05);
-        playTone(root * 1.25, now + at, dur, "triangle", 0.045);
-        playTone(root * 1.5, now + at, dur, "triangle", 0.04);
+        playTone(root, now + at, dur, "sawtooth", 0.062);
+        playTone(root * 1.25, now + at, dur, "triangle", 0.054);
+        playTone(root * 1.5, now + at, dur, "triangle", 0.05);
       });
 
       const bassNotes = [130.81, 164.81, 196.0, 261.63];
       bassNotes.forEach((note, index) => {
-        playTone(note, now + index * 0.36, 0.5, "square", 0.035);
+        playTone(note, now + index * 0.36, 0.5, "square", 0.044);
       });
     }
 
