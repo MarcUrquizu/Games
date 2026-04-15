@@ -68,6 +68,25 @@
       z-index:2000;
       animation: secretPulse 900ms ease-out forwards;
     }
+    .rainbow-waves {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1900;
+      display: grid;
+      place-items: center;
+    }
+    .rainbow-wave {
+      position: absolute;
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      border: 3px solid #fff;
+      opacity: 0;
+      mix-blend-mode: screen;
+      animation: rainbowWaveExpand 1200ms ease-out forwards, rainbowColorShift 900ms linear infinite;
+      box-shadow: 0 0 18px rgba(255,255,255,.8);
+    }
     .reward.unlock-shake{
       animation: rewardShake 600ms ease-in-out;
     }
@@ -164,6 +183,23 @@
       animation: medalReveal 420ms ease-out forwards;
     }
 
+    @keyframes rainbowWaveExpand {
+      0% {
+        opacity: .95;
+        transform: scale(.2);
+      }
+      100% {
+        opacity: 0;
+        transform: scale(40);
+      }
+    }
+    @keyframes rainbowColorShift {
+      0% { border-color: #ff3c8e; box-shadow: 0 0 20px #ff3c8e; }
+      25% { border-color: #ffbf00; box-shadow: 0 0 20px #ffbf00; }
+      50% { border-color: #3cff8a; box-shadow: 0 0 20px #3cff8a; }
+      75% { border-color: #39b9ff; box-shadow: 0 0 20px #39b9ff; }
+      100% { border-color: #b168ff; box-shadow: 0 0 20px #b168ff; }
+    }
     @keyframes rewardPop {
       0% { transform: scale(1); }
       60% { transform: scale(1.08); }
@@ -272,6 +308,80 @@
     const BREAK_DURATION_MS = 500;
     let recentKeys = "";
     let isSecretAnimationRunning = false;
+    let victoryCelebrationRunning = false;
+    let audioCtx = null;
+
+    function getAudioCtx() {
+      if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) audioCtx = new AudioContextClass();
+      }
+      if (audioCtx && audioCtx.state === "suspended") {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    function playTone(freq, start, duration, type = "sine", gainValue = 0.06) {
+      const ctx = getAudioCtx();
+      if (!ctx) return;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, start);
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(gainValue, start + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + duration + 0.02);
+    }
+
+    function playDing() {
+      const ctx = getAudioCtx();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+      playTone(880, now, 0.16, "triangle", 0.07);
+      playTone(1320, now + 0.08, 0.2, "sine", 0.05);
+    }
+
+    function playVictoryJingle() {
+      const ctx = getAudioCtx();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+      const notes = [523.25, 659.25, 783.99, 1046.5, 1318.51];
+      notes.forEach((note, index) => {
+        playTone(note, now + index * 0.12, 0.22, "triangle", 0.07);
+      });
+    }
+
+    function playRainbowWaves() {
+      const container = document.createElement("div");
+      container.className = "rainbow-waves";
+      for (let i = 0; i < 4; i++) {
+        const wave = document.createElement("div");
+        wave.className = "rainbow-wave";
+        wave.style.animationDelay = `${i * 140}ms, ${i * 90}ms`;
+        container.appendChild(wave);
+      }
+      document.body.appendChild(container);
+      setTimeout(() => container.remove(), 1800);
+    }
+
+    function areAllRewardsUnlocked() {
+      return rewards.every(({ key }) => localStorage.getItem(key) === "1");
+    }
+
+    function triggerVictoryCelebration() {
+      if (victoryCelebrationRunning) return;
+      victoryCelebrationRunning = true;
+      playVictoryJingle();
+      playRainbowWaves();
+      setTimeout(() => {
+        victoryCelebrationRunning = false;
+      }, 1900);
+    }
 
     function getCelebratedRewardKeys() {
       try {
@@ -371,6 +481,7 @@
       if (!rewardElements.length) return;
 
       const startAnimation = () => {
+        playDing();
         rewardElements.forEach((el) => el.classList.add("unlock-shake"));
 
         setTimeout(() => {
@@ -389,6 +500,9 @@
             const breakIds = new Set(rewardItems.map(({ id }) => id));
             renderRewards({ breakIds });
             markRewardsAsCelebrated(rewardItems);
+            if (areAllRewardsUnlocked()) {
+              triggerVictoryCelebration();
+            }
           }, POP_DURATION_MS);
         }, SHAKE_DURATION_MS);
       };
