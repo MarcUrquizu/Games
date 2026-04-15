@@ -152,6 +152,10 @@
     .reward.unlock-break .medal-shards{
       opacity:1;
     }
+    .reward.unlock-break .medal-shard{
+      opacity:1;
+      filter: drop-shadow(0 0 6px rgba(255,255,255,.35));
+    }
     .reward.unlock-break .medal-shard.s1{ animation: shardFly1 500ms ease-out forwards; }
     .reward.unlock-break .medal-shard.s2{ animation: shardFly2 500ms ease-out forwards; }
     .reward.unlock-break .medal-shard.s3{ animation: shardFly3 500ms ease-out forwards; }
@@ -174,10 +178,10 @@
       0% { transform: scale(.7); opacity:.25; }
       100% { transform: scale(1); opacity:1; }
     }
-    @keyframes shardFly1 { to { opacity:0; transform: translate(-18px,-16px) rotate(-28deg) scale(.7); } }
-    @keyframes shardFly2 { to { opacity:0; transform: translate(18px,-12px) rotate(22deg) scale(.7); } }
-    @keyframes shardFly3 { to { opacity:0; transform: translate(-16px,16px) rotate(-20deg) scale(.65); } }
-    @keyframes shardFly4 { to { opacity:0; transform: translate(16px,18px) rotate(28deg) scale(.68); } }
+    @keyframes shardFly1 { from { opacity:1; transform: translate(0,0) rotate(0deg) scale(.95); } to { opacity:0; transform: translate(-20px,-18px) rotate(-32deg) scale(.62); } }
+    @keyframes shardFly2 { from { opacity:1; transform: translate(0,0) rotate(0deg) scale(.95); } to { opacity:0; transform: translate(20px,-14px) rotate(28deg) scale(.62); } }
+    @keyframes shardFly3 { from { opacity:1; transform: translate(0,0) rotate(0deg) scale(.95); } to { opacity:0; transform: translate(-18px,18px) rotate(-24deg) scale(.58); } }
+    @keyframes shardFly4 { from { opacity:1; transform: translate(0,0) rotate(0deg) scale(.95); } to { opacity:0; transform: translate(18px,20px) rotate(34deg) scale(.58); } }
   </style>
 </head>
 <body>
