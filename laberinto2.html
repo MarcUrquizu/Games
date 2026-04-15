@@ -117,6 +117,16 @@
 
   <script>
     const LS_MEDAL_LABERINTO2 = "msi_medal_laberinto2_10";
+    const SECRET_SEQUENCE = "111000222";
+    let recentSecretKeys = "";
+    document.addEventListener("keydown", (event) => {
+      if (!/^\d$/.test(event.key)) return;
+      recentSecretKeys = (recentSecretKeys + event.key).slice(-SECRET_SEQUENCE.length);
+      if (recentSecretKeys === SECRET_SEQUENCE) {
+        localStorage.setItem(LS_MEDAL_LABERINTO2, "1");
+        recentSecretKeys = "";
+      }
+    });
 
     let level = 1;
     const maxLevels = 10;

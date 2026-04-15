@@ -69,6 +69,16 @@
   <canvas id="gameCanvas"></canvas>
   <script>
     const LS_MEDAL_SKYHOOPER = "msi_medal_skyhooper_1500";
+    const SECRET_SEQUENCE = "111000222";
+    let recentSecretKeys = "";
+    document.addEventListener("keydown", (event) => {
+      if (!/^\d$/.test(event.key)) return;
+      recentSecretKeys = (recentSecretKeys + event.key).slice(-SECRET_SEQUENCE.length);
+      if (recentSecretKeys === SECRET_SEQUENCE) {
+        localStorage.setItem(LS_MEDAL_SKYHOOPER, "1");
+        recentSecretKeys = "";
+      }
+    });
 
     // URLs de sprites
     const playerURL = "https://images.vexels.com/media/users/3/246497/isolated/preview/c4ec48235199c646c02c169c813d2ebe-pixelart-personajes-vinilo-color-de-los-80-4.png";
