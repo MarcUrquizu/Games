@@ -117,16 +117,35 @@
       { id: "medalLaberinto2", key: LS_MEDAL_LABERINTO2, icon: "🧩" }
     ];
 
-    rewards.forEach(({ id, key, icon }) => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      const unlocked = localStorage.getItem(key) === "1";
+    function renderRewards() {
+      rewards.forEach(({ id, key, icon }) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const unlocked = localStorage.getItem(key) === "1";
 
-      if (unlocked) {
-        el.classList.add("unlocked");
-        el.querySelector(".medal").textContent = icon;
-      } else {
-        el.querySelector(".medal").textContent = "🔒";
+        if (unlocked) {
+          el.classList.add("unlocked");
+          el.querySelector(".medal").textContent = icon;
+        } else {
+          el.classList.remove("unlocked");
+          el.querySelector(".medal").textContent = "🔒";
+        }
+      });
+    }
+
+    renderRewards();
+
+    const SECRET_SEQUENCE = "111000222";
+    let recentKeys = "";
+
+    document.addEventListener("keydown", (event) => {
+      if (!/^\d$/.test(event.key)) return;
+      recentKeys = (recentKeys + event.key).slice(-SECRET_SEQUENCE.length);
+
+      if (recentKeys === SECRET_SEQUENCE) {
+        rewards.forEach(({ key }) => localStorage.setItem(key, "1"));
+        renderRewards();
+        recentKeys = "";
       }
     });
   </script>
