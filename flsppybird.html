@@ -42,6 +42,16 @@
   <canvas id="gameCanvas" width="320" height="480"></canvas>
   <script>
     const LS_MEDAL_FLAPPY = "msi_medal_flappy_50";
+    const SECRET_SEQUENCE = "111000222";
+    let recentSecretKeys = "";
+    document.addEventListener("keydown", (event) => {
+      if (!/^\d$/.test(event.key)) return;
+      recentSecretKeys = (recentSecretKeys + event.key).slice(-SECRET_SEQUENCE.length);
+      if (recentSecretKeys === SECRET_SEQUENCE) {
+        localStorage.setItem(LS_MEDAL_FLAPPY, "1");
+        recentSecretKeys = "";
+      }
+    });
 
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
