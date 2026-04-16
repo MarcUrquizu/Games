@@ -64,23 +64,34 @@
       align-items: center;
       justify-content: center;
       gap: 6px;
-      background: linear-gradient(140deg, #ffe8a3 0%, #ffc94d 55%, #ffb400 100%);
-      color: #3f2c00;
-      border: 1px solid rgba(255, 218, 117, .9);
+      background: linear-gradient(140deg, #d8ffff 0%, #72faff 45%, #00d8ff 100%);
+      color: #022730;
+      border: 1px solid rgba(113, 248, 255, .95);
       text-decoration: none;
       font-weight: 800;
       font-size: 12px;
       padding: 8px 12px;
       border-radius: 10px;
       box-shadow:
-        0 0 12px rgba(255, 182, 52, .45),
-        0 0 24px rgba(255, 208, 93, .24);
+        0 0 10px rgba(72, 237, 255, .65),
+        0 0 22px rgba(0, 223, 255, .45);
       transition: transform .2s ease, box-shadow .2s ease, filter .2s ease;
     }
     .go-game-btn:hover{
       transform: translateY(-1px);
-      filter: brightness(1.06);
-      box-shadow: 0 0 14px rgba(255, 182, 52, .5);
+      filter: brightness(1.12);
+      box-shadow:
+        0 0 14px rgba(72, 237, 255, .88),
+        0 0 28px rgba(0, 223, 255, .65);
+    }
+    .reward.unlocked .go-game-btn{
+      background: linear-gradient(140deg, #fff1b0 0%, #ffd657 45%, #ffb300 100%);
+      color: #412d00;
+      border-color: rgba(255, 218, 117, .95);
+      box-shadow:
+        0 0 14px rgba(255, 196, 79, .8),
+        0 0 30px rgba(255, 179, 0, .65),
+        0 0 48px rgba(255, 179, 0, .45);
     }
     .medal{
       font-size: 44px;

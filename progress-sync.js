@@ -12,6 +12,43 @@
   let isApplyingRemote = false;
   let hasSyncedAfterLogin = false;
   let toastContainer = null;
+  let toastAudioCtx = null;
+
+  function getToastAudioCtx() {
+    if (!toastAudioCtx) {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (AudioContextClass) toastAudioCtx = new AudioContextClass();
+    }
+    if (toastAudioCtx && toastAudioCtx.state === 'suspended') {
+      toastAudioCtx.resume().catch(() => {});
+    }
+    return toastAudioCtx;
+  }
+
+  function playAchievementToastSound() {
+    const ctx = getToastAudioCtx();
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    const tones = [
+      { freq: 880, at: 0, dur: 0.12, gain: 0.07 },
+      { freq: 1174.66, at: 0.1, dur: 0.18, gain: 0.06 },
+    ];
+
+    tones.forEach(({ freq, at, dur, gain: gainValue }) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, now + at);
+      gain.gain.setValueAtTime(0.0001, now + at);
+      gain.gain.exponentialRampToValueAtTime(gainValue, now + at + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + at + dur);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now + at);
+      osc.stop(now + at + dur + 0.03);
+    });
+  }
 
   function ensureAchievementToasts() {
     if (toastContainer || !document?.body) return toastContainer;
@@ -28,17 +65,21 @@
         pointer-events: none;
       }
       .achievement-toast {
-        max-width: min(360px, calc(100vw - 28px));
-        background: linear-gradient(140deg, rgba(36, 28, 6, 0.94), rgba(94, 70, 6, 0.94));
-        color: #ffe7a6;
-        border: 1px solid rgba(255, 214, 120, 0.85);
-        border-radius: 10px;
-        padding: 10px 12px;
-        box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45), 0 0 18px rgba(255, 199, 65, 0.28);
-        font: 700 12px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+        max-width: min(420px, calc(100vw - 28px));
+        background: linear-gradient(140deg, rgba(47, 35, 6, 0.97), rgba(126, 90, 6, 0.97));
+        color: #fff2cb;
+        border: 2px solid rgba(255, 224, 129, 0.98);
+        border-radius: 12px;
+        padding: 14px 16px;
+        box-shadow:
+          0 12px 24px rgba(0, 0, 0, 0.5),
+          0 0 22px rgba(255, 199, 65, 0.58),
+          0 0 42px rgba(255, 179, 0, 0.38);
+        font: 900 16px/1.35 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+        letter-spacing: .2px;
         transform: translateX(-120%);
         opacity: 0;
-        animation: achievement-toast-slide 3400ms ease forwards;
+        animation: achievement-toast-slide 3800ms ease forwards;
         will-change: transform, opacity;
       }
       @keyframes achievement-toast-slide {
@@ -64,7 +105,8 @@
     toast.className = 'achievement-toast';
     toast.textContent = message;
     container.appendChild(toast);
-    setTimeout(() => toast.remove(), 3600);
+    playAchievementToastSound();
+    setTimeout(() => toast.remove(), 3900);
   }
 
   function getApiBase() {
