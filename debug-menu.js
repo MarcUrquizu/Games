@@ -20,6 +20,45 @@
     return Number.isFinite(n) ? n : null;
   }
 
+  function setPathIfNumeric(path, value) {
+    if (typeof value !== "number") return;
+    const parts = path.split(".");
+    let ref = window;
+    for (let i = 0; i < parts.length - 1; i++) {
+      ref = ref?.[parts[i]];
+      if (!ref) return;
+    }
+    const k = parts[parts.length - 1];
+    if (typeof ref[k] === "number") ref[k] = value;
+  }
+
+  function setPathIfBoolean(path, value) {
+    if (typeof value !== "boolean") return;
+    const parts = path.split(".");
+    let ref = window;
+    for (let i = 0; i < parts.length - 1; i++) {
+      ref = ref?.[parts[i]];
+      if (!ref) return;
+    }
+    const k = parts[parts.length - 1];
+    if (typeof ref[k] === "boolean") ref[k] = value;
+  }
+
+  function applyCandidates(value, paths, type = "number") {
+    for (const path of paths) {
+      if (type === "number") setPathIfNumeric(path, value);
+      if (type === "boolean") setPathIfBoolean(path, value);
+    }
+  }
+
+  function baseApply(values, mapping) {
+    for (const [fieldId, descriptor] of Object.entries(mapping)) {
+      const value = values[fieldId];
+      if (value == null) continue;
+      applyCandidates(value, descriptor.paths || [], descriptor.type || "number");
+    }
+  }
+
   const HACK_PROFILES = {
     space: {
       title: "Hacks • Space Invaders",
@@ -57,6 +96,321 @@
       ],
       apply(values) {
         if (window.__game2048Debug?.applyHacks) window.__game2048Debug.applyHacks(values);
+      }
+    },
+    "3ratlla": {
+      title: "Hacks • 3 en raya",
+      fields: [
+        { id: "wins", label: "Victorias", type: "number", min: 0 },
+        { id: "draws", label: "Empates", type: "number", min: 0 },
+        { id: "aiDelay", label: "Delay IA (ms)", type: "number", min: 0 }
+      ],
+      apply(values) {
+        baseApply(values, {
+          wins: { paths: ["wins", "state.wins", "game.wins"] },
+          draws: { paths: ["draws", "state.draws", "game.draws"] },
+          aiDelay: { paths: ["aiDelay", "state.aiDelay", "game.aiDelay"] }
+        });
+      }
+    },
+    "4rayagpt": {
+      title: "Hacks • 4 en raya",
+      fields: [
+        { id: "wins", label: "Victorias", type: "number", min: 0 },
+        { id: "turnTime", label: "Tiempo turno", type: "number", min: 0 },
+        { id: "aiDepth", label: "Dificultad IA", type: "number", min: 1 }
+      ],
+      apply(values) {
+        baseApply(values, {
+          wins: { paths: ["wins", "score.player", "state.wins"] },
+          turnTime: { paths: ["turnTime", "state.turnTime"] },
+          aiDepth: { paths: ["aiDepth", "state.aiDepth", "difficulty"] }
+        });
+      }
+    },
+    clickometeor: {
+      title: "Hacks • Click-o-Meteor",
+      fields: [
+        { id: "points", label: "Puntos", type: "number", min: 0 },
+        { id: "combo", label: "Combo", type: "number", min: 0 },
+        { id: "meteorSpeed", label: "Velocidad meteoros", type: "number", min: 0.1, step: 0.1 }
+      ],
+      apply(values) {
+        baseApply(values, {
+          points: { paths: ["points", "score", "state.score"] },
+          combo: { paths: ["combo", "state.combo"] },
+          meteorSpeed: { paths: ["meteorSpeed", "state.meteorSpeed", "game.meteorSpeed"] }
+        });
+      }
+    },
+    godshot: {
+      title: "Hacks • Godshot",
+      fields: [
+        { id: "ammo", label: "Munición", type: "number", min: 0 },
+        { id: "damage", label: "Daño disparo", type: "number", min: 1 },
+        { id: "fireRate", label: "Cadencia", type: "number", min: 0.1, step: 0.1 }
+      ],
+      apply(values) {
+        baseApply(values, {
+          ammo: { paths: ["ammo", "player.ammo", "state.ammo"] },
+          damage: { paths: ["damage", "player.damage", "weapon.damage"] },
+          fireRate: { paths: ["fireRate", "weapon.fireRate", "player.fireRate"] }
+        });
+      }
+    },
+    laberintocursor: {
+      title: "Hacks • Laberinto cursor",
+      fields: [
+        { id: "speed", label: "Velocidad", type: "number", min: 0.1, step: 0.1 },
+        { id: "lives", label: "Vidas", type: "number", min: 1 },
+        { id: "timer", label: "Tiempo", type: "number", min: 0 }
+      ],
+      apply(values) {
+        baseApply(values, {
+          speed: { paths: ["player.speed", "speed", "state.speed"] },
+          lives: { paths: ["lives", "state.lives", "player.lives"] },
+          timer: { paths: ["timer", "timeLeft", "state.timer"] }
+        });
+      }
+    },
+    adivinanum: {
+      title: "Hacks • Adivina número",
+      fields: [
+        { id: "attempts", label: "Intentos", type: "number", min: 0 },
+        { id: "min", label: "Mínimo rango", type: "number" },
+        { id: "max", label: "Máximo rango", type: "number" }
+      ],
+      apply(values) {
+        baseApply(values, {
+          attempts: { paths: ["attempts", "intentos", "state.attempts"] },
+          min: { paths: ["minNumber", "min", "state.min"] },
+          max: { paths: ["maxNumber", "max", "state.max"] }
+        });
+      }
+    },
+    ahorcado: {
+      title: "Hacks • Ahorcado",
+      fields: [
+        { id: "lives", label: "Vidas", type: "number", min: 1 },
+        { id: "score", label: "Puntuación", type: "number", min: 0 },
+        { id: "hints", label: "Pistas", type: "number", min: 0 }
+      ],
+      apply(values) {
+        baseApply(values, {
+          lives: { paths: ["lives", "vidas", "state.lives"] },
+          score: { paths: ["score", "state.score", "puntos"] },
+          hints: { paths: ["hints", "state.hints", "pistas"] }
+        });
+      }
+    },
+    asteroides: {
+      title: "Hacks • Asteroides",
+      fields: [
+        { id: "score", label: "Puntos", type: "number", min: 0 },
+        { id: "lives", label: "Vidas", type: "number", min: 1 },
+        { id: "shipSpeed", label: "Velocidad nave", type: "number", min: 0.1, step: 0.1 }
+      ],
+      apply(values) {
+        baseApply(values, {
+          score: { paths: ["score", "state.score"] },
+          lives: { paths: ["lives", "state.lives", "ship.lives"] },
+          shipSpeed: { paths: ["ship.speed", "shipSpeed", "player.speed"] }
+        });
+      }
+    },
+    brakeautnulls: {
+      title: "Hacks • Breakout",
+      fields: [
+        { id: "lives", label: "Vidas", type: "number", min: 1 },
+        { id: "ballSpeed", label: "Velocidad bola", type: "number", min: 0.1, step: 0.1 },
+        { id: "paddleSize", label: "Tamaño pala", type: "number", min: 20 }
+      ],
+      apply(values) {
+        baseApply(values, {
+          lives: { paths: ["lives", "state.lives"] },
+          ballSpeed: { paths: ["ball.speed", "ballSpeed", "state.ballSpeed"] },
+          paddleSize: { paths: ["paddle.width", "paddleSize", "state.paddleSize"] }
+        });
+      }
+    },
+    catala: {
+      title: "Hacks • Català quiz",
+      fields: [
+        { id: "score", label: "Puntuación", type: "number", min: 0 },
+        { id: "streak", label: "Racha", type: "number", min: 0 },
+        { id: "timeLeft", label: "Tiempo", type: "number", min: 0 }
+      ],
+      apply(values) {
+        baseApply(values, {
+          score: { paths: ["score", "state.score", "puntos"] },
+          streak: { paths: ["streak", "state.streak"] },
+          timeLeft: { paths: ["timeLeft", "timer", "state.timeLeft"] }
+        });
+      }
+    },
+    conway: {
+      title: "Hacks • Conway",
+      fields: [
+        { id: "tickRate", label: "Velocidad ticks", type: "number", min: 1 },
+        { id: "aliveCells", label: "Celdas vivas", type: "number", min: 0 },
+        { id: "generation", label: "Generación", type: "number", min: 0 }
+      ],
+      apply(values) {
+        baseApply(values, {
+          tickRate: { paths: ["tickRate", "speed", "state.tickRate"] },
+          aliveCells: { paths: ["aliveCells", "state.aliveCells"] },
+          generation: { paths: ["generation", "state.generation"] }
+        });
+      }
+    },
+    enduro: {
+      title: "Hacks • Enduro",
+      fields: [
+        { id: "speed", label: "Velocidad coche", type: "number", min: 0.1, step: 0.1 },
+        { id: "fuel", label: "Combustible", type: "number", min: 0 },
+        { id: "laps", label: "Vueltas", type: "number", min: 0 }
+      ],
+      apply(values) {
+        baseApply(values, {
+          speed: { paths: ["speed", "car.speed", "state.speed"] },
+          fuel: { paths: ["fuel", "state.fuel"] },
+          laps: { paths: ["laps", "state.laps", "lap"] }
+        });
+      }
+    },
+    flsppybird: {
+      title: "Hacks • Flappy",
+      fields: [
+        { id: "score", label: "Puntos", type: "number", min: 0 },
+        { id: "gravity", label: "Gravedad", type: "number", min: 0, step: 0.01 },
+        { id: "pipeGap", label: "Hueco tuberías", type: "number", min: 20 }
+      ],
+      apply(values) {
+        baseApply(values, {
+          score: { paths: ["score", "state.score"] },
+          gravity: { paths: ["gravity", "bird.gravity", "state.gravity"] },
+          pipeGap: { paths: ["pipeGap", "state.pipeGap"] }
+        });
+      }
+    },
+    ia: {
+      title: "Hacks • IA",
+      fields: [
+        { id: "tokens", label: "Tokens", type: "number", min: 0 },
+        { id: "energy", label: "Energía", type: "number", min: 0 },
+        { id: "cooldown", label: "Cooldown", type: "number", min: 0 }
+      ],
+      apply(values) {
+        baseApply(values, {
+          tokens: { paths: ["tokens", "state.tokens"] },
+          energy: { paths: ["energy", "state.energy"] },
+          cooldown: { paths: ["cooldown", "state.cooldown"] }
+        });
+      }
+    },
+    laberinto: {
+      title: "Hacks • Laberinto",
+      fields: [
+        { id: "speed", label: "Velocidad", type: "number", min: 0.1, step: 0.1 },
+        { id: "timer", label: "Tiempo", type: "number", min: 0 },
+        { id: "lives", label: "Vidas", type: "number", min: 1 }
+      ],
+      apply(values) {
+        baseApply(values, {
+          speed: { paths: ["speed", "player.speed", "state.speed"] },
+          timer: { paths: ["timer", "timeLeft", "state.timer"] },
+          lives: { paths: ["lives", "state.lives"] }
+        });
+      }
+    },
+    laberinto2: {
+      title: "Hacks • Laberinto 2",
+      fields: [
+        { id: "speed", label: "Velocidad", type: "number", min: 0.1, step: 0.1 },
+        { id: "timer", label: "Tiempo", type: "number", min: 0 },
+        { id: "coins", label: "Monedas", type: "number", min: 0 }
+      ],
+      apply(values) {
+        baseApply(values, {
+          speed: { paths: ["speed", "player.speed", "state.speed"] },
+          timer: { paths: ["timer", "timeLeft", "state.timer"] },
+          coins: { paths: ["coins", "state.coins", "money"] }
+        });
+      }
+    },
+    memory: {
+      title: "Hacks • Memory",
+      fields: [
+        { id: "moves", label: "Movimientos", type: "number", min: 0 },
+        { id: "timeLeft", label: "Tiempo", type: "number", min: 0 },
+        { id: "pairs", label: "Parejas hechas", type: "number", min: 0 }
+      ],
+      apply(values) {
+        baseApply(values, {
+          moves: { paths: ["moves", "state.moves"] },
+          timeLeft: { paths: ["timeLeft", "timer", "state.timeLeft"] },
+          pairs: { paths: ["pairsFound", "state.pairs", "pairs"] }
+        });
+      }
+    },
+    pcman: {
+      title: "Hacks • PCMan",
+      fields: [
+        { id: "score", label: "Puntos", type: "number", min: 0 },
+        { id: "lives", label: "Vidas", type: "number", min: 1 },
+        { id: "speed", label: "Velocidad", type: "number", min: 0.1, step: 0.1 }
+      ],
+      apply(values) {
+        baseApply(values, {
+          score: { paths: ["score", "state.score"] },
+          lives: { paths: ["lives", "state.lives", "player.lives"] },
+          speed: { paths: ["speed", "player.speed", "state.speed"] }
+        });
+      }
+    },
+    pingpong: {
+      title: "Hacks • Ping Pong",
+      fields: [
+        { id: "playerScore", label: "Puntos jugador", type: "number", min: 0 },
+        { id: "cpuScore", label: "Puntos CPU", type: "number", min: 0 },
+        { id: "ballSpeed", label: "Velocidad bola", type: "number", min: 0.1, step: 0.1 }
+      ],
+      apply(values) {
+        baseApply(values, {
+          playerScore: { paths: ["playerScore", "score.player", "state.playerScore"] },
+          cpuScore: { paths: ["cpuScore", "score.cpu", "state.cpuScore"] },
+          ballSpeed: { paths: ["ball.speed", "ballSpeed", "state.ballSpeed"] }
+        });
+      }
+    },
+    simondice: {
+      title: "Hacks • Simón dice",
+      fields: [
+        { id: "level", label: "Nivel", type: "number", min: 1 },
+        { id: "lives", label: "Vidas", type: "number", min: 1 },
+        { id: "showMs", label: "Tiempo muestra (ms)", type: "number", min: 50 }
+      ],
+      apply(values) {
+        baseApply(values, {
+          level: { paths: ["level", "state.level"] },
+          lives: { paths: ["lives", "state.lives"] },
+          showMs: { paths: ["showMs", "state.showMs", "displayTime"] }
+        });
+      }
+    },
+    skyhooper: {
+      title: "Hacks • Sky Hooper",
+      fields: [
+        { id: "score", label: "Puntos", type: "number", min: 0 },
+        { id: "jumpForce", label: "Fuerza salto", type: "number", min: 0.1, step: 0.1 },
+        { id: "gravity", label: "Gravedad", type: "number", min: 0, step: 0.01 }
+      ],
+      apply(values) {
+        baseApply(values, {
+          score: { paths: ["score", "state.score"] },
+          jumpForce: { paths: ["jumpForce", "player.jumpForce", "state.jumpForce"] },
+          gravity: { paths: ["gravity", "state.gravity", "player.gravity"] }
+        });
       }
     }
   };
