@@ -1,8 +1,71 @@
 (function () {
   const AUTH_KEY = 'google_auth';
   const META_KEY = 'progress_sync_meta';
+  const ACHIEVEMENT_MESSAGES = {
+    msi_medal_hardcore: '🏅 Logro desbloqueado: Medalla Hardcore',
+    msi_medal_2048: '🧠 Logro desbloqueado: Maestro del 2048',
+    msi_medal_skyhooper_1500: '🚀 Logro desbloqueado: Escalador del cielo',
+    msi_medal_flappy_50: '🐦 Logro desbloqueado: Aleteo legendario',
+    msi_medal_pacman_level10: '🟡 Logro desbloqueado: Rey del Pacman',
+    msi_medal_laberinto2_10: '🧩 Logro desbloqueado: Maestro del Laberinto 2',
+  };
   let isApplyingRemote = false;
   let hasSyncedAfterLogin = false;
+  let toastContainer = null;
+
+  function ensureAchievementToasts() {
+    if (toastContainer || !document?.body) return toastContainer;
+    const styleTag = document.createElement('style');
+    styleTag.textContent = `
+      .achievement-toast-stack {
+        position: fixed;
+        left: 14px;
+        bottom: 14px;
+        z-index: 99999;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        pointer-events: none;
+      }
+      .achievement-toast {
+        max-width: min(360px, calc(100vw - 28px));
+        background: linear-gradient(140deg, rgba(36, 28, 6, 0.94), rgba(94, 70, 6, 0.94));
+        color: #ffe7a6;
+        border: 1px solid rgba(255, 214, 120, 0.85);
+        border-radius: 10px;
+        padding: 10px 12px;
+        box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45), 0 0 18px rgba(255, 199, 65, 0.28);
+        font: 700 12px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+        transform: translateX(-120%);
+        opacity: 0;
+        animation: achievement-toast-slide 3400ms ease forwards;
+        will-change: transform, opacity;
+      }
+      @keyframes achievement-toast-slide {
+        0% { transform: translateX(-120%); opacity: 0; }
+        12% { transform: translateX(0); opacity: 1; }
+        78% { transform: translateX(0); opacity: 1; }
+        100% { transform: translateX(-120%); opacity: 0; }
+      }
+    `;
+    document.head.appendChild(styleTag);
+
+    toastContainer = document.createElement('div');
+    toastContainer.className = 'achievement-toast-stack';
+    document.body.appendChild(toastContainer);
+    return toastContainer;
+  }
+
+  function showAchievementToast(message) {
+    if (!message) return;
+    const container = ensureAchievementToasts();
+    if (!container) return;
+    const toast = document.createElement('div');
+    toast.className = 'achievement-toast';
+    toast.textContent = message;
+    container.appendChild(toast);
+    setTimeout(() => toast.remove(), 3600);
+  }
 
   function getApiBase() {
     if (window.PROGRESS_API_BASE) return window.PROGRESS_API_BASE;
@@ -115,10 +178,15 @@
 
   const originalSetItem = localStorage.setItem.bind(localStorage);
   localStorage.setItem = function (key, value) {
+    const previousValue = localStorage.getItem(key);
     originalSetItem(key, value);
     if (key === AUTH_KEY) {
       syncFromRemote().catch((err) => console.warn('No se pudo sincronizar tras login:', err));
       return;
+    }
+
+    if (!isApplyingRemote && value === '1' && previousValue !== '1' && ACHIEVEMENT_MESSAGES[key]) {
+      showAchievementToast(ACHIEVEMENT_MESSAGES[key]);
     }
 
     if (!isApplyingRemote && key !== META_KEY) queueUpload(1500);
