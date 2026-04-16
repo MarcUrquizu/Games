@@ -43,6 +43,52 @@
     .reward.unlocked{
       opacity: 1;
       filter: none;
+      border-color: rgba(255, 210, 92, .95);
+      background: linear-gradient(160deg, rgba(34, 27, 7, .95) 0%, rgba(64, 47, 9, .95) 100%);
+      box-shadow:
+        0 0 0 1px rgba(255, 214, 112, .35) inset,
+        0 0 18px rgba(255, 195, 76, .52),
+        0 0 34px rgba(255, 179, 0, .35);
+    }
+    .reward-visual{
+      opacity:.55;
+      filter: grayscale(1);
+      transition: opacity .22s ease, filter .22s ease;
+    }
+    .reward.unlocked .reward-visual{
+      opacity: 1;
+      filter: none;
+    }
+    .reward-actions{
+      margin-top: auto;
+      display:flex;
+      justify-content: flex-end;
+      padding-top: 12px;
+    }
+    .go-game-btn{
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      background: linear-gradient(140deg, #d8ffff 0%, #72faff 45%, #00d8ff 100%);
+      color: #022730;
+      border: 1px solid rgba(113, 248, 255, .95);
+      text-decoration: none;
+      font-weight: 800;
+      font-size: 12px;
+      padding: 8px 12px;
+      border-radius: 10px;
+      box-shadow:
+        0 0 10px rgba(72, 237, 255, .65),
+        0 0 22px rgba(0, 223, 255, .45);
+      transition: transform .2s ease, box-shadow .2s ease, filter .2s ease;
+    }
+    .go-game-btn:hover{
+      transform: translateY(-1px);
+      filter: brightness(1.12);
+      box-shadow:
+        0 0 14px rgba(72, 237, 255, .88),
+        0 0 28px rgba(0, 223, 255, .65);
     }
     .reward-visual{
       opacity:.55;
