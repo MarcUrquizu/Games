@@ -95,6 +95,10 @@
     const LS_MEDAL_2048 = 'msi_medal_2048';
     const SECRET_SEQUENCE = '111000222';
     let recentSecretKeys = '';
+    const debug2048 = {
+      spawnValue: null,
+      noGameOver: false
+    };
     document.addEventListener('keydown', (event) => {
       if (!/^\d$/.test(event.key)) return;
       recentSecretKeys = (recentSecretKeys + event.key).slice(-SECRET_SEQUENCE.length);
@@ -136,7 +140,11 @@
       for (let r = 0; r < size; r++) for (let c = 0; c < size; c++) if (!grid[r][c]) empty.push({r,c});
       if (!empty.length) return;
       const {r,c} = empty[Math.floor(Math.random() * empty.length)];
-      grid[r][c] = Math.random() < 0.9 ? 2 : 4;
+      if (typeof debug2048.spawnValue === 'number' && debug2048.spawnValue >= 2) {
+        grid[r][c] = debug2048.spawnValue;
+      } else {
+        grid[r][c] = Math.random() < 0.9 ? 2 : 4;
+      }
     }
 
     function render() {
@@ -209,10 +217,26 @@
     }
 
     function isGameOver() {
+      if (debug2048.noGameOver) return false;
       if (grid.some(row => row.includes(0))) return false;
       for (let r = 0; r < size; r++) for (let c = 0; c < size-1; c++) if (grid[r][c] === grid[r][c+1]) return false;
       for (let c = 0; c < size; c++) for (let r = 0; r < size-1; r++) if (grid[r][c] === grid[r+1][c]) return false;
       return true;
+    }
+
+    function injectTile(value) {
+      if (typeof value !== 'number' || value < 2) return;
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          if (grid[r][c] === 0) {
+            grid[r][c] = value;
+            render();
+            return;
+          }
+        }
+      }
+      grid[0][0] = value;
+      render();
     }
 
     function showGameOver() {
@@ -232,6 +256,24 @@
 
     document.getElementById('newGame').addEventListener('click', initGrid);
     initGrid();
+
+    window.__game2048Debug = {
+      applyHacks(hacks = {}) {
+        if (typeof hacks.spawnValue === 'number' && hacks.spawnValue >= 2) debug2048.spawnValue = hacks.spawnValue;
+        else if (hacks.spawnValue == null) debug2048.spawnValue = null;
+
+        debug2048.noGameOver = !!hacks.lockNoGameOver;
+
+        if (typeof hacks.injectTile === 'number' && hacks.injectTile >= 2) {
+          injectTile(hacks.injectTile);
+        }
+
+        if (debug2048.noGameOver) {
+          gameOver = false;
+          gameOverEl.style.display = 'none';
+        }
+      }
+    };
   </script>
   <script src="help-modal.js"></script>
   <script src="touch-controls.js"></script>
