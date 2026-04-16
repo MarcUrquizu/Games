@@ -36,15 +36,28 @@
       border-radius: 14px;
       padding: 14px;
       background:#111a24;
-      opacity:.55;
-      filter: grayscale(1);
+      display:flex;
+      flex-direction:column;
+      min-height: 200px;
     }
     .reward.unlocked{
       opacity: 1;
       filter: none;
     }
+    .reward-visual{
+      opacity:.55;
+      filter: grayscale(1);
+      transition: opacity .22s ease, filter .22s ease;
+    }
+    .reward.unlocked .reward-visual{
+      opacity: 1;
+      filter: none;
+    }
     .reward-actions{
-      margin-top: 12px;
+      margin-top: auto;
+      display:flex;
+      justify-content: flex-end;
+      padding-top: 12px;
     }
     .go-game-btn{
       display: inline-flex;
@@ -59,7 +72,9 @@
       font-size: 12px;
       padding: 8px 12px;
       border-radius: 10px;
-      box-shadow: 0 0 12px rgba(255, 182, 52, .35);
+      box-shadow:
+        0 0 12px rgba(255, 182, 52, .45),
+        0 0 24px rgba(255, 208, 93, .24);
       transition: transform .2s ease, box-shadow .2s ease, filter .2s ease;
     }
     .go-game-btn:hover{
@@ -349,6 +364,25 @@
       goButton.title = gameLabel || "Ir al juego del logro";
     }
 
+    function ensureRewardVisualWrapper(rewardElement) {
+      if (!rewardElement) return;
+      if (Array.from(rewardElement.children).some((child) => child.classList.contains("reward-visual"))) return;
+
+      const visualWrapper = document.createElement("div");
+      visualWrapper.className = "reward-visual";
+
+      const nodesToWrap = Array.from(rewardElement.childNodes).filter((node) => {
+        if (node.nodeType === Node.TEXT_NODE) {
+          return node.textContent.trim().length > 0;
+        }
+        if (node.nodeType !== Node.ELEMENT_NODE) return false;
+        return !node.classList.contains("reward-actions");
+      });
+
+      nodesToWrap.forEach((node) => visualWrapper.appendChild(node));
+      rewardElement.insertBefore(visualWrapper, rewardElement.firstChild);
+    }
+
     const LS_REWARDS_CELEBRATED = "msi_rewards_celebrated_v1";
     const SECRET_SEQUENCE = "111000222";
     const PULSE_DURATION_MS = 900;
@@ -491,6 +525,7 @@
         const el = document.getElementById(id);
         if (!el) return;
 
+        ensureRewardVisualWrapper(el);
         const medalEl = el.querySelector(".medal");
         ensureMedalStructure(medalEl, icon);
         ensureGoButton(el, { gameUrl, gameLabel });
