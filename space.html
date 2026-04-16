@@ -389,6 +389,29 @@
   const enemyBullets = [];
   const buddies = [];
   function makeBuddy(slotIndex) { return { slotIndex, cooldown: 0 }; }
+  window.__spaceDebug = {
+    state,
+    player,
+    buddies,
+    applyHacks(hacks = {}) {
+      if (typeof hacks.score === "number") state.score = Math.max(0, Math.floor(hacks.score));
+      if (typeof hacks.lives === "number") {
+        state.maxLives = Math.max(1, Math.floor(hacks.lives));
+        state.lives = state.maxLives;
+      }
+      if (typeof hacks.fireRate === "number") player.fireRate = Math.max(0.2, hacks.fireRate);
+      if (typeof hacks.damage === "number") {
+        player.damage = Math.max(1, Math.floor(hacks.damage));
+        player.dmgUpgrades = Math.max(0, player.damage - 1);
+      }
+      if (typeof hacks.speed === "number") player.speed = Math.max(60, hacks.speed);
+      if (typeof hacks.companions === "number") {
+        const target = Math.max(0, Math.min(2, Math.floor(hacks.companions)));
+        while (buddies.length < target) buddies.push(makeBuddy(buddies.length));
+        while (buddies.length > target) buddies.pop();
+      }
+    }
+  };
 
   const powerups = [];
   const POWERUP_RAPID  = "RAPID";
