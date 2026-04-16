@@ -146,6 +146,34 @@
     }
     .title{ font-size: 26px; font-weight: 800; margin:0 0 6px; }
     .sub{ opacity:.85; margin:0; }
+    .secret-section{
+      margin-top: 22px;
+      border-top: 1px dashed rgba(255,255,255,.18);
+      padding-top: 18px;
+    }
+    .secret-reward{
+      background: #050505;
+      border-color: rgba(255,255,255,.2);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.04);
+    }
+    .secret-reward .medal{
+      background:#000;
+      border:1px solid rgba(255,255,255,.25);
+      border-radius:12px;
+      width:60px;
+      height:60px;
+      font-size:34px;
+      margin-bottom:10px;
+    }
+    .secret-reward:not(.unlocked) .medal-color{
+      opacity: 1;
+      color:#fff;
+      filter:none;
+    }
+    .secret-reward:not(.unlocked) .medal-locked,
+    .secret-reward:not(.unlocked) .medal-shards{
+      display:none;
+    }
 
     .secret-pulse{
       position:fixed;
@@ -361,6 +389,18 @@
           <div style="opacity:.85;font-size:13px;margin-top:4px;">Completa los 10 niveles de Laberinto 2</div>
         </div>
       </div>
+
+      <div class="secret-section">
+        <div style="font-weight:800; font-size:18px;">Logros secretos</div>
+        <p class="sub" style="margin-top:6px;">Hay recompensas ocultas que no aparecen en el menú principal.</p>
+        <div class="grid">
+          <div id="medalSecretClicker" class="reward secret-reward">
+            <div class="medal">?</div>
+            <div style="font-weight:800;" data-secret-title>???</div>
+            <div style="opacity:.85;font-size:13px;margin-top:4px;" data-secret-desc>Este logro está oculto.</div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -371,6 +411,7 @@
     const LS_MEDAL_FLAPPY = "msi_medal_flappy_50";
     const LS_MEDAL_PACMAN = "msi_medal_pacman_level10";
     const LS_MEDAL_LABERINTO2 = "msi_medal_laberinto2_10";
+    const LS_MEDAL_CLICKER_SECRET_50M = "msi_medal_clicker_50m";
 
     const rewards = [
       { id: "medalHardcore", key: LS_MEDAL_HARDCORE, icon: "🏅", gameUrl: "./space.html", gameLabel: "Ir a Space Invaders" },
@@ -378,7 +419,8 @@
       { id: "medalSkyhooper", key: LS_MEDAL_SKYHOOPER, icon: "🚀", gameUrl: "./skyhooper.html", gameLabel: "Ir a Sky Hopper" },
       { id: "medalFlappy", key: LS_MEDAL_FLAPPY, icon: "🐦", gameUrl: "./flsppybird.html", gameLabel: "Ir a Flappy Bird" },
       { id: "medalPacman", key: LS_MEDAL_PACMAN, icon: "🟡", gameUrl: "./pcman.html", gameLabel: "Ir a Pcman" },
-      { id: "medalLaberinto2", key: LS_MEDAL_LABERINTO2, icon: "🧩", gameUrl: "./laberinto2.html", gameLabel: "Ir a Laberinto 2" }
+      { id: "medalLaberinto2", key: LS_MEDAL_LABERINTO2, icon: "🧩", gameUrl: "./laberinto2.html", gameLabel: "Ir a Laberinto 2" },
+      { id: "medalSecretClicker", key: LS_MEDAL_CLICKER_SECRET_50M, icon: "❓", unlockedIcon: "🧠", gameUrl: "./clicker.html", gameLabel: "Ir a Italian brainrot clicker", secretTitle: "Archimillonario oculto", secretDesc: "Llega a 50.000.000 en Italian brainrot clicker.", secretLockedTitle: "???", secretLockedDesc: "Este logro está oculto.", hideGameButton: true }
     ];
 
     function ensureMedalStructure(medalElement, icon) {
@@ -396,7 +438,8 @@
       medalElement.dataset.iconInitialized = "1";
     }
 
-    function ensureGoButton(rewardElement, { gameUrl, gameLabel }) {
+    function ensureGoButton(rewardElement, { gameUrl, gameLabel, hideGameButton = false }) {
+      if (hideGameButton) return;
       if (!rewardElement || !gameUrl) return;
       let actions = rewardElement.querySelector(".reward-actions");
       if (!actions) {
@@ -575,16 +618,27 @@
     }
 
     function renderRewards({ breakIds = null, holdLockedIds = null } = {}) {
-      rewards.forEach(({ id, key, icon, gameUrl, gameLabel }) => {
+      rewards.forEach(({ id, key, icon, unlockedIcon, gameUrl, gameLabel, secretTitle, secretDesc, secretLockedTitle, secretLockedDesc, hideGameButton }) => {
         const el = document.getElementById(id);
         if (!el) return;
 
         ensureRewardVisualWrapper(el);
         const medalEl = el.querySelector(".medal");
-        ensureMedalStructure(medalEl, icon);
-        ensureGoButton(el, { gameUrl, gameLabel });
-
         const unlocked = localStorage.getItem(key) === "1";
+        if (el.classList.contains("secret-reward")) {
+          if (medalEl && medalEl.dataset.iconInitialized === "1") {
+            medalEl.dataset.iconInitialized = "";
+            medalEl.innerHTML = "";
+          }
+          ensureMedalStructure(medalEl, unlocked ? (unlockedIcon || icon) : icon);
+          const titleEl = el.querySelector("[data-secret-title]");
+          const descEl = el.querySelector("[data-secret-desc]");
+          if (titleEl) titleEl.textContent = unlocked ? (secretTitle || "Logro secreto desbloqueado") : (secretLockedTitle || "???");
+          if (descEl) descEl.textContent = unlocked ? (secretDesc || "Has descubierto un logro secreto.") : (secretLockedDesc || "Este logro está oculto.");
+        } else {
+          ensureMedalStructure(medalEl, icon);
+        }
+        ensureGoButton(el, { gameUrl, gameLabel, hideGameButton });
 
         if (unlocked) {
           if (holdLockedIds && holdLockedIds.has(id)) {

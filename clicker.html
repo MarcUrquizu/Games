@@ -245,6 +245,8 @@ let puntos = 0; let puntosPorClic = 1; let pps = 0; let barValue = 0; let buffAc
 const barIncrease = 6; const barDecayPerSec = 10; const buffDuration = 2000;
 const activationThreshold = 95;
 let currentImageLevel = 0; const MAX_IMAGE_LEVEL = 30;
+const SECRET_SEQUENCE_CLICKER = "111000222";
+let recentClickerKeys = "";
 
 // Estadísticas para misiones
 let stats = {
@@ -254,6 +256,7 @@ let stats = {
   prestigeCount: 0,
   maxPointsEver: 0
 };
+const LS_MEDAL_CLICKER_SECRET_50M = "msi_medal_clicker_50m";
 
 // ——— Misiones ———
 const missions = [
@@ -361,6 +364,13 @@ function updateUI(){
   // Render + actualizar badge si el modal está abierto o no
   updateMissionsBadge();
   if (missionsModal.style.display === 'flex') renderMissions();
+}
+
+function checkSecretClickerAchievement(){
+  if (stats.maxPointsEver >= 50_000_000 && localStorage.getItem(LS_MEDAL_CLICKER_SECRET_50M) !== "1"){
+    localStorage.setItem(LS_MEDAL_CLICKER_SECRET_50M, "1");
+    showToast("¡Logro secreto desbloqueado!");
+  }
 }
 
 function updateBar(){ if (!buffActive){ barValue = Math.max(0, barValue - barDecayPerSec / 10); document.getElementById('power-bar-fill').style.height = barValue + '%'; } }
@@ -505,6 +515,7 @@ document.getElementById('firefly-btn').addEventListener('click', e => {
   puntos += g; barValue = Math.min(barValue + barIncrease, 100);
   stats.totalClicks++;
   stats.maxPointsEver = Math.max(stats.maxPointsEver, Math.floor(puntos));
+  checkSecretClickerAchievement();
   document.getElementById('power-bar-fill').style.height = barValue + '%';
   const r = farmEl.getBoundingClientRect(); const s = document.createElement('span'); s.className='float-text'; s.textContent = '+' + n(g);
   s.style.left = (e.clientX - r.left) + 'px'; s.style.top = (e.clientY - r.top) + 'px'; farmEl.appendChild(s); s.addEventListener('animationend', ()=> s.remove());
@@ -517,6 +528,7 @@ setInterval(updateBar, 100);
 setInterval(()=>{
   puntos += pps * (buffActive ? 2 : 1) * prestigeMultiplier();
   stats.maxPointsEver = Math.max(stats.maxPointsEver, Math.floor(puntos));
+  checkSecretClickerAchievement();
   updateUI(); saveGame();
 }, 1000);
 
@@ -560,6 +572,14 @@ document.getElementById('close-missions').addEventListener('click', closeMission
 
 // Cerrar con tecla ESC
 document.addEventListener('keydown', (e)=>{
+  if (/^\d$/.test(e.key)){
+    recentClickerKeys = (recentClickerKeys + e.key).slice(-SECRET_SEQUENCE_CLICKER.length);
+    if (recentClickerKeys === SECRET_SEQUENCE_CLICKER){
+      recentClickerKeys = "";
+      localStorage.setItem(LS_MEDAL_CLICKER_SECRET_50M, "1");
+      showToast("Código secreto activado.");
+    }
+  }
   if (e.key === 'Escape'){
     if (missionsModal.style.display === 'flex') closeMissions();
     if (helpModal.style.display === 'flex') closeHelp();
@@ -574,5 +594,6 @@ if (!localStorage.getItem('clicker_seen_help')){ openHelp(); localStorage.setIte
 </script>
   <script src="touch-controls.js"></script>
   <script src="progress-sync.js"></script>
+  <script src="debug-menu.js"></script>
 </body>
 </html>
