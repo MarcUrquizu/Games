@@ -36,12 +36,62 @@
       border-radius: 14px;
       padding: 14px;
       background:#111a24;
-      opacity:.55;
-      filter: grayscale(1);
+      display:flex;
+      flex-direction:column;
+      min-height: 200px;
     }
     .reward.unlocked{
       opacity: 1;
       filter: none;
+    }
+    .reward-visual{
+      opacity:.55;
+      filter: grayscale(1);
+      transition: opacity .22s ease, filter .22s ease;
+    }
+    .reward.unlocked .reward-visual{
+      opacity: 1;
+      filter: none;
+    }
+    .reward-actions{
+      margin-top: auto;
+      display:flex;
+      justify-content: flex-end;
+      padding-top: 12px;
+    }
+    .go-game-btn{
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      background: linear-gradient(140deg, #d8ffff 0%, #72faff 45%, #00d8ff 100%);
+      color: #022730;
+      border: 1px solid rgba(113, 248, 255, .95);
+      text-decoration: none;
+      font-weight: 800;
+      font-size: 12px;
+      padding: 8px 12px;
+      border-radius: 10px;
+      box-shadow:
+        0 0 10px rgba(72, 237, 255, .65),
+        0 0 22px rgba(0, 223, 255, .45);
+      transition: transform .2s ease, box-shadow .2s ease, filter .2s ease;
+    }
+    .go-game-btn:hover{
+      transform: translateY(-1px);
+      filter: brightness(1.12);
+      box-shadow:
+        0 0 14px rgba(72, 237, 255, .88),
+        0 0 28px rgba(0, 223, 255, .65);
+    }
+    .reward.unlocked .go-game-btn{
+      background: linear-gradient(140deg, #fff1b0 0%, #ffd657 45%, #ffb300 100%);
+      color: #412d00;
+      border-color: rgba(255, 218, 117, .95);
+      box-shadow:
+        0 0 14px rgba(255, 196, 79, .8),
+        0 0 30px rgba(255, 179, 0, .65),
+        0 0 48px rgba(255, 179, 0, .45);
     }
     .medal{
       font-size: 44px;
@@ -277,12 +327,12 @@
     const LS_MEDAL_LABERINTO2 = "msi_medal_laberinto2_10";
 
     const rewards = [
-      { id: "medalHardcore", key: LS_MEDAL_HARDCORE, icon: "🏅" },
-      { id: "medal2048", key: LS_MEDAL_2048, icon: "🧠" },
-      { id: "medalSkyhooper", key: LS_MEDAL_SKYHOOPER, icon: "🚀" },
-      { id: "medalFlappy", key: LS_MEDAL_FLAPPY, icon: "🐦" },
-      { id: "medalPacman", key: LS_MEDAL_PACMAN, icon: "🟡" },
-      { id: "medalLaberinto2", key: LS_MEDAL_LABERINTO2, icon: "🧩" }
+      { id: "medalHardcore", key: LS_MEDAL_HARDCORE, icon: "🏅", gameUrl: "./space.html", gameLabel: "Ir a Space Invaders" },
+      { id: "medal2048", key: LS_MEDAL_2048, icon: "🧠", gameUrl: "./2058.html", gameLabel: "Ir a 2048" },
+      { id: "medalSkyhooper", key: LS_MEDAL_SKYHOOPER, icon: "🚀", gameUrl: "./skyhooper.html", gameLabel: "Ir a Sky Hopper" },
+      { id: "medalFlappy", key: LS_MEDAL_FLAPPY, icon: "🐦", gameUrl: "./flsppybird.html", gameLabel: "Ir a Flappy Bird" },
+      { id: "medalPacman", key: LS_MEDAL_PACMAN, icon: "🟡", gameUrl: "./pcman.html", gameLabel: "Ir a Pcman" },
+      { id: "medalLaberinto2", key: LS_MEDAL_LABERINTO2, icon: "🧩", gameUrl: "./laberinto2.html", gameLabel: "Ir a Laberinto 2" }
     ];
 
     function ensureMedalStructure(medalElement, icon) {
@@ -298,6 +348,47 @@
         </span>
       `;
       medalElement.dataset.iconInitialized = "1";
+    }
+
+    function ensureGoButton(rewardElement, { gameUrl, gameLabel }) {
+      if (!rewardElement || !gameUrl) return;
+      let actions = rewardElement.querySelector(".reward-actions");
+      if (!actions) {
+        actions = document.createElement("div");
+        actions.className = "reward-actions";
+        rewardElement.appendChild(actions);
+      }
+
+      let goButton = actions.querySelector(".go-game-btn");
+      if (!goButton) {
+        goButton = document.createElement("a");
+        goButton.className = "go-game-btn";
+        goButton.textContent = "Ir al juego";
+        actions.appendChild(goButton);
+      }
+
+      goButton.href = gameUrl;
+      goButton.setAttribute("aria-label", gameLabel || "Ir al juego del logro");
+      goButton.title = gameLabel || "Ir al juego del logro";
+    }
+
+    function ensureRewardVisualWrapper(rewardElement) {
+      if (!rewardElement) return;
+      if (Array.from(rewardElement.children).some((child) => child.classList.contains("reward-visual"))) return;
+
+      const visualWrapper = document.createElement("div");
+      visualWrapper.className = "reward-visual";
+
+      const nodesToWrap = Array.from(rewardElement.childNodes).filter((node) => {
+        if (node.nodeType === Node.TEXT_NODE) {
+          return node.textContent.trim().length > 0;
+        }
+        if (node.nodeType !== Node.ELEMENT_NODE) return false;
+        return !node.classList.contains("reward-actions");
+      });
+
+      nodesToWrap.forEach((node) => visualWrapper.appendChild(node));
+      rewardElement.insertBefore(visualWrapper, rewardElement.firstChild);
     }
 
     const LS_REWARDS_CELEBRATED = "msi_rewards_celebrated_v1";
@@ -438,12 +529,14 @@
     }
 
     function renderRewards({ breakIds = null, holdLockedIds = null } = {}) {
-      rewards.forEach(({ id, key, icon }) => {
+      rewards.forEach(({ id, key, icon, gameUrl, gameLabel }) => {
         const el = document.getElementById(id);
         if (!el) return;
 
+        ensureRewardVisualWrapper(el);
         const medalEl = el.querySelector(".medal");
         ensureMedalStructure(medalEl, icon);
+        ensureGoButton(el, { gameUrl, gameLabel });
 
         const unlocked = localStorage.getItem(key) === "1";
 
