@@ -394,7 +394,7 @@
     player,
     buddies,
     applyHacks(hacks = {}) {
-      if (typeof hacks.money === "number") state.score = Math.max(0, Math.floor(hacks.money));
+      if (typeof hacks.score === "number") state.score = Math.max(0, Math.floor(hacks.score));
       if (typeof hacks.lives === "number") {
         state.maxLives = Math.max(1, Math.floor(hacks.lives));
         state.lives = state.maxLives;

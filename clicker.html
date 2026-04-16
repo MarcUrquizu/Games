@@ -588,15 +588,15 @@ document.addEventListener('keydown', (e)=>{
 
 window.__clickerDebug = {
   applyHacks(hacks = {}){
-    if (typeof hacks.money === "number") {
-      puntos = Math.max(0, hacks.money);
+    if (typeof hacks.points === "number") {
+      puntos = Math.max(0, hacks.points);
       stats.maxPointsEver = Math.max(stats.maxPointsEver, Math.floor(puntos));
     }
-    if (typeof hacks.damage === "number") {
-      puntosPorClic = Math.max(1, hacks.damage);
+    if (typeof hacks.clickPower === "number") {
+      puntosPorClic = Math.max(1, hacks.clickPower);
     }
-    if (typeof hacks.fireRate === "number") {
-      pps = Math.max(0, hacks.fireRate);
+    if (typeof hacks.pps === "number") {
+      pps = Math.max(0, hacks.pps);
     }
     updateUI();
     saveGame();
