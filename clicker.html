@@ -254,6 +254,7 @@ let stats = {
   prestigeCount: 0,
   maxPointsEver: 0
 };
+const LS_MEDAL_CLICKER_SECRET_50M = "msi_medal_clicker_50m";
 
 // ——— Misiones ———
 const missions = [
@@ -361,6 +362,13 @@ function updateUI(){
   // Render + actualizar badge si el modal está abierto o no
   updateMissionsBadge();
   if (missionsModal.style.display === 'flex') renderMissions();
+}
+
+function checkSecretClickerAchievement(){
+  if (stats.maxPointsEver >= 50_000_000 && localStorage.getItem(LS_MEDAL_CLICKER_SECRET_50M) !== "1"){
+    localStorage.setItem(LS_MEDAL_CLICKER_SECRET_50M, "1");
+    showToast("¡Logro secreto desbloqueado!");
+  }
 }
 
 function updateBar(){ if (!buffActive){ barValue = Math.max(0, barValue - barDecayPerSec / 10); document.getElementById('power-bar-fill').style.height = barValue + '%'; } }
@@ -505,6 +513,7 @@ document.getElementById('firefly-btn').addEventListener('click', e => {
   puntos += g; barValue = Math.min(barValue + barIncrease, 100);
   stats.totalClicks++;
   stats.maxPointsEver = Math.max(stats.maxPointsEver, Math.floor(puntos));
+  checkSecretClickerAchievement();
   document.getElementById('power-bar-fill').style.height = barValue + '%';
   const r = farmEl.getBoundingClientRect(); const s = document.createElement('span'); s.className='float-text'; s.textContent = '+' + n(g);
   s.style.left = (e.clientX - r.left) + 'px'; s.style.top = (e.clientY - r.top) + 'px'; farmEl.appendChild(s); s.addEventListener('animationend', ()=> s.remove());
@@ -517,6 +526,7 @@ setInterval(updateBar, 100);
 setInterval(()=>{
   puntos += pps * (buffActive ? 2 : 1) * prestigeMultiplier();
   stats.maxPointsEver = Math.max(stats.maxPointsEver, Math.floor(puntos));
+  checkSecretClickerAchievement();
   updateUI(); saveGame();
 }, 1000);
 
