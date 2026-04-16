@@ -420,7 +420,7 @@
       { id: "medalFlappy", key: LS_MEDAL_FLAPPY, icon: "🐦", gameUrl: "./flsppybird.html", gameLabel: "Ir a Flappy Bird" },
       { id: "medalPacman", key: LS_MEDAL_PACMAN, icon: "🟡", gameUrl: "./pcman.html", gameLabel: "Ir a Pcman" },
       { id: "medalLaberinto2", key: LS_MEDAL_LABERINTO2, icon: "🧩", gameUrl: "./laberinto2.html", gameLabel: "Ir a Laberinto 2" },
-      { id: "medalSecretClicker", key: LS_MEDAL_CLICKER_SECRET_50M, icon: "❓", unlockedIcon: "🧠", gameUrl: "./clicker.html", gameLabel: "Ir a Italian brainrot clicker", secretTitle: "Archimillonario oculto", secretDesc: "Llega a 50.000.000 en Italian brainrot clicker.", secretLockedTitle: "???", secretLockedDesc: "Este logro está oculto." }
+      { id: "medalSecretClicker", key: LS_MEDAL_CLICKER_SECRET_50M, icon: "❓", unlockedIcon: "🧠", gameUrl: "./clicker.html", gameLabel: "Ir a Italian brainrot clicker", secretTitle: "Archimillonario oculto", secretDesc: "Llega a 50.000.000 en Italian brainrot clicker.", secretLockedTitle: "???", secretLockedDesc: "Este logro está oculto.", hideGameButton: true }
     ];
 
     function ensureMedalStructure(medalElement, icon) {
@@ -438,7 +438,8 @@
       medalElement.dataset.iconInitialized = "1";
     }
 
-    function ensureGoButton(rewardElement, { gameUrl, gameLabel }) {
+    function ensureGoButton(rewardElement, { gameUrl, gameLabel, hideGameButton = false }) {
+      if (hideGameButton) return;
       if (!rewardElement || !gameUrl) return;
       let actions = rewardElement.querySelector(".reward-actions");
       if (!actions) {
@@ -617,7 +618,7 @@
     }
 
     function renderRewards({ breakIds = null, holdLockedIds = null } = {}) {
-      rewards.forEach(({ id, key, icon, unlockedIcon, gameUrl, gameLabel, secretTitle, secretDesc, secretLockedTitle, secretLockedDesc }) => {
+      rewards.forEach(({ id, key, icon, unlockedIcon, gameUrl, gameLabel, secretTitle, secretDesc, secretLockedTitle, secretLockedDesc, hideGameButton }) => {
         const el = document.getElementById(id);
         if (!el) return;
 
@@ -637,7 +638,7 @@
         } else {
           ensureMedalStructure(medalEl, icon);
         }
-        ensureGoButton(el, { gameUrl, gameLabel });
+        ensureGoButton(el, { gameUrl, gameLabel, hideGameButton });
 
         if (unlocked) {
           if (holdLockedIds && holdLockedIds.has(id)) {
