@@ -410,6 +410,15 @@
         while (buddies.length < target) buddies.push(makeBuddy(buddies.length));
         while (buddies.length > target) buddies.pop();
       }
+      if (typeof hacks.level === "number") {
+        const targetLevel = clamp(Math.floor(hacks.level), 1, state.maxWaves);
+        if (state.wave !== targetLevel) {
+          state.wave = targetLevel;
+          state.status = "PLAYING";
+          hideOverlay();
+          startTransitionToWave(state.wave, false);
+        }
+      }
     }
   };
 

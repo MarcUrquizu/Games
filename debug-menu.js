@@ -15,6 +15,11 @@
 
   function parseValueByType(raw, type) {
     if (type === "checkbox") return !!raw;
+    if (type === "select") {
+      if (raw === "" || raw == null) return null;
+      const n = Number(raw);
+      return Number.isFinite(n) ? n : raw;
+    }
     if (raw === "" || raw == null) return null;
     const n = Number(raw);
     return Number.isFinite(n) ? n : null;
@@ -68,7 +73,13 @@
         { id: "fireRate", label: "Cadencia", type: "number", min: 0.2, step: 0.1 },
         { id: "damage", label: "Daño", type: "number", min: 1 },
         { id: "companions", label: "Compañeros", type: "number", min: 0, max: 2 },
-        { id: "speed", label: "Velocidad nave", type: "number", min: 60 }
+        { id: "speed", label: "Velocidad nave", type: "number", min: 60 },
+        {
+          id: "level",
+          label: "Selector de nivel",
+          type: "select",
+          options: Array.from({ length: 100 }, (_, i) => ({ value: i + 1, label: `Nivel ${i + 1}` }))
+        }
       ],
       apply(values) {
         if (window.__spaceDebug?.applyHacks) window.__spaceDebug.applyHacks(values);
@@ -452,12 +463,29 @@
     wrap.style.cssText = "display:grid;gap:4px;font-size:12px;";
     wrap.textContent = field.label;
 
-    const input = document.createElement("input");
-    input.type = field.type === "checkbox" ? "checkbox" : "number";
+    let input;
+    if (field.type === "select") {
+      input = document.createElement("select");
+      input.style.cssText = "padding:7px 8px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;";
+      const emptyOpt = document.createElement("option");
+      emptyOpt.value = "";
+      emptyOpt.textContent = "sin cambio";
+      input.appendChild(emptyOpt);
+      for (const opt of field.options || []) {
+        const option = document.createElement("option");
+        option.value = String(opt.value);
+        option.textContent = opt.label;
+        input.appendChild(option);
+      }
+      input.value = value == null ? "" : String(value);
+    } else {
+      input = document.createElement("input");
+      input.type = field.type === "checkbox" ? "checkbox" : "number";
+    }
     if (field.type === "checkbox") {
       input.checked = !!value;
       input.style.cssText = "width:18px;height:18px;";
-    } else {
+    } else if (field.type !== "select") {
       input.value = value ?? "";
       input.placeholder = "vacío = desactivado";
       if (field.step != null) input.step = String(field.step);
