@@ -396,9 +396,12 @@
     buddies,
     applyHacks(hacks = {}) {
       if (typeof hacks.score === "number") state.score = Math.max(0, Math.floor(hacks.score));
+      if (typeof hacks.maxLives === "number") {
+        state.maxLives = clamp(Math.floor(hacks.maxLives), 1, 12);
+        state.lives = clamp(state.lives, 0, state.maxLives);
+      }
       if (typeof hacks.lives === "number") {
-        state.maxLives = Math.max(1, Math.floor(hacks.lives));
-        state.lives = state.maxLives;
+        state.lives = clamp(Math.floor(hacks.lives), 0, state.maxLives);
       }
       if (typeof hacks.fireRate === "number") player.fireRate = Math.max(0.2, hacks.fireRate);
       if (typeof hacks.damage === "number") {
@@ -421,10 +424,6 @@
         }
       }
       if (typeof hacks.shield === "number") player.shield = clamp(Math.floor(hacks.shield), 0, 12);
-      if (typeof hacks.maxLives === "number") {
-        state.maxLives = clamp(Math.floor(hacks.maxLives), 1, 12);
-        state.lives = clamp(state.lives, 0, state.maxLives);
-      }
     }
   };
 

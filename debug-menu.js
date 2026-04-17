@@ -536,11 +536,17 @@
     return out;
   }
 
-  function applyProfileHacks() {
+  function applyProfileHacks(options = {}) {
     const profile = currentProfile();
     if (!profile) return;
     const hacks = window.__gameHacks || getHackState();
-    profile.apply(hacks);
+    let applied = hacks;
+    const isSpace = gameKey() === "space";
+    const includeLevel = !!options.includeLevel;
+    if (isSpace && !includeLevel && hacks && hacks.level != null) {
+      applied = { ...hacks, level: null };
+    }
+    profile.apply(applied);
   }
 
   function openPanel() {
@@ -610,7 +616,7 @@
       const values = buildValuesFromInputs(profile, inputs);
       window.__gameHacks = values;
       saveHackState(values);
-      applyProfileHacks();
+      applyProfileHacks({ includeLevel: true });
       alert("Hacks aplicados para este juego.");
     });
 
@@ -628,7 +634,7 @@
         };
         window.__gameHacks = preset;
         saveHackState(preset);
-        applyProfileHacks();
+        applyProfileHacks({ includeLevel: true });
         alert("Preset de caos aplicado.");
       });
     }
@@ -636,7 +642,7 @@
     addButton(hackActions, "Quitar hacks", () => {
       window.__gameHacks = {};
       saveHackState({});
-      applyProfileHacks();
+      applyProfileHacks({ includeLevel: true });
       alert("Hacks desactivados para este juego.");
     });
 
