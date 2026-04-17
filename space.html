@@ -379,6 +379,7 @@
     damage: 1,
     dmgUpgrades: 0,
     dmgUpgradesMax: 10,
+    laserHitCooldown: 0,
   };
 
   const transition = { active:false, t:0, dur:2.25, fromOffset:260, labelT:0, label:"" };
@@ -1037,6 +1038,7 @@
     player.shield = 0;
     player.damage = 1;
     player.dmgUpgrades = 0;
+    player.laserHitCooldown = 0;
 
     buddies.length = 0;
     playerBullets.length = 0;
@@ -1215,6 +1217,8 @@
       if (p.y > H + 30) powerups.splice(i, 1);
     }
 
+    player.laserHitCooldown = Math.max(0, player.laserHitCooldown - dt);
+
     for (let i = bossLasers.length - 1; i >= 0; i--) {
       const laser = bossLasers[i];
       if (laser.warn > 0) {
@@ -1225,8 +1229,9 @@
           bossLasers.splice(i, 1);
           continue;
         }
-        if (rectsIntersect({ x: laser.x, y: laser.y, w: laser.w, h: laser.h }, player)) {
+        if (player.laserHitCooldown <= 0 && rectsIntersect({ x: laser.x, y: laser.y, w: laser.w, h: laser.h }, player)) {
           applyIncomingHit(true);
+          player.laserHitCooldown = 0.18;
         }
       }
     }
@@ -1655,6 +1660,7 @@
     player.shield = 0;
     player.damage = 1;
     player.dmgUpgrades = 0;
+    player.laserHitCooldown = 0;
 
     buddies.length = 0;
     playerBullets.length = 0;
