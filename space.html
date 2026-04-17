@@ -820,7 +820,7 @@
     const maxX = W - laserW - 24;
     for (const lane of lanes) {
       const x = clamp(lane - laserW / 2, minX, maxX);
-      bossLasers.push({ x, y: 0, w: laserW, h: floorY - 2, warn: warnTime, live: liveTime, fromBoss: true });
+      bossLasers.push({ x, y: 0, w: laserW, h: H + 24, warn: warnTime, live: liveTime, fromBoss: true });
     }
   }
 
@@ -1425,12 +1425,6 @@
     ctx.fillStyle = "#c7d7ff";
     for (let i = 0; i < 70; i++) ctx.fillRect((i * 97) % W, (i * 53) % H, 2, 2);
     ctx.globalAlpha = 1;
-
-    ctx.strokeStyle = "#182434";
-    ctx.beginPath();
-    ctx.moveTo(0, floorY);
-    ctx.lineTo(W, floorY);
-    ctx.stroke();
 
     ctx.fillStyle = "#e8eef7";
     ctx.font = "16px system-ui, sans-serif";
