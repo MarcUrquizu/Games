@@ -4,6 +4,21 @@
   let recentKeys = "";
   let panel = null;
 
+  function getDigitFromEvent(event) {
+    if (typeof event.key === "string" && /^\d$/.test(event.key)) return event.key;
+    const code = String(event.code || "");
+    const m = code.match(/^Numpad(\d)$/);
+    return m ? m[1] : null;
+  }
+
+  function showMiniToast(msg) {
+    const toast = document.createElement("div");
+    toast.textContent = msg;
+    toast.style.cssText = "position:fixed;right:16px;bottom:16px;z-index:1000001;background:#111827;color:#e5e7eb;border:1px solid #374151;border-radius:10px;padding:8px 10px;font:700 12px system-ui;";
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 1300);
+  }
+
   function getGameName() {
     const path = window.location.pathname.split("/").pop() || "juego";
     return path.replace(".html", "") || "juego";
@@ -68,12 +83,8 @@
     space: {
       title: "Hacks • Space Invaders",
       fields: [
-        { id: "score", label: "Puntuación", type: "number", min: 0 },
-        { id: "lives", label: "Vidas", type: "number", min: 1 },
         { id: "fireRate", label: "Cadencia", type: "number", min: 0.2, step: 0.1 },
-        { id: "damage", label: "Daño", type: "number", min: 1 },
         { id: "companions", label: "Compañeros", type: "number", min: 0, max: 2 },
-        { id: "speed", label: "Velocidad nave", type: "number", min: 60 },
         {
           id: "level",
           label: "Selector de nivel",
@@ -508,11 +519,17 @@
     return out;
   }
 
-  function applyProfileHacks() {
+  function applyProfileHacks(options = {}) {
     const profile = currentProfile();
     if (!profile) return;
     const hacks = window.__gameHacks || getHackState();
-    profile.apply(hacks);
+    let applied = hacks;
+    const isSpace = gameKey() === "space";
+    const includeLevel = !!options.includeLevel;
+    if (isSpace && !includeLevel && hacks && hacks.level != null) {
+      applied = { ...hacks, level: null };
+    }
+    profile.apply(applied);
   }
 
   function openPanel() {
@@ -582,14 +599,14 @@
       const values = buildValuesFromInputs(profile, inputs);
       window.__gameHacks = values;
       saveHackState(values);
-      applyProfileHacks();
+      applyProfileHacks({ includeLevel: true });
       alert("Hacks aplicados para este juego.");
     });
 
     addButton(hackActions, "Quitar hacks", () => {
       window.__gameHacks = {};
       saveHackState({});
-      applyProfileHacks();
+      applyProfileHacks({ includeLevel: true });
       alert("Hacks desactivados para este juego.");
     });
 
@@ -597,11 +614,13 @@
   }
 
   document.addEventListener("keydown", (event) => {
-    if (!/^\d$/.test(event.key)) return;
-    recentKeys = (recentKeys + event.key).slice(-DEBUG_SEQUENCE.length);
+    const digit = getDigitFromEvent(event);
+    if (digit == null) return;
+    recentKeys = (recentKeys + digit).slice(-DEBUG_SEQUENCE.length);
     if (recentKeys === DEBUG_SEQUENCE) {
       recentKeys = "";
       openPanel();
+      showMiniToast("Debug 111000333 activado");
     }
   });
 
