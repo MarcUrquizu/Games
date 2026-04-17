@@ -83,15 +83,8 @@
     space: {
       title: "Hacks • Space Invaders",
       fields: [
-        { id: "score", label: "Puntuación", type: "number", min: 0 },
-        { id: "lives", label: "Vidas", type: "number", min: 1 },
-        { id: "maxLives", label: "Vidas máximas", type: "number", min: 1, max: 12 },
-        { id: "shield", label: "Escudo", type: "number", min: 0, max: 12 },
         { id: "fireRate", label: "Cadencia", type: "number", min: 0.2, step: 0.1 },
-        { id: "damage", label: "Daño", type: "number", min: 1 },
         { id: "companions", label: "Compañeros", type: "number", min: 0, max: 2 },
-        { id: "speed", label: "Velocidad nave", type: "number", min: 60 },
-        { id: "chaosBoost", label: "Boost caos", type: "checkbox" },
         {
           id: "level",
           label: "Selector de nivel",
@@ -100,17 +93,7 @@
         }
       ],
       apply(values) {
-        const output = { ...values };
-        if (values.chaosBoost) {
-          output.fireRate = Math.max(8, Number(values.fireRate || 0));
-          output.damage = Math.max(14, Number(values.damage || 0));
-          output.speed = Math.max(760, Number(values.speed || 0));
-          output.companions = 2;
-          output.shield = Math.max(9, Number(values.shield || 0));
-          output.maxLives = Math.max(8, Number(values.maxLives || 0));
-          output.lives = Math.max(8, Number(values.lives || 0));
-        }
-        if (window.__spaceDebug?.applyHacks) window.__spaceDebug.applyHacks(output);
+        if (window.__spaceDebug?.applyHacks) window.__spaceDebug.applyHacks(values);
       }
     },
     clicker: {
@@ -619,25 +602,6 @@
       applyProfileHacks({ includeLevel: true });
       alert("Hacks aplicados para este juego.");
     });
-
-    if (gameKey() === "space") {
-      addButton(hackActions, "Preset: caos total", () => {
-        const preset = {
-          lives: 10,
-          maxLives: 10,
-          shield: 10,
-          fireRate: 10,
-          damage: 16,
-          companions: 2,
-          speed: 800,
-          chaosBoost: true
-        };
-        window.__gameHacks = preset;
-        saveHackState(preset);
-        applyProfileHacks({ includeLevel: true });
-        alert("Preset de caos aplicado.");
-      });
-    }
 
     addButton(hackActions, "Quitar hacks", () => {
       window.__gameHacks = {};
