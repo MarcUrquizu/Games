@@ -18,8 +18,17 @@
             border: 1px solid #333;
             cursor: pointer;
         }
-        .help-button { left: 10px; }
         .menu-button { right: 10px; }
+        .help-button { right: 10px; top: 56px; }
+        .achievement-gold {
+            background: linear-gradient(140deg, #fff1b0 0%, #ffd657 45%, #ffb300 100%);
+            color: #412d00;
+            border-color: rgba(255, 218, 117, .95);
+            box-shadow:
+                0 0 14px rgba(255, 196, 79, .8),
+                0 0 30px rgba(255, 179, 0, .65),
+                0 0 48px rgba(255, 179, 0, .45);
+        }
         #achievement-toast {
             position: fixed;
             left: 14px;
@@ -68,8 +77,8 @@
 </head>
 <body>
 
-<button class="help-button game-buttons" data-help="Completa los 10 niveles del laberinto en 3D para desbloquear el logro.">Info</button>
-<a href="./index.html" class="menu-button game-buttons">Menu</a>
+<a id="menu-btn" href="./index.html" class="menu-button game-buttons">Menu</a>
+<button id="info-btn" class="help-button game-buttons" data-help="Completa los 10 niveles del laberinto en 3D para desbloquear el logro.">Info</button>
 <div id="ui">Nivel: <span id="lvl-num">1</span> / 10</div>
 <div id="aviso-nivel">¡NIVEL SUPERADO!</div>
 <div id="achievement-toast" aria-live="polite"></div>
@@ -231,9 +240,16 @@
         toastTimer = setTimeout(() => toast.classList.remove('show'), 3300);
     }
 
+    function actualizarEstadoVisualLogro() {
+        const unlocked = localStorage.getItem(LS_MEDAL_LABERINTO3D) === "1";
+        document.getElementById('menu-btn')?.classList.toggle('achievement-gold', unlocked);
+        document.getElementById('info-btn')?.classList.toggle('achievement-gold', unlocked);
+    }
+
     function unlockLaberinto3dAchievement() {
         const wasUnlocked = localStorage.getItem(LS_MEDAL_LABERINTO3D) === "1";
         localStorage.setItem(LS_MEDAL_LABERINTO3D, "1");
+        actualizarEstadoVisualLogro();
         if (!wasUnlocked) {
             showAchievementToast("🕶️ Logro desbloqueado: Maestro del Laberinto 3D");
         }
@@ -363,6 +379,7 @@
     });
 
     cargarNivel(0);
+    actualizarEstadoVisualLogro();
     animate();
 </script>
 <script src="help-modal.js"></script>
