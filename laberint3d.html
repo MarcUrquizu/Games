@@ -5,6 +5,21 @@
     <title>Laberinto 3D</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Courier New', Courier, monospace; }
+        .game-buttons {
+            background-color: #000;
+            color: #fff;
+            font-weight: 700;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            position: absolute;
+            top: 10px;
+            z-index: 30;
+            border: 1px solid #333;
+            cursor: pointer;
+        }
+        .inicio-button { left: 10px; }
+        .menu-button { right: 10px; }
         #bloqueo {
             position: absolute; width: 100%; height: 100%;
             background: rgba(0,0,0,0.95); color: white;
@@ -28,6 +43,8 @@
 </head>
 <body>
 
+<a href="./laberint3d.html" class="inicio-button game-buttons">Inicio</a>
+<a href="./index.html" class="menu-button game-buttons">Menu</a>
 <div id="ui">Nivel: <span id="lvl-num">1</span> / 10</div>
 <div id="aviso-nivel">¡NIVEL SUPERADO!</div>
 
@@ -46,6 +63,8 @@
 
 <script type="module">
     import * as THREE from 'three';
+    const LS_MEDAL_LABERINTO3D = "msi_medal_laberint3d_10";
+    const SECRET_SEQUENCE = "111000222";
 
     const scene = new THREE.Scene();
     scene.fog = new THREE.Fog(0x000000, 0, 12);
@@ -172,6 +191,7 @@
     let metaAABB = null;
     let objetosEscena = [];
     let bloqueadoPorCarga = false;
+    let recentSecretKeys = "";
 
     function cargarNivel(num) {
         bloqueadoPorCarga = false;
@@ -225,7 +245,15 @@
         camera.rotation.set(pitch, yaw, 0);
     });
 
-    document.addEventListener('keydown', (e) => teclas[e.code] = true);
+    document.addEventListener('keydown', (e) => {
+        teclas[e.code] = true;
+        if (!/^\d$/.test(e.key)) return;
+        recentSecretKeys = (recentSecretKeys + e.key).slice(-SECRET_SEQUENCE.length);
+        if (recentSecretKeys === SECRET_SEQUENCE) {
+            localStorage.setItem(LS_MEDAL_LABERINTO3D, "1");
+            recentSecretKeys = "";
+        }
+    });
     document.addEventListener('keyup', (e) => teclas[e.code] = false);
 
     function ganarNivel() {
@@ -238,6 +266,7 @@
                 nivelActual++;
                 cargarNivel(nivelActual);
             } else {
+                localStorage.setItem(LS_MEDAL_LABERINTO3D, "1");
                 document.exitPointerLock();
                 document.getElementById('aviso-nivel').innerText = "¡MAESTRO DEL LABERINTO!";
             }

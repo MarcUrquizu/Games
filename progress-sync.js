@@ -8,6 +8,7 @@
     msi_medal_flappy_50: '🐦 Logro desbloqueado: Aleteo legendario',
     msi_medal_pacman_level10: '🟡 Logro desbloqueado: Rey del Pacman',
     msi_medal_laberinto2_10: '🧩 Logro desbloqueado: Maestro del Laberinto 2',
+    msi_medal_laberint3d_10: '🕶️ Logro desbloqueado: Maestro del Laberinto 3D',
     msi_medal_clicker_50m: '🧠 Logro secreto desbloqueado: Archimillonario oculto',
   };
   let isApplyingRemote = false;
