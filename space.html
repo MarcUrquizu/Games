@@ -276,7 +276,30 @@
   const LS_LASTMODE = "msi_last_mode";
   const LS_CHECKPOINT = "msi_checkpoint_v1";
   const LS_MEDAL_HARDCORE = "msi_medal_hardcore";
+  const LS_OWNED_SHOP_SKINS = "olap_owned_skins";
+  const SPACE_SKIN_ID = "space_1";
+  const SPACE_SKIN_IMAGE_URL = "[Pon el link aqui]";
   const SECRET_SEQUENCE = "111000222";
+  const spaceSkinImage = new Image();
+  let spaceSkinLoaded = false;
+  spaceSkinImage.onload = () => { spaceSkinLoaded = true; };
+  spaceSkinImage.src = SPACE_SKIN_IMAGE_URL;
+
+  function hasOwnedSkin(skinId) {
+    try {
+      const raw = localStorage.getItem(LS_OWNED_SHOP_SKINS);
+      if (!raw) return false;
+      const list = JSON.parse(raw);
+      return Array.isArray(list) && list.includes(skinId);
+    } catch {
+      return false;
+    }
+  }
+
+  function hasSpaceSkinEquipped() {
+    return hasOwnedSkin(SPACE_SKIN_ID);
+  }
+
   let recentSecretKeys = "";
   document.addEventListener("keydown", (event) => {
     if (!/^\d$/.test(event.key)) return;
@@ -1455,11 +1478,15 @@
     const shieldY = baseY + 26;
     for (let i = 0; i < player.shield; i++) drawShieldHeartFilled(startX + i*28, shieldY, 22);
 
-    ctx.fillStyle = "#8bd3ff";
-    ctx.fillRect(player.x, player.y, player.w, player.h);
-    ctx.fillRect(player.x + 6, player.y - 10, player.w - 12, 10);
-    ctx.fillStyle = "#d3f3ff";
-    ctx.fillRect(player.x + player.w/2 - 4, player.y - 16, 8, 6);
+    if (hasSpaceSkinEquipped() && spaceSkinLoaded) {
+      ctx.drawImage(spaceSkinImage, player.x - 6, player.y - 22, player.w + 12, player.h + 28);
+    } else {
+      ctx.fillStyle = "#8bd3ff";
+      ctx.fillRect(player.x, player.y, player.w, player.h);
+      ctx.fillRect(player.x + 6, player.y - 10, player.w - 12, 10);
+      ctx.fillStyle = "#d3f3ff";
+      ctx.fillRect(player.x + player.w/2 - 4, player.y - 16, 8, 6);
+    }
     drawPlayerShield();
 
     for (let i = 0; i < buddies.length; i++) {

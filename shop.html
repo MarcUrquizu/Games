@@ -74,41 +74,7 @@
       padding: 18px;
       box-shadow: 0 0 14px rgba(0, 255, 255, 0.15);
     }
-    .space-preview {
-      margin: 0 auto 12px;
-      background:
-        linear-gradient(135deg, #0a0c1d 0%, #11162b 100%);
-      border: 2px solid #2be9ff;
-      border-radius: 10px;
-      position: relative;
-      overflow: hidden;
-    }
-    .space-preview::before {
-      content: "";
-      position: absolute;
-      left: 50%;
-      top: 16px;
-      width: 0;
-      height: 0;
-      transform: translateX(-50%);
-      border-left: 24px solid transparent;
-      border-right: 24px solid transparent;
-      border-bottom: 34px solid #3be7ff;
-      filter: drop-shadow(0 0 8px rgba(59, 231, 255, 0.8));
-    }
-    .space-preview::after {
-      content: "";
-      position: absolute;
-      left: 50%;
-      top: 42px;
-      width: 22px;
-      height: 26px;
-      transform: translateX(-50%);
-      background: linear-gradient(180deg, #ff9f55 0%, #ff3e3e 100%);
-      clip-path: polygon(50% 100%, 0 0, 100% 0);
-      filter: drop-shadow(0 0 6px rgba(255, 90, 90, 0.8));
-    }
-    .space-preview, .pacman-preview {
+    .skin-preview, .pacman-preview {
       width: 88px;
       height: 88px;
       object-fit: contain;
@@ -168,9 +134,9 @@
 
   <div class="shop-grid">
     <article class="card">
-      <div class="space-preview" aria-label="Skin Space 1, avión para Space Invaders"></div>
+      <img id="space-skin-preview" class="skin-preview" src="" alt="Skin Space 1, avión para Space Invaders">
       <div class="title">Space Invaders<br>Skin: Avión 01</div>
-      <div class="price">Precio: 100 monedas</div>
+      <div class="price">skin_space_1.png · Precio: 100 monedas</div>
       <button class="btn buy-btn" data-skin="space_1">Comprar</button>
       <div class="status" id="status-space_1"></div>
     </article>
@@ -191,12 +157,15 @@
     const STARTING_COINS = 0;
     const SKIN_PRICE = 100;
     const INFINITE_CODE = '111000222';
+    const SPACE_SKIN_URL = '[Pon el link aqui]';
 
     const coinEl = document.getElementById('coin-count');
     const buyButtons = document.querySelectorAll('.buy-btn');
+    const spaceSkinPreview = document.getElementById('space-skin-preview');
     const cheatCodeInput = document.getElementById('cheat-code-input');
     const cheatCodeBtn = document.getElementById('cheat-code-btn');
     const codeMessageEl = document.getElementById('code-message');
+
 
     function hasInfiniteCoins() {
       return localStorage.getItem(INFINITE_KEY) === '1';
@@ -288,6 +257,7 @@
       }
     });
 
+    spaceSkinPreview.src = SPACE_SKIN_URL;
     setCoins(getCoins());
     updateButtons();
   </script>
