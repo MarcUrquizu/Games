@@ -927,7 +927,14 @@
         y = minY + Math.random() * (maxY - minY);
         tries++;
       }
-      chaosBombs.push({ x, y, r: radius, warn: warnTime, live: liveTime });
+      chaosBombs.push({
+        x, y, r: radius,
+        warn: warnTime,
+        warnStart: warnTime,
+        live: liveTime,
+        fromX: boss.x + boss.w / 2,
+        fromY: boss.y + boss.h + 8
+      });
     }
   }
 
@@ -997,10 +1004,10 @@
   }
 
   function startChaosBombardment() {
-    spawnChaosBombWave(4, 1.05, 0.55, 78);
-    queueChaosAttack({ t: 0.9, type: "spawnBombs", count: 3, warn: 0.9, live: 0.55, radius: 70 });
-    queueChaosAttack({ t: 1.65, type: "spawnBombs", count: 3, warn: 0.8, live: 0.52, radius: 66 });
-    boss.attackLock = 3.3;
+    // Versión justa: solo 2 bombas y con tiempo entre medio.
+    queueChaosAttack({ t: 0.05, type: "spawnBombs", count: 1, warn: 1.2, live: 0.55, radius: 70 });
+    queueChaosAttack({ t: 2.0, type: "spawnBombs", count: 1, warn: 1.2, live: 0.55, radius: 70 });
+    boss.attackLock = 4.4;
     boss.activeAttackType = "bomb";
   }
 
@@ -1726,6 +1733,22 @@
         ctx.beginPath();
         ctx.arc(bomb.x, bomb.y, bomb.r * 0.45, 0, Math.PI * 2);
         ctx.stroke();
+
+        // Bola viajando hacia el punto de impacto (telegráfico claro).
+        const totalWarn = Math.max(0.001, bomb.warnStart || 1);
+        const progress = clamp(1 - (bomb.warn / totalWarn), 0, 1);
+        const orbX = bomb.fromX + (bomb.x - bomb.fromX) * progress;
+        const orbY = bomb.fromY + (bomb.y - bomb.fromY) * progress;
+        ctx.strokeStyle = "rgba(255,210,130,0.3)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(bomb.fromX, bomb.fromY);
+        ctx.lineTo(orbX, orbY);
+        ctx.stroke();
+        ctx.fillStyle = "rgba(255,180,80,0.95)";
+        ctx.beginPath();
+        ctx.arc(orbX, orbY, 7, 0, Math.PI * 2);
+        ctx.fill();
       } else {
         const pulse = 0.7 + 0.3 * Math.sin(performance.now() * 0.028);
         ctx.fillStyle = `rgba(255,80,40,${0.18 + pulse * 0.2})`;
