@@ -184,6 +184,13 @@
   const rectsIntersect = (a, b) =>
     a.x < b.x + b.w && a.x + a.w > b.x &&
     a.y < b.y + b.h && a.y + a.h > b.y;
+  const circleIntersectsRect = (cx, cy, r, rect) => {
+    const nx = clamp(cx, rect.x, rect.x + rect.w);
+    const ny = clamp(cy, rect.y, rect.y + rect.h);
+    const dx = cx - nx;
+    const dy = cy - ny;
+    return (dx * dx + dy * dy) <= (r * r);
+  };
 
   // ✅ NUEVO: resolución interna fija (lógica del juego)
   const BASE_W = 800, BASE_H = 600;
@@ -276,6 +283,7 @@
   const LS_LASTMODE = "msi_last_mode";
   const LS_CHECKPOINT = "msi_checkpoint_v1";
   const LS_MEDAL_HARDCORE = "msi_medal_hardcore";
+  const LS_OWNED_SKINS = "olap_owned_skins";
   const SECRET_SEQUENCE = "111000222";
   let recentSecretKeys = "";
   document.addEventListener("keydown", (event) => {
@@ -301,6 +309,14 @@
   }
   function saveCheckpoint(obj) { try { localStorage.setItem(LS_CHECKPOINT, JSON.stringify(obj)); } catch {} }
   function clearCheckpoint() { try { localStorage.removeItem(LS_CHECKPOINT); } catch {} }
+  function hasOwnedSkin(skinId) {
+    try {
+      const owned = JSON.parse(localStorage.getItem(LS_OWNED_SKINS) || "[]");
+      return Array.isArray(owned) && owned.includes(skinId);
+    } catch {
+      return false;
+    }
+  }
 
   function refreshMenuButtons() {
     const unlocked = hasHardcoreUnlocked();
@@ -349,6 +365,7 @@
 
   // ===== Modo =====
   const mode = { name: (localStorage.getItem(LS_LASTMODE) || "NORMAL") };
+  const usingSpacePlaneSkin = hasOwnedSkin("space_1");
 
   // ===== Ajustes =====
   const tuning = {
@@ -356,7 +373,7 @@
     HARDCORE:{ enemyShootMul:1.35, enemySpeedMul:1.15, enemyBulletMul:1.15, bossHpMul:1.15, bossFireMul:1.15, rapidDropChance:0.06, shieldDropChance:0.035, buddyDropChance:0.0016, dmgDropChance:0.0005, checkpoints:false },
   };
   function currentTuning() { return tuning[mode.name] || tuning.NORMAL; }
-  function isBossWave(w) { return (w % 5 === 0); }
+  function isBossWave(w) { return (w % 10 === 0); }
 
   const state = {
     score: 0,
@@ -364,7 +381,7 @@
     maxLives: 3,
     wave: 1,
     status: "MENU",
-    maxWaves: 100,
+    maxWaves: Number.POSITIVE_INFINITY,
     justWon: false,
   };
 
@@ -389,6 +406,7 @@
   const playerBullets = [];
   const enemyBullets = [];
   const bossLasers = [];
+  const chaosBombs = [];
   const buddies = [];
   function makeBuddy(slotIndex) { return { slotIndex, cooldown: 0 }; }
   window.__spaceDebug = {
@@ -479,9 +497,10 @@
     hp:0, hpMax:0,
     dir:1, speed:110,
     cooldown:0, phase:1, patternId:0, auxT:0, addCooldown:0, specialCooldown:0, queuedAttacks:[],
+    attackLock:0, activeAttackType:"",
     locked:false, targetY:0, spawnY:0,
   };
-  const chaosBossFromPattern = 10; // jefe de oleada 50 en adelante
+  const chaosBossFromPattern = 1; // cada jefe de múltiplo de 10 entra en modo ultra
 
   function drawInvaderBody(x, y, w, h, bodyColor) {
     ctx.fillStyle = bodyColor;
@@ -496,6 +515,68 @@
     ctx.fillStyle = "rgba(0,0,0,.45)";
     ctx.fillRect(leftEyeX,  eyeY, eyeW, eyeH);
     ctx.fillRect(rightEyeX, eyeY, eyeW, eyeH);
+  }
+
+  function drawCrazyPlane(x, y, w, h, variant = 0) {
+    const t = performance.now() * 0.01;
+    const hue = (Math.floor((t * 18) + variant * 80) % 360 + 360) % 360;
+    const glow = `hsla(${hue} 100% 62% / .45)`;
+    const body = `hsl(${(hue + 25) % 360} 100% 66%)`;
+    const wing = `hsl(${(hue + 180) % 360} 95% 70%)`;
+    const cockpit = `hsl(${(hue + 300) % 360} 95% 78%)`;
+    const flame = `hsl(${(hue + 35) % 360} 100% 58%)`;
+
+    ctx.save();
+    ctx.shadowBlur = 16;
+    ctx.shadowColor = glow;
+
+    // Todo el dibujo queda estrictamente dentro de [x..x+w] y [y..y+h]
+    // para mantener exactamente el mismo tamaño visual y evitar "pay to win".
+
+    // Fuselaje
+    ctx.fillStyle = body;
+    ctx.beginPath();
+    ctx.moveTo(x + w * 0.5, y + h * 0.06);
+    ctx.lineTo(x + w - 2, y + h * 0.96);
+    ctx.lineTo(x + 2, y + h * 0.96);
+    ctx.closePath();
+    ctx.fill();
+
+    // Alas laterales
+    ctx.fillStyle = wing;
+    ctx.beginPath();
+    ctx.moveTo(x + w * 0.5, y + h * 0.34);
+    ctx.lineTo(x + w * 0.94, y + h * 0.76);
+    ctx.lineTo(x + w * 0.68, y + h * 0.72);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x + w * 0.5, y + h * 0.34);
+    ctx.lineTo(x + w * 0.06, y + h * 0.76);
+    ctx.lineTo(x + w * 0.32, y + h * 0.72);
+    ctx.closePath();
+    ctx.fill();
+
+    // Cabina
+    ctx.fillStyle = cockpit;
+    ctx.fillRect(x + w * 0.45, y + h * 0.12, Math.max(4, w * 0.1), h * 0.72);
+
+    // Estela de motor (interna al sprite)
+    const flamePulse = 1 + 0.22 * Math.sin(t * 2.5 + variant);
+    ctx.fillStyle = flame;
+    ctx.beginPath();
+    ctx.moveTo(x + w * 0.5, y + h * (0.94 - 0.08 * flamePulse));
+    ctx.lineTo(x + w * 0.5 - w * 0.12, y + h * 0.82);
+    ctx.lineTo(x + w * 0.5 + w * 0.12, y + h * 0.82);
+    ctx.closePath();
+    ctx.fill();
+
+    // Brillos extra para que sea más "locura"
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(x + w * 0.12, y + h * 0.22, w * 0.76, 2);
+    ctx.fillRect(x + w * 0.2, y + h * 0.52, w * 0.6, 2);
+    ctx.restore();
   }
 
   const GLYPHS = {
@@ -522,8 +603,8 @@
   }
 
   function hpRangeForWave(wave) {
-    const tier = Math.floor((wave - 1) / 5) + 1;
-    return { minHp: tier, maxHp: tier + 1 };
+    const minHp = 1 + Math.floor((wave - 1) * 0.22);
+    return { minHp, maxHp: minHp + 2 };
   }
 
   // ===== Hearts =====
@@ -659,6 +740,8 @@
     boss.phase = 1; boss.auxT = 0; boss.addCooldown = 0;
     boss.specialCooldown = 0;
     boss.queuedAttacks = [];
+    boss.attackLock = 0;
+    boss.activeAttackType = "";
     const t = currentTuning();
     boss.hpMax = Math.floor(5200 * t.bossHpMul);
     boss.hp = boss.hpMax;
@@ -667,7 +750,6 @@
     boss.locked = !!spawnFromTop;
   }
   function initBossForWave(wave, spawnFromTop) {
-    if (wave === state.maxWaves) { initFinalBoss(spawnFromTop); return; }
     boss.active = true; boss.isFinal = false;
     boss.w = 160; boss.h = 48;
     boss.x = W/2 - boss.w/2;
@@ -675,14 +757,16 @@
     boss.spawnY = -boss.h - 30;
     boss.y = spawnFromTop ? boss.spawnY : boss.targetY;
     boss.dir = 1; boss.speed = 110;
-    boss.patternId = wave / 5;
+    boss.patternId = Math.max(1, Math.floor(wave / 10));
     boss.auxT = 0;
     boss.specialCooldown = 0;
     boss.queuedAttacks = [];
+    boss.attackLock = 0;
+    boss.activeAttackType = "";
     const t = currentTuning();
-    boss.hpMax = Math.floor((220 + (boss.patternId - 1) * 120) * t.bossHpMul);
+    boss.hpMax = Math.floor((320 + wave * 42 + (boss.patternId - 1) * 180) * t.bossHpMul);
     boss.hp = boss.hpMax;
-    boss.cooldown = 0.92 / t.bossFireMul;
+    boss.cooldown = 0.84 / t.bossFireMul;
     boss.locked = !!spawnFromTop;
   }
 
@@ -719,6 +803,7 @@
     playerBullets.length = 0;
     enemyBullets.length = 0;
     bossLasers.length = 0;
+    chaosBombs.length = 0;
     bossDeath.active = false;
     boss.active = false;
     adds.length = 0;
@@ -764,15 +849,20 @@
 
   function completeWaveAndTransition() {
     const next = state.wave + 1;
-    if (next > state.maxWaves) {
-      state.status = "GAME_WON";
-      state.justWon = true;
+    // Endless: no hay límite de niveles.
+    // Al derrotar el jefe de la 100 en NORMAL, se desbloquea checkpoint 101.
+    if (mode.name === "NORMAL" && next === 101) {
       setHardcoreUnlocked();
-      if (mode.name === "HARDCORE") setHardcoreMedal();
-      showOverlay();
+      saveCheckpoint({
+        wave: 101,
+        fireRate: player.fireRate,
+        dmgUpgrades: player.dmgUpgrades,
+        buddies: buddies.length,
+        score: state.score,
+      });
       refreshMenuButtons();
-      beep(520, 0.12, "triangle", 0.05);
-      return;
+      beep(740, 0.08, "triangle", 0.05);
+      beep(980, 0.08, "sine", 0.04);
     }
     maybeCreateCheckpoint(next);
     state.wave = next;
@@ -790,7 +880,7 @@
     const baseSpeed = (260 + id * 8) * t.bossFireMul;
 
     if (id >= chaosBossFromPattern) {
-      chaosBossFire(dt, baseSpeed);
+      chaosBossFire(dt);
       return;
     }
 
@@ -824,6 +914,36 @@
     }
   }
 
+  function spawnChaosBombWave(count = 4, travelTime = 1.0, warnTime = 1.0, liveTime = 0.5, radius = 62) {
+    const minX = 70;
+    const maxX = W - 70;
+    const playerLineY = player.y + player.h * 0.5;
+    const minY = clamp(playerLineY - 14, 90, H - 90);
+    const maxY = clamp(playerLineY + 14, 90, H - 90);
+    for (let i = 0; i < count; i++) {
+      let x = minX + Math.random() * (maxX - minX);
+      let y = minY + Math.random() * (maxY - minY);
+      let tries = 0;
+      while (tries < 16) {
+        const overlap = chaosBombs.some((b) => Math.hypot(b.x - x, b.y - y) < radius * 1.7);
+        if (!overlap) break;
+        x = minX + Math.random() * (maxX - minX);
+        y = minY + Math.random() * (maxY - minY);
+        tries++;
+      }
+      chaosBombs.push({
+        x, y, r: radius,
+        travel: travelTime,
+        travelStart: travelTime,
+        warn: warnTime,
+        warnStart: warnTime,
+        live: liveTime,
+        fromX: boss.x + boss.w / 2,
+        fromY: boss.y + boss.h + 8
+      });
+    }
+  }
+
   function summonChaosAdds(count = 4) {
     if (adds.length >= addsCfg.max) return;
     const t = currentTuning();
@@ -842,40 +962,87 @@
     }
   }
 
-  function chaosBossFire(dt, baseSpeed) {
+  function getChaosLanes(parts = 7) {
+    const lanes = [];
+    for (let i = 1; i <= parts; i++) lanes.push((W / (parts + 1)) * i);
+    return lanes;
+  }
+
+  function startChaosLaserDoubleWave() {
+    const spacing = W / 4;
+    const first = [spacing, spacing * 2, spacing * 3];
+    const shift = spacing / 2;
+    const second = [spacing + shift, spacing * 2 + shift, spacing * 3 + shift];
+    spawnBossLaserVolley(first, 0.9, 1.35);
+    // Más tiempo entre los 3 primeros y los 3 segundos.
+    queueChaosAttack({ t: 2.45, type: "laserVolley", lanes: second, warn: 0.9, live: 1.35 });
+    boss.attackLock = 4.4;
+    boss.activeAttackType = "laser";
+  }
+
+  function startChaosLaserCageCollapse() {
+    const lanes = getChaosLanes(7);
+    // Secuencia más justa: cuando termina una pareja, aparece la silueta de la siguiente.
+    queueChaosAttack({ t: 0.05, type: "laserVolley", lanes: [lanes[0], lanes[6]], warn: 0.55, live: 0.80 });
+    queueChaosAttack({ t: 1.45, type: "laserVolley", lanes: [lanes[1], lanes[5]], warn: 0.55, live: 0.80 });
+    queueChaosAttack({ t: 2.85, type: "laserVolley", lanes: [lanes[2], lanes[4]], warn: 0.55, live: 0.78 });
+    queueChaosAttack({ t: 4.22, type: "laserVolley", lanes: [lanes[3]], warn: 0.55, live: 0.80 });
+    boss.attackLock = 5.65;
+    boss.activeAttackType = "laser";
+  }
+
+  function startChaosLaserChecker() {
+    const lanes = getChaosLanes(8);
+    const odd = lanes.filter((_, i) => i % 2 === 0);
+    const even = lanes.filter((_, i) => i % 2 === 1);
+    queueChaosAttack({ t: 0.05, type: "laserVolley", lanes: odd, warn: 0.62, live: 1.0 });
+    queueChaosAttack({ t: 1.45, type: "laserVolley", lanes: even, warn: 0.62, live: 1.0 });
+    boss.attackLock = 3.65;
+    boss.activeAttackType = "laser";
+  }
+
+  function startChaosSummonArmada() {
+    summonChaosAdds(6);
+    queueChaosAttack({ t: 0.9, type: "summonAdds", count: 4 });
+    queueChaosAttack({ t: 1.8, type: "summonAdds", count: 4 });
+    boss.attackLock = 3.2;
+    boss.activeAttackType = "adds";
+  }
+
+  function startChaosBombardment() {
+    // Versión justa: solo 2 bombas y con tiempo entre medio.
+    queueChaosAttack({ t: 0.05, type: "spawnBombs", count: 1, travel: 1.05, warn: 1.1, live: 0.52, radius: 54 });
+    queueChaosAttack({ t: 2.8, type: "spawnBombs", count: 1, travel: 1.05, warn: 1.1, live: 0.52, radius: 54 });
+    boss.attackLock = 6.2;
+    boss.activeAttackType = "bomb";
+  }
+
+  function chaosBossFire(dt) {
     const t = currentTuning();
     boss.specialCooldown = Math.max(0, boss.specialCooldown - dt);
+    boss.attackLock = Math.max(0, boss.attackLock - dt);
 
-    if (boss.specialCooldown <= 0) {
-      const cx = boss.x + boss.w / 2;
-      const attackRoll = Math.random();
+    const laserAttackOngoing =
+      boss.activeAttackType === "laser" &&
+      (bossLasers.length > 0 || boss.queuedAttacks.some((qa) => qa.type === "laserVolley"));
+    if (laserAttackOngoing && boss.attackLock < 0.25) boss.attackLock = 0.25;
+    const bombAttackOngoing =
+      boss.activeAttackType === "bomb" &&
+      (chaosBombs.length > 0 || boss.queuedAttacks.some((qa) => qa.type === "spawnBombs"));
+    if (bombAttackOngoing && boss.attackLock < 0.25) boss.attackLock = 0.25;
 
-      if (attackRoll < 0.32) {
-        const spacing = W / 4;
-        const first = [spacing, spacing * 2, spacing * 3];
-        const shift = spacing / 2;
-        const second = [spacing + shift, spacing * 2 + shift, spacing * 3 + shift];
-        spawnBossLaserVolley(first, 0.85, 1.25);
-        queueChaosAttack({ t: 1.65, type: "laserVolley", lanes: second });
-      } else if (attackRoll < 0.62) {
-        const s = baseSpeed * 0.95;
-        for (let i = -5; i <= 5; i++) {
-          if (i === 0) continue;
-          spawnEnemyBullet(cx, boss.y + boss.h + 6, s * 0.11 * i, s, true);
-        }
-        queueChaosAttack({ t: 0.45, type: "aimedBurst", shots: 3, speed: baseSpeed * 1.05 });
-      } else if (attackRoll < 0.82) {
-        summonChaosAdds(5);
-      } else {
-        for (let i = 0; i < 12; i++) {
-          const rx = 26 + (i / 11) * (W - 52);
-          const vy = baseSpeed * (0.75 + Math.random() * 0.35);
-          const vx = (Math.random() * 2 - 1) * 42;
-          spawnEnemyBullet(rx, boss.y + boss.h + 8, vx, vy, true);
-        }
-      }
-
-      boss.specialCooldown = (0.85 + Math.random() * 0.5) / t.bossFireMul;
+    // No se solapan ataques: hasta que termine el actual no inicia otro.
+    if (boss.specialCooldown <= 0 && boss.attackLock <= 0 && boss.queuedAttacks.length === 0 && bossLasers.length === 0) {
+      const attackPool = [
+        startChaosLaserDoubleWave,
+        startChaosLaserCageCollapse,
+        startChaosLaserChecker,
+        startChaosSummonArmada,
+        startChaosBombardment
+      ];
+      const pick = attackPool[Math.floor(Math.random() * attackPool.length)];
+      pick();
+      boss.specialCooldown = (1.05 + Math.random() * 0.6) / t.bossFireMul;
     }
 
     for (let i = boss.queuedAttacks.length - 1; i >= 0; i--) {
@@ -884,13 +1051,17 @@
       if (qa.t > 0) continue;
 
       if (qa.type === "laserVolley") {
-        spawnBossLaserVolley(qa.lanes, 0.55, 1.05);
-      } else if (qa.type === "aimedBurst") {
-        const cx = boss.x + boss.w / 2;
-        const cy = boss.y + boss.h + 4;
-        for (let s = 0; s < qa.shots; s++) spawnAimedBullet(cx + (s - 1) * 18, cy, qa.speed, true);
+        spawnBossLaserVolley(qa.lanes, qa.warn ?? 0.55, qa.live ?? 1.05);
+      } else if (qa.type === "summonAdds") {
+        summonChaosAdds(qa.count || 4);
+      } else if (qa.type === "spawnBombs") {
+        spawnChaosBombWave(qa.count || 3, qa.travel ?? 1.0, qa.warn ?? 0.95, qa.live ?? 0.55, qa.radius ?? 72);
       }
       boss.queuedAttacks.splice(i, 1);
+    }
+
+    if (boss.attackLock <= 0 && boss.queuedAttacks.length === 0 && bossLasers.length === 0 && chaosBombs.length === 0) {
+      boss.activeAttackType = "";
     }
   }
 
@@ -1021,6 +1192,7 @@
     playerBullets.length = 0;
     enemyBullets.length = 0;
     bossLasers.length = 0;
+    chaosBombs.length = 0;
 
     startTransitionToWave(state.wave, false);
     beep(420, 0.07, "triangle", 0.05);
@@ -1044,6 +1216,7 @@
     playerBullets.length = 0;
     enemyBullets.length = 0;
     bossLasers.length = 0;
+    chaosBombs.length = 0;
 
     powerups.length = 0;
     explosions.length = 0;
@@ -1230,6 +1403,25 @@
           continue;
         }
         if (player.laserHitCooldown <= 0 && rectsIntersect({ x: laser.x, y: laser.y, w: laser.w, h: laser.h }, player)) {
+          applyIncomingHit(true);
+          player.laserHitCooldown = 0.18;
+        }
+      }
+    }
+
+    for (let i = chaosBombs.length - 1; i >= 0; i--) {
+      const bomb = chaosBombs[i];
+      if (bomb.travel > 0) {
+        bomb.travel = Math.max(0, bomb.travel - dt);
+      } else if (bomb.warn > 0) {
+        bomb.warn = Math.max(0, bomb.warn - dt);
+      } else {
+        bomb.live = Math.max(0, bomb.live - dt);
+        if (bomb.live <= 0) {
+          chaosBombs.splice(i, 1);
+          continue;
+        }
+        if (player.laserHitCooldown <= 0 && circleIntersectsRect(bomb.x, bomb.y, bomb.r, player)) {
           applyIncomingHit(true);
           player.laserHitCooldown = 0.18;
         }
@@ -1429,7 +1621,8 @@
     ctx.fillStyle = "#e8eef7";
     ctx.font = "16px system-ui, sans-serif";
     ctx.fillText(`Puntuación: ${state.score}`, 16, 26);
-    ctx.fillText(`Oleada: ${state.wave}/${state.maxWaves}`, 16, 48);
+    const waveCapText = Number.isFinite(state.maxWaves) ? state.maxWaves : "∞";
+    ctx.fillText(`Oleada: ${state.wave}/${waveCapText}`, 16, 48);
     ctx.globalAlpha = 0.85;
     ctx.fillText(`Modo: ${mode.name}`, 16, 70);
     ctx.fillText(`Cadencia: ${player.fireRate.toFixed(1)} disp/s`, 16, 92);
@@ -1455,11 +1648,17 @@
     const shieldY = baseY + 26;
     for (let i = 0; i < player.shield; i++) drawShieldHeartFilled(startX + i*28, shieldY, 22);
 
-    ctx.fillStyle = "#8bd3ff";
-    ctx.fillRect(player.x, player.y, player.w, player.h);
-    ctx.fillRect(player.x + 6, player.y - 10, player.w - 12, 10);
-    ctx.fillStyle = "#d3f3ff";
-    ctx.fillRect(player.x + player.w/2 - 4, player.y - 16, 8, 6);
+    if (usingSpacePlaneSkin) {
+      // El sprite normal ocupa 40x16 + una torre superior de 16px.
+      // Dibujamos la skin en ese mismo alto total para que sea equivalente.
+      drawCrazyPlane(player.x, player.y - 16, player.w, player.h + 16, 0);
+    } else {
+      ctx.fillStyle = "#8bd3ff";
+      ctx.fillRect(player.x, player.y, player.w, player.h);
+      ctx.fillRect(player.x + 6, player.y - 10, player.w - 12, 10);
+      ctx.fillStyle = "#d3f3ff";
+      ctx.fillRect(player.x + player.w/2 - 4, player.y - 16, 8, 6);
+    }
     drawPlayerShield();
 
     for (let i = 0; i < buddies.length; i++) {
@@ -1467,7 +1666,11 @@
       const side = (b.slotIndex === 0) ? -1 : 1;
       const bx = player.x + player.w/2 + side * 34;
       const by = player.y - 10;
-      drawInvaderBody(bx - 14, by, 28, 18, "rgba(184,255,138,.92)");
+      if (usingSpacePlaneSkin) {
+        drawCrazyPlane(bx - 14, by, 28, 18, b.slotIndex + 1);
+      } else {
+        drawInvaderBody(bx - 14, by, 28, 18, "rgba(184,255,138,.92)");
+      }
     }
 
     ctx.fillStyle = "#d0ff6b";
@@ -1523,6 +1726,54 @@
         ctx.fillRect(laser.x, laser.y, laser.w, laser.h);
         ctx.fillStyle = `rgba(255,180,180,${0.35 + pulse * 0.4})`;
         ctx.fillRect(laser.x + laser.w * 0.34, laser.y, laser.w * 0.32, laser.h);
+      }
+    }
+
+    for (const bomb of chaosBombs) {
+      if (bomb.travel > 0) {
+        const totalTravel = Math.max(0.001, bomb.travelStart || 1);
+        const t = clamp(1 - (bomb.travel / totalTravel), 0, 1);
+        const orbX = bomb.fromX + (bomb.x - bomb.fromX) * t;
+        const orbY = bomb.fromY + (bomb.y - bomb.fromY) * t;
+        ctx.strokeStyle = "rgba(255,185,120,0.35)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(orbX, orbY);
+        ctx.lineTo(bomb.x, bomb.y);
+        ctx.stroke();
+        ctx.fillStyle = "rgba(255,170,70,0.98)";
+        ctx.beginPath();
+        ctx.arc(orbX, orbY, 8, 0, Math.PI * 2);
+        ctx.fill();
+        // Objetivo tenue mientras llega la bomba (no aparece de repente).
+        ctx.strokeStyle = "rgba(255,140,140,0.28)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(bomb.x, bomb.y, bomb.r, 0, Math.PI * 2);
+        ctx.stroke();
+      } else if (bomb.warn > 0) {
+        const pulse = 0.72 + 0.28 * Math.sin(performance.now() * 0.018);
+        ctx.strokeStyle = `rgba(255,120,120,${0.55 + pulse * 0.3})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(bomb.x, bomb.y, bomb.r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.strokeStyle = "rgba(255,200,200,0.55)";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(bomb.x, bomb.y, bomb.r * 0.45, 0, Math.PI * 2);
+        ctx.stroke();
+      } else {
+        const pulse = 0.7 + 0.3 * Math.sin(performance.now() * 0.028);
+        ctx.fillStyle = `rgba(255,80,40,${0.18 + pulse * 0.2})`;
+        ctx.beginPath();
+        ctx.arc(bomb.x, bomb.y, bomb.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = `rgba(255,205,120,${0.4 + pulse * 0.35})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(bomb.x, bomb.y, bomb.r * (0.82 + pulse * 0.2), 0, Math.PI * 2);
+        ctx.stroke();
       }
     }
 
@@ -1660,6 +1911,7 @@
     playerBullets.length = 0;
     enemyBullets.length = 0;
     bossLasers.length = 0;
+    chaosBombs.length = 0;
     powerups.length = 0;
     explosions.length = 0;
 
