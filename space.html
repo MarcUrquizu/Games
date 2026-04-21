@@ -489,6 +489,7 @@
     hp:0, hpMax:0,
     dir:1, speed:110,
     cooldown:0, phase:1, patternId:0, auxT:0, addCooldown:0, specialCooldown:0, queuedAttacks:[],
+    attackLock:0, activeAttackType:"",
     locked:false, targetY:0, spawnY:0,
   };
   const chaosBossFromPattern = 10; // jefe de oleada 50 en adelante
@@ -731,6 +732,8 @@
     boss.phase = 1; boss.auxT = 0; boss.addCooldown = 0;
     boss.specialCooldown = 0;
     boss.queuedAttacks = [];
+    boss.attackLock = 0;
+    boss.activeAttackType = "";
     const t = currentTuning();
     boss.hpMax = Math.floor(5200 * t.bossHpMul);
     boss.hp = boss.hpMax;
@@ -751,6 +754,8 @@
     boss.auxT = 0;
     boss.specialCooldown = 0;
     boss.queuedAttacks = [];
+    boss.attackLock = 0;
+    boss.activeAttackType = "";
     const t = currentTuning();
     boss.hpMax = Math.floor((220 + (boss.patternId - 1) * 120) * t.bossHpMul);
     boss.hp = boss.hpMax;
@@ -862,7 +867,7 @@
     const baseSpeed = (260 + id * 8) * t.bossFireMul;
 
     if (id >= chaosBossFromPattern) {
-      chaosBossFire(dt, baseSpeed);
+      chaosBossFire(dt);
       return;
     }
 
@@ -914,40 +919,91 @@
     }
   }
 
-  function chaosBossFire(dt, baseSpeed) {
+  function getChaosLanes(parts = 7) {
+    const lanes = [];
+    for (let i = 1; i <= parts; i++) lanes.push((W / (parts + 1)) * i);
+    return lanes;
+  }
+
+  function startChaosLaserDoubleWave() {
+    const spacing = W / 4;
+    const first = [spacing, spacing * 2, spacing * 3];
+    const shift = spacing / 2;
+    const second = [spacing + shift, spacing * 2 + shift, spacing * 3 + shift];
+    spawnBossLaserVolley(first, 0.9, 1.35);
+    // Más tiempo entre los 3 primeros y los 3 segundos.
+    queueChaosAttack({ t: 2.45, type: "laserVolley", lanes: second, warn: 0.9, live: 1.35 });
+    boss.attackLock = 4.4;
+    boss.activeAttackType = "laser";
+  }
+
+  function startChaosLaserSweep(leftToRight = true) {
+    const lanes = getChaosLanes(7);
+    const ordered = leftToRight ? lanes : [...lanes].reverse();
+    for (let i = 0; i < ordered.length; i++) {
+      queueChaosAttack({
+        t: 0.15 + i * 0.38,
+        type: "laserVolley",
+        lanes: [ordered[i]],
+        warn: 0.46,
+        live: 0.85
+      });
+    }
+    boss.attackLock = 3.7;
+    boss.activeAttackType = "laser";
+  }
+
+  function startChaosLaserCageCollapse() {
+    const lanes = getChaosLanes(7);
+    queueChaosAttack({ t: 0.05, type: "laserVolley", lanes: [lanes[0], lanes[6]], warn: 0.62, live: 1.05 });
+    queueChaosAttack({ t: 0.75, type: "laserVolley", lanes: [lanes[1], lanes[5]], warn: 0.58, live: 1.0 });
+    queueChaosAttack({ t: 1.45, type: "laserVolley", lanes: [lanes[2], lanes[4]], warn: 0.54, live: 0.95 });
+    queueChaosAttack({ t: 2.1, type: "laserVolley", lanes: [lanes[3]], warn: 0.50, live: 0.95 });
+    boss.attackLock = 4.1;
+    boss.activeAttackType = "laser";
+  }
+
+  function startChaosLaserChecker() {
+    const lanes = getChaosLanes(8);
+    const odd = lanes.filter((_, i) => i % 2 === 0);
+    const even = lanes.filter((_, i) => i % 2 === 1);
+    queueChaosAttack({ t: 0.05, type: "laserVolley", lanes: odd, warn: 0.62, live: 1.0 });
+    queueChaosAttack({ t: 1.45, type: "laserVolley", lanes: even, warn: 0.62, live: 1.0 });
+    boss.attackLock = 3.65;
+    boss.activeAttackType = "laser";
+  }
+
+  function startChaosSummonArmada() {
+    summonChaosAdds(6);
+    queueChaosAttack({ t: 0.9, type: "summonAdds", count: 4 });
+    queueChaosAttack({ t: 1.8, type: "summonAdds", count: 4 });
+    boss.attackLock = 3.2;
+    boss.activeAttackType = "adds";
+  }
+
+  function chaosBossFire(dt) {
     const t = currentTuning();
     boss.specialCooldown = Math.max(0, boss.specialCooldown - dt);
+    boss.attackLock = Math.max(0, boss.attackLock - dt);
 
-    if (boss.specialCooldown <= 0) {
-      const cx = boss.x + boss.w / 2;
-      const attackRoll = Math.random();
+    const laserAttackOngoing =
+      boss.activeAttackType === "laser" &&
+      (bossLasers.length > 0 || boss.queuedAttacks.some((qa) => qa.type === "laserVolley"));
+    if (laserAttackOngoing && boss.attackLock < 0.25) boss.attackLock = 0.25;
 
-      if (attackRoll < 0.32) {
-        const spacing = W / 4;
-        const first = [spacing, spacing * 2, spacing * 3];
-        const shift = spacing / 2;
-        const second = [spacing + shift, spacing * 2 + shift, spacing * 3 + shift];
-        spawnBossLaserVolley(first, 0.85, 1.25);
-        queueChaosAttack({ t: 1.65, type: "laserVolley", lanes: second });
-      } else if (attackRoll < 0.62) {
-        const s = baseSpeed * 0.95;
-        for (let i = -5; i <= 5; i++) {
-          if (i === 0) continue;
-          spawnEnemyBullet(cx, boss.y + boss.h + 6, s * 0.11 * i, s, true);
-        }
-        queueChaosAttack({ t: 0.45, type: "aimedBurst", shots: 3, speed: baseSpeed * 1.05 });
-      } else if (attackRoll < 0.82) {
-        summonChaosAdds(5);
-      } else {
-        for (let i = 0; i < 12; i++) {
-          const rx = 26 + (i / 11) * (W - 52);
-          const vy = baseSpeed * (0.75 + Math.random() * 0.35);
-          const vx = (Math.random() * 2 - 1) * 42;
-          spawnEnemyBullet(rx, boss.y + boss.h + 8, vx, vy, true);
-        }
-      }
-
-      boss.specialCooldown = (0.85 + Math.random() * 0.5) / t.bossFireMul;
+    // No se solapan ataques: hasta que termine el actual no inicia otro.
+    if (boss.specialCooldown <= 0 && boss.attackLock <= 0 && boss.queuedAttacks.length === 0 && bossLasers.length === 0) {
+      const attackPool = [
+        startChaosLaserDoubleWave,
+        () => startChaosLaserSweep(true),
+        () => startChaosLaserSweep(false),
+        startChaosLaserCageCollapse,
+        startChaosLaserChecker,
+        startChaosSummonArmada
+      ];
+      const pick = attackPool[Math.floor(Math.random() * attackPool.length)];
+      pick();
+      boss.specialCooldown = (1.05 + Math.random() * 0.6) / t.bossFireMul;
     }
 
     for (let i = boss.queuedAttacks.length - 1; i >= 0; i--) {
@@ -956,13 +1012,15 @@
       if (qa.t > 0) continue;
 
       if (qa.type === "laserVolley") {
-        spawnBossLaserVolley(qa.lanes, 0.55, 1.05);
-      } else if (qa.type === "aimedBurst") {
-        const cx = boss.x + boss.w / 2;
-        const cy = boss.y + boss.h + 4;
-        for (let s = 0; s < qa.shots; s++) spawnAimedBullet(cx + (s - 1) * 18, cy, qa.speed, true);
+        spawnBossLaserVolley(qa.lanes, qa.warn ?? 0.55, qa.live ?? 1.05);
+      } else if (qa.type === "summonAdds") {
+        summonChaosAdds(qa.count || 4);
       }
       boss.queuedAttacks.splice(i, 1);
+    }
+
+    if (boss.attackLock <= 0 && boss.queuedAttacks.length === 0 && bossLasers.length === 0) {
+      boss.activeAttackType = "";
     }
   }
 
