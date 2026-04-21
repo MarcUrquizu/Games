@@ -276,30 +276,8 @@
   const LS_LASTMODE = "msi_last_mode";
   const LS_CHECKPOINT = "msi_checkpoint_v1";
   const LS_MEDAL_HARDCORE = "msi_medal_hardcore";
-  const LS_OWNED_SHOP_SKINS = "olap_owned_skins";
-  const SPACE_SKIN_ID = "space_1";
-  const SPACE_SKIN_IMAGE_URL = "[Pon el link aqui]";
+  const LS_OWNED_SKINS = "olap_owned_skins";
   const SECRET_SEQUENCE = "111000222";
-  const spaceSkinImage = new Image();
-  let spaceSkinLoaded = false;
-  spaceSkinImage.onload = () => { spaceSkinLoaded = true; };
-  spaceSkinImage.src = SPACE_SKIN_IMAGE_URL;
-
-  function hasOwnedSkin(skinId) {
-    try {
-      const raw = localStorage.getItem(LS_OWNED_SHOP_SKINS);
-      if (!raw) return false;
-      const list = JSON.parse(raw);
-      return Array.isArray(list) && list.includes(skinId);
-    } catch {
-      return false;
-    }
-  }
-
-  function hasSpaceSkinEquipped() {
-    return hasOwnedSkin(SPACE_SKIN_ID);
-  }
-
   let recentSecretKeys = "";
   document.addEventListener("keydown", (event) => {
     if (!/^\d$/.test(event.key)) return;
@@ -324,6 +302,14 @@
   }
   function saveCheckpoint(obj) { try { localStorage.setItem(LS_CHECKPOINT, JSON.stringify(obj)); } catch {} }
   function clearCheckpoint() { try { localStorage.removeItem(LS_CHECKPOINT); } catch {} }
+  function hasOwnedSkin(skinId) {
+    try {
+      const owned = JSON.parse(localStorage.getItem(LS_OWNED_SKINS) || "[]");
+      return Array.isArray(owned) && owned.includes(skinId);
+    } catch {
+      return false;
+    }
+  }
 
   function refreshMenuButtons() {
     const unlocked = hasHardcoreUnlocked();
@@ -372,6 +358,7 @@
 
   // ===== Modo =====
   const mode = { name: (localStorage.getItem(LS_LASTMODE) || "NORMAL") };
+  const usingSpacePlaneSkin = hasOwnedSkin("space_1");
 
   // ===== Ajustes =====
   const tuning = {
@@ -1478,8 +1465,25 @@
     const shieldY = baseY + 26;
     for (let i = 0; i < player.shield; i++) drawShieldHeartFilled(startX + i*28, shieldY, 22);
 
-    if (hasSpaceSkinEquipped() && spaceSkinLoaded) {
-      ctx.drawImage(spaceSkinImage, player.x - 6, player.y - 22, player.w + 12, player.h + 28);
+    if (usingSpacePlaneSkin) {
+      const noseX = player.x + player.w / 2;
+      const noseY = player.y - 20;
+      ctx.fillStyle = "#79e8ff";
+      ctx.beginPath();
+      ctx.moveTo(noseX, noseY);
+      ctx.lineTo(player.x + player.w - 2, player.y + player.h);
+      ctx.lineTo(player.x + 2, player.y + player.h);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "#c8f8ff";
+      ctx.fillRect(player.x + player.w / 2 - 3, player.y - 6, 6, 26);
+      ctx.fillStyle = "#ff8e54";
+      ctx.beginPath();
+      ctx.moveTo(player.x + player.w / 2, player.y + player.h + 10);
+      ctx.lineTo(player.x + player.w / 2 - 5, player.y + player.h);
+      ctx.lineTo(player.x + player.w / 2 + 5, player.y + player.h);
+      ctx.closePath();
+      ctx.fill();
     } else {
       ctx.fillStyle = "#8bd3ff";
       ctx.fillRect(player.x, player.y, player.w, player.h);
