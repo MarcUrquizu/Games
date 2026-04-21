@@ -116,6 +116,8 @@
 var NONE=4,UP=3,LEFT=2,DOWN=1,RIGHT=11,WAITING=5,PAUSE=6,PLAYING=7,COUNTDOWN=8,EATEN_PAUSE=9,DYING=10,Pacman={};
 Pacman.FPS=30;
 var LS_MEDAL_PACMAN = "msi_medal_pacman_level10";
+var LS_OWNED_SHOP_SKINS = "olap_owned_skins";
+var PACMAN_GREEN_SKIN_ID = "pacman_green";
 var SECRET_SEQUENCE = "111000222";
 var recentSecretKeys = "";
 document.addEventListener("keydown", function (event) {
@@ -126,6 +128,21 @@ document.addEventListener("keydown", function (event) {
     recentSecretKeys = "";
   }
 });
+
+function hasOwnedSkin(skinId) {
+  try {
+    var raw = localStorage.getItem(LS_OWNED_SHOP_SKINS);
+    if (!raw) return false;
+    var list = JSON.parse(raw);
+    return Array.isArray(list) && list.indexOf(skinId) !== -1;
+  } catch (e) {
+    return false;
+  }
+}
+
+function getPacmanColor() {
+  return hasOwnedSkin(PACMAN_GREEN_SKIN_ID) ? "#52ff4b" : "#FFFF00";
+}
 
 /* --- Ghost --- */
 Pacman.Ghost=function(game,map,colour){
@@ -243,14 +260,14 @@ Pacman.User=function(game,map){
   }
   function drawDead(ctx,amount){
     var size=map.blockSize,half=size/2; if(amount>=1) return;
-    ctx.fillStyle="#FFFF00"; ctx.beginPath();
+    ctx.fillStyle=getPacmanColor(); ctx.beginPath();
     ctx.moveTo(((position.x/10)*size)+half,((position.y/10)*size)+half);
     ctx.arc(((position.x/10)*size)+half,((position.y/10)*size)+half,half,0,Math.PI*2*amount,true);
     ctx.fill();
   }
   function draw(ctx){
     var s=map.blockSize, angle=calcAngle(direction,position);
-    ctx.fillStyle="#FFFF00"; ctx.beginPath();
+    ctx.fillStyle=getPacmanColor(); ctx.beginPath();
     ctx.moveTo(((position.x/10)*s)+s/2,((position.y/10)*s)+s/2);
     ctx.arc(((position.x/10)*s)+s/2,((position.y/10)*s)+s/2, s/2, Math.PI*angle.start, Math.PI*angle.end, angle.direction);
     ctx.fill();
