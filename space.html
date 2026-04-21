@@ -508,6 +508,65 @@
     ctx.fillRect(rightEyeX, eyeY, eyeW, eyeH);
   }
 
+  function drawCrazyPlane(x, y, w, h, variant = 0) {
+    const t = performance.now() * 0.01;
+    const hue = (Math.floor((t * 18) + variant * 80) % 360 + 360) % 360;
+    const glow = `hsla(${hue} 100% 62% / .45)`;
+    const body = `hsl(${(hue + 25) % 360} 100% 66%)`;
+    const wing = `hsl(${(hue + 180) % 360} 95% 70%)`;
+    const cockpit = `hsl(${(hue + 300) % 360} 95% 78%)`;
+    const flame = `hsl(${(hue + 35) % 360} 100% 58%)`;
+
+    ctx.save();
+    ctx.shadowBlur = 16;
+    ctx.shadowColor = glow;
+
+    // Fuselaje
+    ctx.fillStyle = body;
+    ctx.beginPath();
+    ctx.moveTo(x + w * 0.5, y - h * 0.65);
+    ctx.lineTo(x + w - 2, y + h);
+    ctx.lineTo(x + 2, y + h);
+    ctx.closePath();
+    ctx.fill();
+
+    // Alas laterales
+    ctx.fillStyle = wing;
+    ctx.beginPath();
+    ctx.moveTo(x + w * 0.5, y + h * 0.15);
+    ctx.lineTo(x + w * 1.05, y + h * 0.75);
+    ctx.lineTo(x + w * 0.7, y + h * 0.72);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x + w * 0.5, y + h * 0.15);
+    ctx.lineTo(x - w * 0.05, y + h * 0.75);
+    ctx.lineTo(x + w * 0.3, y + h * 0.72);
+    ctx.closePath();
+    ctx.fill();
+
+    // Cabina
+    ctx.fillStyle = cockpit;
+    ctx.fillRect(x + w * 0.45, y - h * 0.05, Math.max(4, w * 0.1), h * 0.95);
+
+    // Estela de motor
+    const flamePulse = 1 + 0.22 * Math.sin(t * 2.5 + variant);
+    ctx.fillStyle = flame;
+    ctx.beginPath();
+    ctx.moveTo(x + w * 0.5, y + h + h * 0.52 * flamePulse);
+    ctx.lineTo(x + w * 0.5 - w * 0.12, y + h * 0.9);
+    ctx.lineTo(x + w * 0.5 + w * 0.12, y + h * 0.9);
+    ctx.closePath();
+    ctx.fill();
+
+    // Brillos extra para que sea más "locura"
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(x + w * 0.12, y + h * 0.22, w * 0.76, 2);
+    ctx.fillRect(x + w * 0.2, y + h * 0.52, w * 0.6, 2);
+    ctx.restore();
+  }
+
   const GLYPHS = {
     RAPID:  ["00100","01110","10101","00100","00100"],
     SHIELD: ["01110","11111","11111","01110","00100"],
@@ -1466,24 +1525,7 @@
     for (let i = 0; i < player.shield; i++) drawShieldHeartFilled(startX + i*28, shieldY, 22);
 
     if (usingSpacePlaneSkin) {
-      const noseX = player.x + player.w / 2;
-      const noseY = player.y - 20;
-      ctx.fillStyle = "#79e8ff";
-      ctx.beginPath();
-      ctx.moveTo(noseX, noseY);
-      ctx.lineTo(player.x + player.w - 2, player.y + player.h);
-      ctx.lineTo(player.x + 2, player.y + player.h);
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillStyle = "#c8f8ff";
-      ctx.fillRect(player.x + player.w / 2 - 3, player.y - 6, 6, 26);
-      ctx.fillStyle = "#ff8e54";
-      ctx.beginPath();
-      ctx.moveTo(player.x + player.w / 2, player.y + player.h + 10);
-      ctx.lineTo(player.x + player.w / 2 - 5, player.y + player.h);
-      ctx.lineTo(player.x + player.w / 2 + 5, player.y + player.h);
-      ctx.closePath();
-      ctx.fill();
+      drawCrazyPlane(player.x, player.y, player.w, player.h, 0);
     } else {
       ctx.fillStyle = "#8bd3ff";
       ctx.fillRect(player.x, player.y, player.w, player.h);
@@ -1498,7 +1540,11 @@
       const side = (b.slotIndex === 0) ? -1 : 1;
       const bx = player.x + player.w/2 + side * 34;
       const by = player.y - 10;
-      drawInvaderBody(bx - 14, by, 28, 18, "rgba(184,255,138,.92)");
+      if (usingSpacePlaneSkin) {
+        drawCrazyPlane(bx - 14, by, 28, 18, b.slotIndex + 1);
+      } else {
+        drawInvaderBody(bx - 14, by, 28, 18, "rgba(184,255,138,.92)");
+      }
     }
 
     ctx.fillStyle = "#d0ff6b";
