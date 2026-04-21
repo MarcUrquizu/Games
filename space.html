@@ -184,6 +184,13 @@
   const rectsIntersect = (a, b) =>
     a.x < b.x + b.w && a.x + a.w > b.x &&
     a.y < b.y + b.h && a.y + a.h > b.y;
+  const circleIntersectsRect = (cx, cy, r, rect) => {
+    const nx = clamp(cx, rect.x, rect.x + rect.w);
+    const ny = clamp(cy, rect.y, rect.y + rect.h);
+    const dx = cx - nx;
+    const dy = cy - ny;
+    return (dx * dx + dy * dy) <= (r * r);
+  };
 
   // ✅ NUEVO: resolución interna fija (lógica del juego)
   const BASE_W = 800, BASE_H = 600;
@@ -399,6 +406,7 @@
   const playerBullets = [];
   const enemyBullets = [];
   const bossLasers = [];
+  const chaosBombs = [];
   const buddies = [];
   function makeBuddy(slotIndex) { return { slotIndex, cooldown: 0 }; }
   window.__spaceDebug = {
@@ -796,6 +804,7 @@
     playerBullets.length = 0;
     enemyBullets.length = 0;
     bossLasers.length = 0;
+    chaosBombs.length = 0;
     bossDeath.active = false;
     boss.active = false;
     adds.length = 0;
@@ -901,6 +910,26 @@
     }
   }
 
+  function spawnChaosBombWave(count = 4, warnTime = 1.05, liveTime = 0.5, radius = 74) {
+    const minX = 70;
+    const maxX = W - 70;
+    const minY = 120;
+    const maxY = H - 120;
+    for (let i = 0; i < count; i++) {
+      let x = minX + Math.random() * (maxX - minX);
+      let y = minY + Math.random() * (maxY - minY);
+      let tries = 0;
+      while (tries < 16) {
+        const overlap = chaosBombs.some((b) => Math.hypot(b.x - x, b.y - y) < radius * 1.7);
+        if (!overlap) break;
+        x = minX + Math.random() * (maxX - minX);
+        y = minY + Math.random() * (maxY - minY);
+        tries++;
+      }
+      chaosBombs.push({ x, y, r: radius, warn: warnTime, live: liveTime });
+    }
+  }
+
   function summonChaosAdds(count = 4) {
     if (adds.length >= addsCfg.max) return;
     const t = currentTuning();
@@ -937,22 +966,6 @@
     boss.activeAttackType = "laser";
   }
 
-  function startChaosLaserSweep(leftToRight = true) {
-    const lanes = getChaosLanes(7);
-    const ordered = leftToRight ? lanes : [...lanes].reverse();
-    for (let i = 0; i < ordered.length; i++) {
-      queueChaosAttack({
-        t: 0.15 + i * 0.38,
-        type: "laserVolley",
-        lanes: [ordered[i]],
-        warn: 0.46,
-        live: 0.85
-      });
-    }
-    boss.attackLock = 3.7;
-    boss.activeAttackType = "laser";
-  }
-
   function startChaosLaserCageCollapse() {
     const lanes = getChaosLanes(7);
     queueChaosAttack({ t: 0.05, type: "laserVolley", lanes: [lanes[0], lanes[6]], warn: 0.62, live: 1.05 });
@@ -981,6 +994,14 @@
     boss.activeAttackType = "adds";
   }
 
+  function startChaosBombardment() {
+    spawnChaosBombWave(4, 1.05, 0.55, 78);
+    queueChaosAttack({ t: 0.9, type: "spawnBombs", count: 3, warn: 0.9, live: 0.55, radius: 70 });
+    queueChaosAttack({ t: 1.65, type: "spawnBombs", count: 3, warn: 0.8, live: 0.52, radius: 66 });
+    boss.attackLock = 3.3;
+    boss.activeAttackType = "bomb";
+  }
+
   function chaosBossFire(dt) {
     const t = currentTuning();
     boss.specialCooldown = Math.max(0, boss.specialCooldown - dt);
@@ -990,16 +1011,19 @@
       boss.activeAttackType === "laser" &&
       (bossLasers.length > 0 || boss.queuedAttacks.some((qa) => qa.type === "laserVolley"));
     if (laserAttackOngoing && boss.attackLock < 0.25) boss.attackLock = 0.25;
+    const bombAttackOngoing =
+      boss.activeAttackType === "bomb" &&
+      (chaosBombs.length > 0 || boss.queuedAttacks.some((qa) => qa.type === "spawnBombs"));
+    if (bombAttackOngoing && boss.attackLock < 0.25) boss.attackLock = 0.25;
 
     // No se solapan ataques: hasta que termine el actual no inicia otro.
     if (boss.specialCooldown <= 0 && boss.attackLock <= 0 && boss.queuedAttacks.length === 0 && bossLasers.length === 0) {
       const attackPool = [
         startChaosLaserDoubleWave,
-        () => startChaosLaserSweep(true),
-        () => startChaosLaserSweep(false),
         startChaosLaserCageCollapse,
         startChaosLaserChecker,
-        startChaosSummonArmada
+        startChaosSummonArmada,
+        startChaosBombardment
       ];
       const pick = attackPool[Math.floor(Math.random() * attackPool.length)];
       pick();
@@ -1015,11 +1039,13 @@
         spawnBossLaserVolley(qa.lanes, qa.warn ?? 0.55, qa.live ?? 1.05);
       } else if (qa.type === "summonAdds") {
         summonChaosAdds(qa.count || 4);
+      } else if (qa.type === "spawnBombs") {
+        spawnChaosBombWave(qa.count || 3, qa.warn ?? 0.95, qa.live ?? 0.55, qa.radius ?? 72);
       }
       boss.queuedAttacks.splice(i, 1);
     }
 
-    if (boss.attackLock <= 0 && boss.queuedAttacks.length === 0 && bossLasers.length === 0) {
+    if (boss.attackLock <= 0 && boss.queuedAttacks.length === 0 && bossLasers.length === 0 && chaosBombs.length === 0) {
       boss.activeAttackType = "";
     }
   }
@@ -1151,6 +1177,7 @@
     playerBullets.length = 0;
     enemyBullets.length = 0;
     bossLasers.length = 0;
+    chaosBombs.length = 0;
 
     startTransitionToWave(state.wave, false);
     beep(420, 0.07, "triangle", 0.05);
@@ -1174,6 +1201,7 @@
     playerBullets.length = 0;
     enemyBullets.length = 0;
     bossLasers.length = 0;
+    chaosBombs.length = 0;
 
     powerups.length = 0;
     explosions.length = 0;
@@ -1360,6 +1388,23 @@
           continue;
         }
         if (player.laserHitCooldown <= 0 && rectsIntersect({ x: laser.x, y: laser.y, w: laser.w, h: laser.h }, player)) {
+          applyIncomingHit(true);
+          player.laserHitCooldown = 0.18;
+        }
+      }
+    }
+
+    for (let i = chaosBombs.length - 1; i >= 0; i--) {
+      const bomb = chaosBombs[i];
+      if (bomb.warn > 0) {
+        bomb.warn = Math.max(0, bomb.warn - dt);
+      } else {
+        bomb.live = Math.max(0, bomb.live - dt);
+        if (bomb.live <= 0) {
+          chaosBombs.splice(i, 1);
+          continue;
+        }
+        if (player.laserHitCooldown <= 0 && circleIntersectsRect(bomb.x, bomb.y, bomb.r, player)) {
           applyIncomingHit(true);
           player.laserHitCooldown = 0.18;
         }
@@ -1666,6 +1711,33 @@
       }
     }
 
+    for (const bomb of chaosBombs) {
+      if (bomb.warn > 0) {
+        const pulse = 0.72 + 0.28 * Math.sin(performance.now() * 0.018);
+        ctx.strokeStyle = `rgba(255,120,120,${0.55 + pulse * 0.3})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(bomb.x, bomb.y, bomb.r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.strokeStyle = "rgba(255,200,200,0.55)";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(bomb.x, bomb.y, bomb.r * 0.45, 0, Math.PI * 2);
+        ctx.stroke();
+      } else {
+        const pulse = 0.7 + 0.3 * Math.sin(performance.now() * 0.028);
+        ctx.fillStyle = `rgba(255,80,40,${0.18 + pulse * 0.2})`;
+        ctx.beginPath();
+        ctx.arc(bomb.x, bomb.y, bomb.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = `rgba(255,205,120,${0.4 + pulse * 0.35})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(bomb.x, bomb.y, bomb.r * (0.82 + pulse * 0.2), 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+
     for (const a of adds) {
       if (!a.alive) continue;
       drawInvaderBody(a.x, a.y, a.w, a.h, "rgba(255, 78, 78, .95)");
@@ -1800,6 +1872,7 @@
     playerBullets.length = 0;
     enemyBullets.length = 0;
     bossLasers.length = 0;
+    chaosBombs.length = 0;
     powerups.length = 0;
     explosions.length = 0;
 
