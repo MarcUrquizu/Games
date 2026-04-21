@@ -76,8 +76,7 @@
     }
     .space-preview {
       margin: 0 auto 12px;
-      background:
-        linear-gradient(135deg, #0a0c1d 0%, #11162b 100%);
+      background: linear-gradient(135deg, #0a0c1d 0%, #11162b 100%);
       border: 2px solid #2be9ff;
       border-radius: 10px;
       position: relative;
@@ -86,27 +85,36 @@
     .space-preview::before {
       content: "";
       position: absolute;
-      left: 50%;
-      top: 16px;
-      width: 0;
-      height: 0;
-      transform: translateX(-50%);
-      border-left: 24px solid transparent;
-      border-right: 24px solid transparent;
-      border-bottom: 34px solid #3be7ff;
-      filter: drop-shadow(0 0 8px rgba(59, 231, 255, 0.8));
+      inset: 0;
+      margin: auto;
+      width: 58px;
+      height: 66px;
+      filter: drop-shadow(0 0 8px rgba(70, 225, 255, 0.65));
+      background:
+        radial-gradient(circle at 50% 95%, rgba(255,170,70,.95) 0 11%, transparent 13%),
+        linear-gradient(180deg, transparent 0 12%, #f8a8ff 12% 72%, transparent 72%),
+        linear-gradient(145deg, transparent 0 35%, #66ffe7 35% 72%, transparent 72%),
+        linear-gradient(-145deg, transparent 0 35%, #66ffe7 35% 72%, transparent 72%);
+      clip-path: polygon(
+        50% 6%, 94% 78%, 72% 76%, 58% 96%, 42% 96%, 28% 76%, 6% 78%
+      );
+      animation: shopPlaneHue 4s linear infinite;
     }
     .space-preview::after {
       content: "";
       position: absolute;
       left: 50%;
-      top: 42px;
-      width: 22px;
-      height: 26px;
-      transform: translateX(-50%);
-      background: linear-gradient(180deg, #ff9f55 0%, #ff3e3e 100%);
-      clip-path: polygon(50% 100%, 0 0, 100% 0);
-      filter: drop-shadow(0 0 6px rgba(255, 90, 90, 0.8));
+      top: 54%;
+      transform: translate(-50%, -50%);
+      width: 10px;
+      height: 40px;
+      background: linear-gradient(180deg, rgba(255,255,255,.9) 0%, rgba(185,255,255,.15) 100%);
+      border-radius: 5px;
+      box-shadow: 0 0 10px rgba(255,255,255,.45);
+    }
+    @keyframes shopPlaneHue {
+      0% { filter: hue-rotate(0deg) drop-shadow(0 0 8px rgba(70, 225, 255, 0.65)); }
+      100% { filter: hue-rotate(360deg) drop-shadow(0 0 8px rgba(70, 225, 255, 0.65)); }
     }
     .space-preview, .pacman-preview {
       width: 88px;
@@ -159,7 +167,7 @@
   </div>
 
   <h1>SHOP</h1>
-  <p class="note">Cada skin cuesta 100 monedas. De momento las monedas solo se consiguen canjeando el código <strong>111000222</strong>.</p>
+  <p class="note">Cada skin cuesta 100 monedas. De momento las monedas solo se consiguen canjeando el código <strong>332ffeERD2332dER3</strong>.</p>
   <div class="code-box">
     <input id="cheat-code-input" class="code-input" type="text" placeholder="Código de tienda">
     <button id="cheat-code-btn" class="btn" type="button">Canjear código</button>
@@ -189,7 +197,7 @@
     const OWNED_KEY = 'olap_owned_skins';
     const STARTING_COINS = 0;
     const SKIN_PRICE = 100;
-    const COIN_CODE = '111000222';
+    const COIN_CODE = '332ffeERD2332dER3';
     const CODE_REWARD = 100;
     const CODE_USED_KEY = 'olap_shop_code_used';
 

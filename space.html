@@ -913,8 +913,9 @@
   function spawnChaosBombWave(count = 4, warnTime = 1.05, liveTime = 0.5, radius = 74) {
     const minX = 70;
     const maxX = W - 70;
-    const minY = 120;
-    const maxY = H - 120;
+    const playerLineY = player.y + player.h * 0.5;
+    const minY = clamp(playerLineY - 14, 90, H - 90);
+    const maxY = clamp(playerLineY + 14, 90, H - 90);
     for (let i = 0; i < count; i++) {
       let x = minX + Math.random() * (maxX - minX);
       let y = minY + Math.random() * (maxY - minY);
@@ -968,11 +969,12 @@
 
   function startChaosLaserCageCollapse() {
     const lanes = getChaosLanes(7);
-    queueChaosAttack({ t: 0.05, type: "laserVolley", lanes: [lanes[0], lanes[6]], warn: 0.62, live: 1.05 });
-    queueChaosAttack({ t: 0.75, type: "laserVolley", lanes: [lanes[1], lanes[5]], warn: 0.58, live: 1.0 });
-    queueChaosAttack({ t: 1.45, type: "laserVolley", lanes: [lanes[2], lanes[4]], warn: 0.54, live: 0.95 });
-    queueChaosAttack({ t: 2.1, type: "laserVolley", lanes: [lanes[3]], warn: 0.50, live: 0.95 });
-    boss.attackLock = 4.1;
+    // Secuencia más justa: cuando termina una pareja, aparece la silueta de la siguiente.
+    queueChaosAttack({ t: 0.05, type: "laserVolley", lanes: [lanes[0], lanes[6]], warn: 0.55, live: 0.80 });
+    queueChaosAttack({ t: 1.45, type: "laserVolley", lanes: [lanes[1], lanes[5]], warn: 0.55, live: 0.80 });
+    queueChaosAttack({ t: 2.85, type: "laserVolley", lanes: [lanes[2], lanes[4]], warn: 0.55, live: 0.78 });
+    queueChaosAttack({ t: 4.22, type: "laserVolley", lanes: [lanes[3]], warn: 0.55, live: 0.80 });
+    boss.attackLock = 5.65;
     boss.activeAttackType = "laser";
   }
 
