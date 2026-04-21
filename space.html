@@ -521,41 +521,44 @@
     ctx.shadowBlur = 16;
     ctx.shadowColor = glow;
 
+    // Todo el dibujo queda estrictamente dentro de [x..x+w] y [y..y+h]
+    // para mantener exactamente el mismo tamaño visual y evitar "pay to win".
+
     // Fuselaje
     ctx.fillStyle = body;
     ctx.beginPath();
-    ctx.moveTo(x + w * 0.5, y - h * 0.65);
-    ctx.lineTo(x + w - 2, y + h);
-    ctx.lineTo(x + 2, y + h);
+    ctx.moveTo(x + w * 0.5, y + h * 0.06);
+    ctx.lineTo(x + w - 2, y + h * 0.96);
+    ctx.lineTo(x + 2, y + h * 0.96);
     ctx.closePath();
     ctx.fill();
 
     // Alas laterales
     ctx.fillStyle = wing;
     ctx.beginPath();
-    ctx.moveTo(x + w * 0.5, y + h * 0.15);
-    ctx.lineTo(x + w * 1.05, y + h * 0.75);
-    ctx.lineTo(x + w * 0.7, y + h * 0.72);
+    ctx.moveTo(x + w * 0.5, y + h * 0.34);
+    ctx.lineTo(x + w * 0.94, y + h * 0.76);
+    ctx.lineTo(x + w * 0.68, y + h * 0.72);
     ctx.closePath();
     ctx.fill();
     ctx.beginPath();
-    ctx.moveTo(x + w * 0.5, y + h * 0.15);
-    ctx.lineTo(x - w * 0.05, y + h * 0.75);
-    ctx.lineTo(x + w * 0.3, y + h * 0.72);
+    ctx.moveTo(x + w * 0.5, y + h * 0.34);
+    ctx.lineTo(x + w * 0.06, y + h * 0.76);
+    ctx.lineTo(x + w * 0.32, y + h * 0.72);
     ctx.closePath();
     ctx.fill();
 
     // Cabina
     ctx.fillStyle = cockpit;
-    ctx.fillRect(x + w * 0.45, y - h * 0.05, Math.max(4, w * 0.1), h * 0.95);
+    ctx.fillRect(x + w * 0.45, y + h * 0.12, Math.max(4, w * 0.1), h * 0.72);
 
-    // Estela de motor
+    // Estela de motor (interna al sprite)
     const flamePulse = 1 + 0.22 * Math.sin(t * 2.5 + variant);
     ctx.fillStyle = flame;
     ctx.beginPath();
-    ctx.moveTo(x + w * 0.5, y + h + h * 0.52 * flamePulse);
-    ctx.lineTo(x + w * 0.5 - w * 0.12, y + h * 0.9);
-    ctx.lineTo(x + w * 0.5 + w * 0.12, y + h * 0.9);
+    ctx.moveTo(x + w * 0.5, y + h * (0.94 - 0.08 * flamePulse));
+    ctx.lineTo(x + w * 0.5 - w * 0.12, y + h * 0.82);
+    ctx.lineTo(x + w * 0.5 + w * 0.12, y + h * 0.82);
     ctx.closePath();
     ctx.fill();
 
