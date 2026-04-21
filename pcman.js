@@ -21,6 +21,16 @@ var NONE        = 4,
     DYING       = 10,
     Pacman      = {};
 
+var PACMAN_PLAYER_COLOR = "#FFFF00";
+(function loadShopSkins() {
+    try {
+        var owned = JSON.parse(window.localStorage.getItem("olap_owned_skins") || "[]");
+        if (Array.isArray(owned) && owned.indexOf("pacman_green") !== -1) {
+            PACMAN_PLAYER_COLOR = "#52ff4b";
+        }
+    } catch (e) {}
+}());
+
 Pacman.FPS = 30;
 
 Pacman.Ghost = function (game, map, colour) {
@@ -486,7 +496,7 @@ Pacman.User = function (game, map) {
             return;
         }
 
-        ctx.fillStyle = "#FFFF00";
+        ctx.fillStyle = PACMAN_PLAYER_COLOR;
         ctx.beginPath();        
         ctx.moveTo(((position.x/10) * size) + half, 
                    ((position.y/10) * size) + half);
@@ -503,7 +513,7 @@ Pacman.User = function (game, map) {
         var s     = map.blockSize, 
             angle = calcAngle(direction, position);
 
-        ctx.fillStyle = "#FFFF00";
+        ctx.fillStyle = PACMAN_PLAYER_COLOR;
 
         ctx.beginPath();        
 
@@ -1286,4 +1296,3 @@ $(function(){
       "(firefox 3.6+, Chrome 4+, Opera 10+ and Safari 4+)</small>";
   }
 });
-

@@ -85,6 +85,14 @@
       box-shadow: 0 10px 26px rgba(0,0,0,.35);
       transition: transform .08s ease, filter .12s ease, opacity .12s ease;
       user-select: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 68px;
+      line-height: 1.12;
+      white-space: normal;
+      text-align: center;
     }
     .btn:active { transform: translateY(1px); filter: brightness(.95); }
     .btn.secondary { background: linear-gradient(180deg, rgba(80,170,255,.85), rgba(55,135,230,.85)); }
@@ -96,6 +104,7 @@
       box-shadow: none;
     }
     .btn small { display:block; font-weight:700; opacity:.9; font-size:12px; margin-top:4px; }
+    .btn.nolimits-btn { grid-column: 1 / -1; justify-self: center; width: min(320px, 100%); }
     .lock { display:inline-block; margin-left: 8px; font-size: 16px; vertical-align: -1px; }
 
     .miniRow{
@@ -143,6 +152,7 @@
       <div class="btnRow">
         <button id="btnNormal" class="btn" type="button">NORMAL</button>
         <button id="btnHardcore" class="btn secondary" type="button">HARDCORE</button>
+        <button id="btnNoLimits" class="btn secondary nolimits-btn" type="button" style="display:none;">NO LIMITS</button>
       </div>
 
       <div class="miniRow">
@@ -184,6 +194,13 @@
   const rectsIntersect = (a, b) =>
     a.x < b.x + b.w && a.x + a.w > b.x &&
     a.y < b.y + b.h && a.y + a.h > b.y;
+  const circleIntersectsRect = (cx, cy, r, rect) => {
+    const nx = clamp(cx, rect.x, rect.x + rect.w);
+    const ny = clamp(cy, rect.y, rect.y + rect.h);
+    const dx = cx - nx;
+    const dy = cy - ny;
+    return (dx * dx + dy * dy) <= (r * r);
+  };
 
   // ✅ NUEVO: resolución interna fija (lógica del juego)
   const BASE_W = 800, BASE_H = 600;
@@ -229,6 +246,7 @@
   const btnCloseInfo = document.getElementById("btnCloseInfo");
   const btnNormal = document.getElementById("btnNormal");
   const btnHardcore = document.getElementById("btnHardcore");
+  const btnNoLimits = document.getElementById("btnNoLimits");
   const btnContinue = document.getElementById("btnContinue");
   const btnClearCP = document.getElementById("btnClearCP");
 
@@ -276,6 +294,8 @@
   const LS_LASTMODE = "msi_last_mode";
   const LS_CHECKPOINT = "msi_checkpoint_v1";
   const LS_MEDAL_HARDCORE = "msi_medal_hardcore";
+  const LS_UNLOCK_NOLIMITS = "msi_unlocked_nolimits";
+  const LS_OWNED_SKINS = "olap_owned_skins";
   const SECRET_SEQUENCE = "111000222";
   let recentSecretKeys = "";
   document.addEventListener("keydown", (event) => {
@@ -289,6 +309,8 @@
   const setHardcoreMedal = () => localStorage.setItem(LS_MEDAL_HARDCORE, "1");
   const hasHardcoreUnlocked = () => localStorage.getItem(LS_UNLOCK) === "1";
   const setHardcoreUnlocked = () => localStorage.setItem(LS_UNLOCK, "1");
+  const hasNoLimitsUnlocked = () => localStorage.getItem(LS_UNLOCK_NOLIMITS) === "1";
+  const setNoLimitsUnlocked = () => localStorage.setItem(LS_UNLOCK_NOLIMITS, "1");
 
   function loadCheckpoint() {
     try {
@@ -301,6 +323,14 @@
   }
   function saveCheckpoint(obj) { try { localStorage.setItem(LS_CHECKPOINT, JSON.stringify(obj)); } catch {} }
   function clearCheckpoint() { try { localStorage.removeItem(LS_CHECKPOINT); } catch {} }
+  function hasOwnedSkin(skinId) {
+    try {
+      const owned = JSON.parse(localStorage.getItem(LS_OWNED_SKINS) || "[]");
+      return Array.isArray(owned) && owned.includes(skinId);
+    } catch {
+      return false;
+    }
+  }
 
   function refreshMenuButtons() {
     const unlocked = hasHardcoreUnlocked();
@@ -308,6 +338,10 @@
     btnHardcore.classList.toggle("disabled", !unlocked);
     if (!unlocked) btnHardcore.innerHTML = `HARDCORE <span class="lock">🔒</span><small>Desbloquéalo ganando el juego</small>`;
     else btnHardcore.innerHTML = `HARDCORE<small>Sin checkpoints</small>`;
+    const noLimits = hasNoLimitsUnlocked();
+    btnNoLimits.style.display = noLimits ? "inline-flex" : "none";
+    btnNoLimits.classList.toggle("disabled", !noLimits);
+    btnNoLimits.innerHTML = `NO LIMITS<small>Niveles infinitos</small>`;
 
     const cp = loadCheckpoint();
     const cpOk = !!cp;
@@ -349,6 +383,7 @@
 
   // ===== Modo =====
   const mode = { name: (localStorage.getItem(LS_LASTMODE) || "NORMAL") };
+  const usingSpacePlaneSkin = hasOwnedSkin("space_1");
 
   // ===== Ajustes =====
   const tuning = {
@@ -356,7 +391,10 @@
     HARDCORE:{ enemyShootMul:1.35, enemySpeedMul:1.15, enemyBulletMul:1.15, bossHpMul:1.15, bossFireMul:1.15, rapidDropChance:0.06, shieldDropChance:0.035, buddyDropChance:0.0016, dmgDropChance:0.0005, checkpoints:false },
   };
   function currentTuning() { return tuning[mode.name] || tuning.NORMAL; }
-  function isBossWave(w) { return (w % 5 === 0); }
+  function isBossWave(w) {
+    if (w <= 100) return (w % 5 === 0);   // igual que antes hasta 100
+    return (w % 10 === 0);                // cambios desde 101
+  }
 
   const state = {
     score: 0,
@@ -389,6 +427,7 @@
   const playerBullets = [];
   const enemyBullets = [];
   const bossLasers = [];
+  const chaosBombs = [];
   const buddies = [];
   function makeBuddy(slotIndex) { return { slotIndex, cooldown: 0 }; }
   window.__spaceDebug = {
@@ -447,16 +486,21 @@
     explosions.push({ x, y, t: 0, dur, parts, big });
   }
 
-  const bossDeath = { active:false, t:0, preDur:0.95, explodeDur:0.25, x:0, y:0, wasFinalWin:false };
-  function startBossDeathSequence(centerX, centerY, wasFinalWin) {
+  const bossDeath = { active:false, t:0, preDur:0.95, explodeDur:0.25, x:0, y:0, wasFinalWin:false, epic:false, epicPulse:0 };
+  const megaShockwave = { active:false, t:0, dur:1.6, x:0, y:0 };
+  function startBossDeathSequence(centerX, centerY, wasFinalWin, epic = false) {
     bossDeath.active = true;
     bossDeath.t = 0;
     bossDeath.x = centerX;
     bossDeath.y = centerY;
     bossDeath.wasFinalWin = wasFinalWin;
-    triggerShake(22, 0.95);
-    beep(95, 0.14, "square", 0.08);
-    beep(65, 0.18, "sawtooth", 0.05);
+    bossDeath.epic = !!epic;
+    bossDeath.epicPulse = 0;
+    bossDeath.preDur = epic ? 3.6 : 0.95;
+    bossDeath.explodeDur = epic ? 1.35 : 0.25;
+    triggerShake(epic ? 34 : 22, epic ? 2.4 : 0.95);
+    beep(95, epic ? 0.22 : 0.14, "square", epic ? 0.1 : 0.08);
+    beep(65, epic ? 0.32 : 0.18, "sawtooth", epic ? 0.08 : 0.05);
   }
 
   const enemies = {
@@ -479,9 +523,11 @@
     hp:0, hpMax:0,
     dir:1, speed:110,
     cooldown:0, phase:1, patternId:0, auxT:0, addCooldown:0, specialCooldown:0, queuedAttacks:[],
+    attackLock:0, activeAttackType:"",
+    waveLevel:1,
     locked:false, targetY:0, spawnY:0,
   };
-  const chaosBossFromPattern = 10; // jefe de oleada 50 en adelante
+  const chaosBossFromPattern = 10; // comportamiento original hasta 100
 
   function drawInvaderBody(x, y, w, h, bodyColor) {
     ctx.fillStyle = bodyColor;
@@ -496,6 +542,68 @@
     ctx.fillStyle = "rgba(0,0,0,.45)";
     ctx.fillRect(leftEyeX,  eyeY, eyeW, eyeH);
     ctx.fillRect(rightEyeX, eyeY, eyeW, eyeH);
+  }
+
+  function drawCrazyPlane(x, y, w, h, variant = 0) {
+    const t = performance.now() * 0.01;
+    const hue = (Math.floor((t * 18) + variant * 80) % 360 + 360) % 360;
+    const glow = `hsla(${hue} 100% 62% / .45)`;
+    const body = `hsl(${(hue + 25) % 360} 100% 66%)`;
+    const wing = `hsl(${(hue + 180) % 360} 95% 70%)`;
+    const cockpit = `hsl(${(hue + 300) % 360} 95% 78%)`;
+    const flame = `hsl(${(hue + 35) % 360} 100% 58%)`;
+
+    ctx.save();
+    ctx.shadowBlur = 16;
+    ctx.shadowColor = glow;
+
+    // Todo el dibujo queda estrictamente dentro de [x..x+w] y [y..y+h]
+    // para mantener exactamente el mismo tamaño visual y evitar "pay to win".
+
+    // Fuselaje
+    ctx.fillStyle = body;
+    ctx.beginPath();
+    ctx.moveTo(x + w * 0.5, y + h * 0.06);
+    ctx.lineTo(x + w - 2, y + h * 0.96);
+    ctx.lineTo(x + 2, y + h * 0.96);
+    ctx.closePath();
+    ctx.fill();
+
+    // Alas laterales
+    ctx.fillStyle = wing;
+    ctx.beginPath();
+    ctx.moveTo(x + w * 0.5, y + h * 0.34);
+    ctx.lineTo(x + w * 0.94, y + h * 0.76);
+    ctx.lineTo(x + w * 0.68, y + h * 0.72);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x + w * 0.5, y + h * 0.34);
+    ctx.lineTo(x + w * 0.06, y + h * 0.76);
+    ctx.lineTo(x + w * 0.32, y + h * 0.72);
+    ctx.closePath();
+    ctx.fill();
+
+    // Cabina
+    ctx.fillStyle = cockpit;
+    ctx.fillRect(x + w * 0.45, y + h * 0.12, Math.max(4, w * 0.1), h * 0.72);
+
+    // Estela de motor (interna al sprite)
+    const flamePulse = 1 + 0.22 * Math.sin(t * 2.5 + variant);
+    ctx.fillStyle = flame;
+    ctx.beginPath();
+    ctx.moveTo(x + w * 0.5, y + h * (0.94 - 0.08 * flamePulse));
+    ctx.lineTo(x + w * 0.5 - w * 0.12, y + h * 0.82);
+    ctx.lineTo(x + w * 0.5 + w * 0.12, y + h * 0.82);
+    ctx.closePath();
+    ctx.fill();
+
+    // Brillos extra para que sea más "locura"
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(x + w * 0.12, y + h * 0.22, w * 0.76, 2);
+    ctx.fillRect(x + w * 0.2, y + h * 0.52, w * 0.6, 2);
+    ctx.restore();
   }
 
   const GLYPHS = {
@@ -522,8 +630,12 @@
   }
 
   function hpRangeForWave(wave) {
-    const tier = Math.floor((wave - 1) / 5) + 1;
-    return { minHp: tier, maxHp: tier + 1 };
+    if (wave <= 100) {
+      const tier = Math.floor((wave - 1) / 5) + 1;
+      return { minHp: tier, maxHp: tier + 1 };
+    }
+    const minHp = 1 + Math.floor((wave - 1) * 0.22);
+    return { minHp, maxHp: minHp + 2 };
   }
 
   // ===== Hearts =====
@@ -659,6 +771,8 @@
     boss.phase = 1; boss.auxT = 0; boss.addCooldown = 0;
     boss.specialCooldown = 0;
     boss.queuedAttacks = [];
+    boss.attackLock = 0;
+    boss.activeAttackType = "";
     const t = currentTuning();
     boss.hpMax = Math.floor(5200 * t.bossHpMul);
     boss.hp = boss.hpMax;
@@ -667,22 +781,33 @@
     boss.locked = !!spawnFromTop;
   }
   function initBossForWave(wave, spawnFromTop) {
-    if (wave === state.maxWaves) { initFinalBoss(spawnFromTop); return; }
     boss.active = true; boss.isFinal = false;
-    boss.w = 160; boss.h = 48;
+    const isBoss100Normal = (mode.name === "NORMAL" && wave === 100);
+    boss.w = isBoss100Normal ? 220 : 160;
+    boss.h = isBoss100Normal ? 68 : 48;
     boss.x = W/2 - boss.w/2;
-    boss.targetY = 98;
+    boss.targetY = isBoss100Normal ? 84 : 98;
     boss.spawnY = -boss.h - 30;
     boss.y = spawnFromTop ? boss.spawnY : boss.targetY;
-    boss.dir = 1; boss.speed = 110;
-    boss.patternId = wave / 5;
+    boss.dir = 1; boss.speed = isBoss100Normal ? 92 : 110;
+    boss.waveLevel = wave;
+    boss.patternId = (wave <= 100)
+      ? (wave / 5)
+      : Math.max(1, Math.floor((wave - 100) / 10) + 1);
     boss.auxT = 0;
     boss.specialCooldown = 0;
     boss.queuedAttacks = [];
+    boss.attackLock = 0;
+    boss.activeAttackType = "";
     const t = currentTuning();
-    boss.hpMax = Math.floor((220 + (boss.patternId - 1) * 120) * t.bossHpMul);
+    if (wave <= 100) {
+      boss.hpMax = Math.floor((220 + (boss.patternId - 1) * 120) * t.bossHpMul);
+      boss.cooldown = 0.92 / t.bossFireMul;
+    } else {
+      boss.hpMax = Math.floor((320 + wave * 42 + (boss.patternId - 1) * 180) * t.bossHpMul);
+      boss.cooldown = 0.84 / t.bossFireMul;
+    }
     boss.hp = boss.hpMax;
-    boss.cooldown = 0.92 / t.bossFireMul;
     boss.locked = !!spawnFromTop;
   }
 
@@ -719,6 +844,8 @@
     playerBullets.length = 0;
     enemyBullets.length = 0;
     bossLasers.length = 0;
+    chaosBombs.length = 0;
+    megaShockwave.active = false;
     bossDeath.active = false;
     boss.active = false;
     adds.length = 0;
@@ -764,11 +891,38 @@
 
   function completeWaveAndTransition() {
     const next = state.wave + 1;
-    if (next > state.maxWaves) {
+    // Mantener exactamente igual hasta 100. Al matar jefe 100 NORMAL: parar y desbloquear 101.
+    if (mode.name === "NORMAL" && state.wave === 100) {
+      setHardcoreUnlocked();
+      setNoLimitsUnlocked();
+      saveCheckpoint({
+        wave: 101,
+        fireRate: 2.0,
+        dmgUpgrades: 0,
+        buddies: 0,
+        score: 0,
+      });
+      // Reset de progreso de combate para empezar "como al inicio".
+      player.fireRate = 2.0;
+      player._cooldown = 0;
+      player.shield = 0;
+      player.damage = 1;
+      player.dmgUpgrades = 0;
+      player.laserHitCooldown = 0;
+      buddies.length = 0;
+      refreshMenuButtons();
+      beep(740, 0.08, "triangle", 0.05);
+      beep(980, 0.08, "sine", 0.04);
+      state.status = "MENU";
+      showOverlay();
+      return;
+    }
+
+    // Hardcore mantiene cierre clásico al completar 100.
+    if (mode.name === "HARDCORE" && next > state.maxWaves) {
       state.status = "GAME_WON";
       state.justWon = true;
-      setHardcoreUnlocked();
-      if (mode.name === "HARDCORE") setHardcoreMedal();
+      setHardcoreMedal();
       showOverlay();
       refreshMenuButtons();
       beep(520, 0.12, "triangle", 0.05);
@@ -787,10 +941,14 @@
     const cx = boss.x + boss.w/2;
     const cy = boss.y + boss.h + 4;
     const id = boss.patternId;
+    const waveLevel = boss.waveLevel || state.wave;
     const baseSpeed = (260 + id * 8) * t.bossFireMul;
 
-    if (id >= chaosBossFromPattern) {
-      chaosBossFire(dt, baseSpeed);
+    const chaosOnThisBoss = (waveLevel <= 100)
+      ? (id >= chaosBossFromPattern && waveLevel < 100)
+      : true;
+    if (chaosOnThisBoss) {
+      chaosBossFire(dt);
       return;
     }
 
@@ -824,6 +982,36 @@
     }
   }
 
+  function spawnChaosBombWave(count = 4, travelTime = 1.0, warnTime = 1.0, liveTime = 0.5, radius = 62) {
+    const minX = 70;
+    const maxX = W - 70;
+    const playerLineY = player.y + player.h * 0.5;
+    const minY = clamp(playerLineY - 14, 90, H - 90);
+    const maxY = clamp(playerLineY + 14, 90, H - 90);
+    for (let i = 0; i < count; i++) {
+      let x = minX + Math.random() * (maxX - minX);
+      let y = minY + Math.random() * (maxY - minY);
+      let tries = 0;
+      while (tries < 16) {
+        const overlap = chaosBombs.some((b) => Math.hypot(b.x - x, b.y - y) < radius * 1.7);
+        if (!overlap) break;
+        x = minX + Math.random() * (maxX - minX);
+        y = minY + Math.random() * (maxY - minY);
+        tries++;
+      }
+      chaosBombs.push({
+        x, y, r: radius,
+        travel: travelTime,
+        travelStart: travelTime,
+        warn: warnTime,
+        warnStart: warnTime,
+        live: liveTime,
+        fromX: boss.x + boss.w / 2,
+        fromY: boss.y + boss.h + 8
+      });
+    }
+  }
+
   function summonChaosAdds(count = 4) {
     if (adds.length >= addsCfg.max) return;
     const t = currentTuning();
@@ -842,40 +1030,87 @@
     }
   }
 
-  function chaosBossFire(dt, baseSpeed) {
+  function getChaosLanes(parts = 7) {
+    const lanes = [];
+    for (let i = 1; i <= parts; i++) lanes.push((W / (parts + 1)) * i);
+    return lanes;
+  }
+
+  function startChaosLaserDoubleWave() {
+    const spacing = W / 4;
+    const first = [spacing, spacing * 2, spacing * 3];
+    const shift = spacing / 2;
+    const second = [spacing + shift, spacing * 2 + shift, spacing * 3 + shift];
+    spawnBossLaserVolley(first, 0.9, 1.35);
+    // Más tiempo entre los 3 primeros y los 3 segundos.
+    queueChaosAttack({ t: 2.45, type: "laserVolley", lanes: second, warn: 0.9, live: 1.35 });
+    boss.attackLock = 4.4;
+    boss.activeAttackType = "laser";
+  }
+
+  function startChaosLaserCageCollapse() {
+    const lanes = getChaosLanes(7);
+    // Secuencia más justa: cuando termina una pareja, aparece la silueta de la siguiente.
+    queueChaosAttack({ t: 0.05, type: "laserVolley", lanes: [lanes[0], lanes[6]], warn: 0.55, live: 0.80 });
+    queueChaosAttack({ t: 1.45, type: "laserVolley", lanes: [lanes[1], lanes[5]], warn: 0.55, live: 0.80 });
+    queueChaosAttack({ t: 2.85, type: "laserVolley", lanes: [lanes[2], lanes[4]], warn: 0.55, live: 0.78 });
+    queueChaosAttack({ t: 4.22, type: "laserVolley", lanes: [lanes[3]], warn: 0.55, live: 0.80 });
+    boss.attackLock = 5.65;
+    boss.activeAttackType = "laser";
+  }
+
+  function startChaosLaserChecker() {
+    const lanes = getChaosLanes(8);
+    const odd = lanes.filter((_, i) => i % 2 === 0);
+    const even = lanes.filter((_, i) => i % 2 === 1);
+    queueChaosAttack({ t: 0.05, type: "laserVolley", lanes: odd, warn: 0.62, live: 1.0 });
+    queueChaosAttack({ t: 1.45, type: "laserVolley", lanes: even, warn: 0.62, live: 1.0 });
+    boss.attackLock = 3.65;
+    boss.activeAttackType = "laser";
+  }
+
+  function startChaosSummonArmada() {
+    summonChaosAdds(6);
+    queueChaosAttack({ t: 0.9, type: "summonAdds", count: 4 });
+    queueChaosAttack({ t: 1.8, type: "summonAdds", count: 4 });
+    boss.attackLock = 3.2;
+    boss.activeAttackType = "adds";
+  }
+
+  function startChaosBombardment() {
+    // Versión justa: solo 2 bombas y con tiempo entre medio.
+    queueChaosAttack({ t: 0.05, type: "spawnBombs", count: 1, travel: 1.05, warn: 1.1, live: 0.52, radius: 54 });
+    queueChaosAttack({ t: 2.8, type: "spawnBombs", count: 1, travel: 1.05, warn: 1.1, live: 0.52, radius: 54 });
+    boss.attackLock = 6.2;
+    boss.activeAttackType = "bomb";
+  }
+
+  function chaosBossFire(dt) {
     const t = currentTuning();
     boss.specialCooldown = Math.max(0, boss.specialCooldown - dt);
+    boss.attackLock = Math.max(0, boss.attackLock - dt);
 
-    if (boss.specialCooldown <= 0) {
-      const cx = boss.x + boss.w / 2;
-      const attackRoll = Math.random();
+    const laserAttackOngoing =
+      boss.activeAttackType === "laser" &&
+      (bossLasers.length > 0 || boss.queuedAttacks.some((qa) => qa.type === "laserVolley"));
+    if (laserAttackOngoing && boss.attackLock < 0.25) boss.attackLock = 0.25;
+    const bombAttackOngoing =
+      boss.activeAttackType === "bomb" &&
+      (chaosBombs.length > 0 || boss.queuedAttacks.some((qa) => qa.type === "spawnBombs"));
+    if (bombAttackOngoing && boss.attackLock < 0.25) boss.attackLock = 0.25;
 
-      if (attackRoll < 0.32) {
-        const spacing = W / 4;
-        const first = [spacing, spacing * 2, spacing * 3];
-        const shift = spacing / 2;
-        const second = [spacing + shift, spacing * 2 + shift, spacing * 3 + shift];
-        spawnBossLaserVolley(first, 0.85, 1.25);
-        queueChaosAttack({ t: 1.65, type: "laserVolley", lanes: second });
-      } else if (attackRoll < 0.62) {
-        const s = baseSpeed * 0.95;
-        for (let i = -5; i <= 5; i++) {
-          if (i === 0) continue;
-          spawnEnemyBullet(cx, boss.y + boss.h + 6, s * 0.11 * i, s, true);
-        }
-        queueChaosAttack({ t: 0.45, type: "aimedBurst", shots: 3, speed: baseSpeed * 1.05 });
-      } else if (attackRoll < 0.82) {
-        summonChaosAdds(5);
-      } else {
-        for (let i = 0; i < 12; i++) {
-          const rx = 26 + (i / 11) * (W - 52);
-          const vy = baseSpeed * (0.75 + Math.random() * 0.35);
-          const vx = (Math.random() * 2 - 1) * 42;
-          spawnEnemyBullet(rx, boss.y + boss.h + 8, vx, vy, true);
-        }
-      }
-
-      boss.specialCooldown = (0.85 + Math.random() * 0.5) / t.bossFireMul;
+    // No se solapan ataques: hasta que termine el actual no inicia otro.
+    if (boss.specialCooldown <= 0 && boss.attackLock <= 0 && boss.queuedAttacks.length === 0 && bossLasers.length === 0) {
+      const attackPool = [
+        startChaosLaserDoubleWave,
+        startChaosLaserCageCollapse,
+        startChaosLaserChecker,
+        startChaosSummonArmada,
+        startChaosBombardment
+      ];
+      const pick = attackPool[Math.floor(Math.random() * attackPool.length)];
+      pick();
+      boss.specialCooldown = (1.05 + Math.random() * 0.6) / t.bossFireMul;
     }
 
     for (let i = boss.queuedAttacks.length - 1; i >= 0; i--) {
@@ -884,13 +1119,17 @@
       if (qa.t > 0) continue;
 
       if (qa.type === "laserVolley") {
-        spawnBossLaserVolley(qa.lanes, 0.55, 1.05);
-      } else if (qa.type === "aimedBurst") {
-        const cx = boss.x + boss.w / 2;
-        const cy = boss.y + boss.h + 4;
-        for (let s = 0; s < qa.shots; s++) spawnAimedBullet(cx + (s - 1) * 18, cy, qa.speed, true);
+        spawnBossLaserVolley(qa.lanes, qa.warn ?? 0.55, qa.live ?? 1.05);
+      } else if (qa.type === "summonAdds") {
+        summonChaosAdds(qa.count || 4);
+      } else if (qa.type === "spawnBombs") {
+        spawnChaosBombWave(qa.count || 3, qa.travel ?? 1.0, qa.warn ?? 0.95, qa.live ?? 0.55, qa.radius ?? 72);
       }
       boss.queuedAttacks.splice(i, 1);
+    }
+
+    if (boss.attackLock <= 0 && boss.queuedAttacks.length === 0 && bossLasers.length === 0 && chaosBombs.length === 0) {
+      boss.activeAttackType = "";
     }
   }
 
@@ -1000,6 +1239,22 @@
     startTransitionToWave(1, false);
   }
 
+  function startNoLimitsMode() {
+    mode.name = "NORMAL";
+    localStorage.setItem(LS_LASTMODE, "NORMAL");
+    resetGame(false);
+    state.status = "PLAYING";
+    hideOverlay();
+    state.wave = 101;
+    state.score = 0;
+    player.fireRate = 2.0;
+    player.damage = 1;
+    player.dmgUpgrades = 0;
+    buddies.length = 0;
+    startTransitionToWave(101, false);
+    beep(560, 0.08, "triangle", 0.05);
+  }
+
   function startFromCheckpoint(cp) {
     mode.name = "NORMAL";
     localStorage.setItem(LS_LASTMODE, "NORMAL");
@@ -1007,7 +1262,8 @@
     state.status = "PLAYING";
     hideOverlay();
 
-    state.wave = clamp(cp.wave || 1, 1, state.maxWaves);
+    const checkpointCap = (mode.name === "NORMAL") ? Number.POSITIVE_INFINITY : state.maxWaves;
+    state.wave = clamp(cp.wave || 1, 1, checkpointCap);
     state.score = Number(cp.score || 0);
 
     player.fireRate = Number(cp.fireRate || 2.0);
@@ -1021,6 +1277,8 @@
     playerBullets.length = 0;
     enemyBullets.length = 0;
     bossLasers.length = 0;
+    chaosBombs.length = 0;
+    megaShockwave.active = false;
 
     startTransitionToWave(state.wave, false);
     beep(420, 0.07, "triangle", 0.05);
@@ -1044,6 +1302,7 @@
     playerBullets.length = 0;
     enemyBullets.length = 0;
     bossLasers.length = 0;
+    chaosBombs.length = 0;
 
     powerups.length = 0;
     explosions.length = 0;
@@ -1136,6 +1395,10 @@
       explosions[i].t += dt;
       if (explosions[i].t >= explosions[i].dur) explosions.splice(i, 1);
     }
+    if (megaShockwave.active) {
+      megaShockwave.t += dt;
+      if (megaShockwave.t >= megaShockwave.dur) megaShockwave.active = false;
+    }
 
     if (state.status !== "PLAYING") return;
 
@@ -1156,12 +1419,33 @@
 
     if (bossDeath.active) {
       bossDeath.t += dt;
+      if (bossDeath.epic) {
+        bossDeath.epicPulse += dt;
+        if (bossDeath.epicPulse >= 0.14) {
+          bossDeath.epicPulse = 0;
+          const a = Math.random() * Math.PI * 2;
+          const r = 20 + Math.random() * 120;
+          spawnExplosion(
+            bossDeath.x + Math.cos(a) * r,
+            bossDeath.y + Math.sin(a) * r,
+            Math.random() < 0.35
+          );
+          triggerShake(18, 0.22);
+          beep(80 + Math.random() * 90, 0.05, "sawtooth", 0.035);
+        }
+      }
       if (bossDeath.t < dt * 1.2) { playerBullets.length = 0; enemyBullets.length = 0; }
       const total = bossDeath.preDur + bossDeath.explodeDur;
       if (bossDeath.t >= total) {
         spawnExplosion(bossDeath.x, bossDeath.y, true);
-        triggerShake(26, 0.55);
-        beep(70, 0.18, "sawtooth", 0.06);
+        triggerShake(bossDeath.epic ? 46 : 26, bossDeath.epic ? 1.2 : 0.55);
+        beep(70, bossDeath.epic ? 0.3 : 0.18, "sawtooth", bossDeath.epic ? 0.09 : 0.06);
+        if (bossDeath.epic) {
+          megaShockwave.active = true;
+          megaShockwave.t = 0;
+          megaShockwave.x = bossDeath.x;
+          megaShockwave.y = bossDeath.y;
+        }
 
         bossDeath.active = false;
         if (bossDeath.wasFinalWin) {
@@ -1236,6 +1520,25 @@
       }
     }
 
+    for (let i = chaosBombs.length - 1; i >= 0; i--) {
+      const bomb = chaosBombs[i];
+      if (bomb.travel > 0) {
+        bomb.travel = Math.max(0, bomb.travel - dt);
+      } else if (bomb.warn > 0) {
+        bomb.warn = Math.max(0, bomb.warn - dt);
+      } else {
+        bomb.live = Math.max(0, bomb.live - dt);
+        if (bomb.live <= 0) {
+          chaosBombs.splice(i, 1);
+          continue;
+        }
+        if (player.laserHitCooldown <= 0 && circleIntersectsRect(bomb.x, bomb.y, bomb.r, player)) {
+          applyIncomingHit(true);
+          player.laserHitCooldown = 0.18;
+        }
+      }
+    }
+
     for (let i = adds.length - 1; i >= 0; i--) {
       const a = adds[i];
       if (!a.alive) { adds.splice(i, 1); continue; }
@@ -1273,7 +1576,8 @@
 
           if (boss.hp <= 0) {
             const defeatedWave = state.wave;
-            const isFinalWin = (defeatedWave >= state.maxWaves);
+            const isFinalWin = (mode.name === "HARDCORE" && defeatedWave >= state.maxWaves);
+            const epicKill100 = (mode.name === "NORMAL" && defeatedWave === 100);
 
             if (defeatedWave === 50) {
               applyBoss50RewardLife();
@@ -1287,7 +1591,7 @@
             boss.active = false;
             adds.length = 0;
 
-            startBossDeathSequence(cx, cy, isFinalWin);
+            startBossDeathSequence(cx, cy, isFinalWin, epicKill100);
             return;
           }
         }
@@ -1429,7 +1733,10 @@
     ctx.fillStyle = "#e8eef7";
     ctx.font = "16px system-ui, sans-serif";
     ctx.fillText(`Puntuación: ${state.score}`, 16, 26);
-    ctx.fillText(`Oleada: ${state.wave}/${state.maxWaves}`, 16, 48);
+    const waveCapText = (mode.name === "NORMAL" && state.wave >= 101)
+      ? "∞"
+      : (Number.isFinite(state.maxWaves) ? state.maxWaves : "∞");
+    ctx.fillText(`Oleada: ${state.wave}/${waveCapText}`, 16, 48);
     ctx.globalAlpha = 0.85;
     ctx.fillText(`Modo: ${mode.name}`, 16, 70);
     ctx.fillText(`Cadencia: ${player.fireRate.toFixed(1)} disp/s`, 16, 92);
@@ -1455,11 +1762,17 @@
     const shieldY = baseY + 26;
     for (let i = 0; i < player.shield; i++) drawShieldHeartFilled(startX + i*28, shieldY, 22);
 
-    ctx.fillStyle = "#8bd3ff";
-    ctx.fillRect(player.x, player.y, player.w, player.h);
-    ctx.fillRect(player.x + 6, player.y - 10, player.w - 12, 10);
-    ctx.fillStyle = "#d3f3ff";
-    ctx.fillRect(player.x + player.w/2 - 4, player.y - 16, 8, 6);
+    if (usingSpacePlaneSkin) {
+      // El sprite normal ocupa 40x16 + una torre superior de 16px.
+      // Dibujamos la skin en ese mismo alto total para que sea equivalente.
+      drawCrazyPlane(player.x, player.y - 16, player.w, player.h + 16, 0);
+    } else {
+      ctx.fillStyle = "#8bd3ff";
+      ctx.fillRect(player.x, player.y, player.w, player.h);
+      ctx.fillRect(player.x + 6, player.y - 10, player.w - 12, 10);
+      ctx.fillStyle = "#d3f3ff";
+      ctx.fillRect(player.x + player.w/2 - 4, player.y - 16, 8, 6);
+    }
     drawPlayerShield();
 
     for (let i = 0; i < buddies.length; i++) {
@@ -1467,14 +1780,19 @@
       const side = (b.slotIndex === 0) ? -1 : 1;
       const bx = player.x + player.w/2 + side * 34;
       const by = player.y - 10;
-      drawInvaderBody(bx - 14, by, 28, 18, "rgba(184,255,138,.92)");
+      if (usingSpacePlaneSkin) {
+        drawCrazyPlane(bx - 14, by, 28, 18, b.slotIndex + 1);
+      } else {
+        drawInvaderBody(bx - 14, by, 28, 18, "rgba(184,255,138,.92)");
+      }
     }
 
     ctx.fillStyle = "#d0ff6b";
     for (const b of playerBullets) ctx.fillRect(b.x, b.y, b.w, b.h);
 
     if (boss.active) {
-      drawInvaderBody(boss.x, boss.y, boss.w, boss.h, boss.isFinal ? "#ff2b2b" : "#ff7a2b");
+      const bossColor = (mode.name === "NORMAL" && boss.waveLevel === 100) ? "#ff2b2b" : (boss.isFinal ? "#ff2b2b" : "#ff7a2b");
+      drawInvaderBody(boss.x, boss.y, boss.w, boss.h, bossColor);
 
       const barW = 360, barH = 12;
       const bx = (W - barW)/2, by = 18;
@@ -1526,6 +1844,54 @@
       }
     }
 
+    for (const bomb of chaosBombs) {
+      if (bomb.travel > 0) {
+        const totalTravel = Math.max(0.001, bomb.travelStart || 1);
+        const t = clamp(1 - (bomb.travel / totalTravel), 0, 1);
+        const orbX = bomb.fromX + (bomb.x - bomb.fromX) * t;
+        const orbY = bomb.fromY + (bomb.y - bomb.fromY) * t;
+        ctx.strokeStyle = "rgba(255,185,120,0.35)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(orbX, orbY);
+        ctx.lineTo(bomb.x, bomb.y);
+        ctx.stroke();
+        ctx.fillStyle = "rgba(255,170,70,0.98)";
+        ctx.beginPath();
+        ctx.arc(orbX, orbY, 8, 0, Math.PI * 2);
+        ctx.fill();
+        // Objetivo tenue mientras llega la bomba (no aparece de repente).
+        ctx.strokeStyle = "rgba(255,140,140,0.28)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(bomb.x, bomb.y, bomb.r, 0, Math.PI * 2);
+        ctx.stroke();
+      } else if (bomb.warn > 0) {
+        const pulse = 0.72 + 0.28 * Math.sin(performance.now() * 0.018);
+        ctx.strokeStyle = `rgba(255,120,120,${0.55 + pulse * 0.3})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(bomb.x, bomb.y, bomb.r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.strokeStyle = "rgba(255,200,200,0.55)";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(bomb.x, bomb.y, bomb.r * 0.45, 0, Math.PI * 2);
+        ctx.stroke();
+      } else {
+        const pulse = 0.7 + 0.3 * Math.sin(performance.now() * 0.028);
+        ctx.fillStyle = `rgba(255,80,40,${0.18 + pulse * 0.2})`;
+        ctx.beginPath();
+        ctx.arc(bomb.x, bomb.y, bomb.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = `rgba(255,205,120,${0.4 + pulse * 0.35})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(bomb.x, bomb.y, bomb.r * (0.82 + pulse * 0.2), 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+
     for (const a of adds) {
       if (!a.alive) continue;
       drawInvaderBody(a.x, a.y, a.w, a.h, "rgba(255, 78, 78, .95)");
@@ -1560,6 +1926,25 @@
       ctx.globalAlpha = 1;
     }
 
+    if (megaShockwave.active) {
+      const p = clamp(megaShockwave.t / megaShockwave.dur, 0, 1);
+      const maxR = Math.hypot(W, H);
+      const r = 30 + p * maxR;
+      ctx.globalAlpha = 0.85 * (1 - p);
+      ctx.strokeStyle = "rgba(255,244,190,.98)";
+      ctx.lineWidth = 10 - p * 7;
+      ctx.beginPath();
+      ctx.arc(megaShockwave.x, megaShockwave.y, r, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.globalAlpha = 0.35 * (1 - p);
+      ctx.fillStyle = "rgba(255,140,80,.85)";
+      ctx.beginPath();
+      ctx.arc(megaShockwave.x, megaShockwave.y, r * 0.9, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
     drawBossDeathRays();
 
     if (transition.active) {
@@ -1583,6 +1968,7 @@
   // ===== Menu buttons wiring =====
   btnNormal.addEventListener("click", () => { ensureAudio(); startGameWithModeFromMenu("NORMAL"); });
   btnHardcore.addEventListener("click", () => { ensureAudio(); if (!hasHardcoreUnlocked()) return; startGameWithModeFromMenu("HARDCORE"); });
+  btnNoLimits.addEventListener("click", () => { ensureAudio(); if (!hasNoLimitsUnlocked()) return; startNoLimitsMode(); });
 
   btnContinue.addEventListener("click", () => { ensureAudio(); const cp = loadCheckpoint(); if (!cp) return; startFromCheckpoint(cp); });
   btnClearCP.addEventListener("click", () => { ensureAudio(); clearCheckpoint(); refreshMenuButtons(); beep(240, 0.06, "sine", 0.03); });
@@ -1660,6 +2046,7 @@
     playerBullets.length = 0;
     enemyBullets.length = 0;
     bossLasers.length = 0;
+    chaosBombs.length = 0;
     powerups.length = 0;
     explosions.length = 0;
 
