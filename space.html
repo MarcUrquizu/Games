@@ -910,7 +910,7 @@
     }
   }
 
-  function spawnChaosBombWave(count = 4, warnTime = 1.05, liveTime = 0.5, radius = 74) {
+  function spawnChaosBombWave(count = 4, travelTime = 1.0, warnTime = 1.0, liveTime = 0.5, radius = 62) {
     const minX = 70;
     const maxX = W - 70;
     const playerLineY = player.y + player.h * 0.5;
@@ -929,6 +929,8 @@
       }
       chaosBombs.push({
         x, y, r: radius,
+        travel: travelTime,
+        travelStart: travelTime,
         warn: warnTime,
         warnStart: warnTime,
         live: liveTime,
@@ -1005,9 +1007,9 @@
 
   function startChaosBombardment() {
     // Versión justa: solo 2 bombas y con tiempo entre medio.
-    queueChaosAttack({ t: 0.05, type: "spawnBombs", count: 1, warn: 1.2, live: 0.55, radius: 70 });
-    queueChaosAttack({ t: 2.0, type: "spawnBombs", count: 1, warn: 1.2, live: 0.55, radius: 70 });
-    boss.attackLock = 4.4;
+    queueChaosAttack({ t: 0.05, type: "spawnBombs", count: 1, travel: 1.05, warn: 1.1, live: 0.52, radius: 54 });
+    queueChaosAttack({ t: 2.8, type: "spawnBombs", count: 1, travel: 1.05, warn: 1.1, live: 0.52, radius: 54 });
+    boss.attackLock = 6.2;
     boss.activeAttackType = "bomb";
   }
 
@@ -1049,7 +1051,7 @@
       } else if (qa.type === "summonAdds") {
         summonChaosAdds(qa.count || 4);
       } else if (qa.type === "spawnBombs") {
-        spawnChaosBombWave(qa.count || 3, qa.warn ?? 0.95, qa.live ?? 0.55, qa.radius ?? 72);
+        spawnChaosBombWave(qa.count || 3, qa.travel ?? 1.0, qa.warn ?? 0.95, qa.live ?? 0.55, qa.radius ?? 72);
       }
       boss.queuedAttacks.splice(i, 1);
     }
@@ -1405,7 +1407,9 @@
 
     for (let i = chaosBombs.length - 1; i >= 0; i--) {
       const bomb = chaosBombs[i];
-      if (bomb.warn > 0) {
+      if (bomb.travel > 0) {
+        bomb.travel = Math.max(0, bomb.travel - dt);
+      } else if (bomb.warn > 0) {
         bomb.warn = Math.max(0, bomb.warn - dt);
       } else {
         bomb.live = Math.max(0, bomb.live - dt);
@@ -1721,7 +1725,28 @@
     }
 
     for (const bomb of chaosBombs) {
-      if (bomb.warn > 0) {
+      if (bomb.travel > 0) {
+        const totalTravel = Math.max(0.001, bomb.travelStart || 1);
+        const t = clamp(1 - (bomb.travel / totalTravel), 0, 1);
+        const orbX = bomb.fromX + (bomb.x - bomb.fromX) * t;
+        const orbY = bomb.fromY + (bomb.y - bomb.fromY) * t;
+        ctx.strokeStyle = "rgba(255,185,120,0.35)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(orbX, orbY);
+        ctx.lineTo(bomb.x, bomb.y);
+        ctx.stroke();
+        ctx.fillStyle = "rgba(255,170,70,0.98)";
+        ctx.beginPath();
+        ctx.arc(orbX, orbY, 8, 0, Math.PI * 2);
+        ctx.fill();
+        // Objetivo tenue mientras llega la bomba (no aparece de repente).
+        ctx.strokeStyle = "rgba(255,140,140,0.28)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(bomb.x, bomb.y, bomb.r, 0, Math.PI * 2);
+        ctx.stroke();
+      } else if (bomb.warn > 0) {
         const pulse = 0.72 + 0.28 * Math.sin(performance.now() * 0.018);
         ctx.strokeStyle = `rgba(255,120,120,${0.55 + pulse * 0.3})`;
         ctx.lineWidth = 3;
@@ -1733,22 +1758,6 @@
         ctx.beginPath();
         ctx.arc(bomb.x, bomb.y, bomb.r * 0.45, 0, Math.PI * 2);
         ctx.stroke();
-
-        // Bola viajando hacia el punto de impacto (telegráfico claro).
-        const totalWarn = Math.max(0.001, bomb.warnStart || 1);
-        const progress = clamp(1 - (bomb.warn / totalWarn), 0, 1);
-        const orbX = bomb.fromX + (bomb.x - bomb.fromX) * progress;
-        const orbY = bomb.fromY + (bomb.y - bomb.fromY) * progress;
-        ctx.strokeStyle = "rgba(255,210,130,0.3)";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(bomb.fromX, bomb.fromY);
-        ctx.lineTo(orbX, orbY);
-        ctx.stroke();
-        ctx.fillStyle = "rgba(255,180,80,0.95)";
-        ctx.beginPath();
-        ctx.arc(orbX, orbY, 7, 0, Math.PI * 2);
-        ctx.fill();
       } else {
         const pulse = 0.7 + 0.3 * Math.sin(performance.now() * 0.028);
         ctx.fillStyle = `rgba(255,80,40,${0.18 + pulse * 0.2})`;
