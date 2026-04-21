@@ -373,7 +373,7 @@
     HARDCORE:{ enemyShootMul:1.35, enemySpeedMul:1.15, enemyBulletMul:1.15, bossHpMul:1.15, bossFireMul:1.15, rapidDropChance:0.06, shieldDropChance:0.035, buddyDropChance:0.0016, dmgDropChance:0.0005, checkpoints:false },
   };
   function currentTuning() { return tuning[mode.name] || tuning.NORMAL; }
-  function isBossWave(w) { return (w % 5 === 0); }
+  function isBossWave(w) { return (w % 10 === 0); }
 
   const state = {
     score: 0,
@@ -381,7 +381,7 @@
     maxLives: 3,
     wave: 1,
     status: "MENU",
-    maxWaves: 100,
+    maxWaves: Number.POSITIVE_INFINITY,
     justWon: false,
   };
 
@@ -500,7 +500,7 @@
     attackLock:0, activeAttackType:"",
     locked:false, targetY:0, spawnY:0,
   };
-  const chaosBossFromPattern = 10; // jefe de oleada 50 en adelante
+  const chaosBossFromPattern = 1; // cada jefe de múltiplo de 10 entra en modo ultra
 
   function drawInvaderBody(x, y, w, h, bodyColor) {
     ctx.fillStyle = bodyColor;
@@ -603,8 +603,8 @@
   }
 
   function hpRangeForWave(wave) {
-    const tier = Math.floor((wave - 1) / 5) + 1;
-    return { minHp: tier, maxHp: tier + 1 };
+    const minHp = 1 + Math.floor((wave - 1) * 0.22);
+    return { minHp, maxHp: minHp + 2 };
   }
 
   // ===== Hearts =====
@@ -750,7 +750,6 @@
     boss.locked = !!spawnFromTop;
   }
   function initBossForWave(wave, spawnFromTop) {
-    if (wave === state.maxWaves) { initFinalBoss(spawnFromTop); return; }
     boss.active = true; boss.isFinal = false;
     boss.w = 160; boss.h = 48;
     boss.x = W/2 - boss.w/2;
@@ -758,16 +757,16 @@
     boss.spawnY = -boss.h - 30;
     boss.y = spawnFromTop ? boss.spawnY : boss.targetY;
     boss.dir = 1; boss.speed = 110;
-    boss.patternId = wave / 5;
+    boss.patternId = Math.max(1, Math.floor(wave / 10));
     boss.auxT = 0;
     boss.specialCooldown = 0;
     boss.queuedAttacks = [];
     boss.attackLock = 0;
     boss.activeAttackType = "";
     const t = currentTuning();
-    boss.hpMax = Math.floor((220 + (boss.patternId - 1) * 120) * t.bossHpMul);
+    boss.hpMax = Math.floor((320 + wave * 42 + (boss.patternId - 1) * 180) * t.bossHpMul);
     boss.hp = boss.hpMax;
-    boss.cooldown = 0.92 / t.bossFireMul;
+    boss.cooldown = 0.84 / t.bossFireMul;
     boss.locked = !!spawnFromTop;
   }
 
@@ -850,15 +849,20 @@
 
   function completeWaveAndTransition() {
     const next = state.wave + 1;
-    if (next > state.maxWaves) {
-      state.status = "GAME_WON";
-      state.justWon = true;
+    // Endless: no hay límite de niveles.
+    // Al derrotar el jefe de la 100 en NORMAL, se desbloquea checkpoint 101.
+    if (mode.name === "NORMAL" && next === 101) {
       setHardcoreUnlocked();
-      if (mode.name === "HARDCORE") setHardcoreMedal();
-      showOverlay();
+      saveCheckpoint({
+        wave: 101,
+        fireRate: player.fireRate,
+        dmgUpgrades: player.dmgUpgrades,
+        buddies: buddies.length,
+        score: state.score,
+      });
       refreshMenuButtons();
-      beep(520, 0.12, "triangle", 0.05);
-      return;
+      beep(740, 0.08, "triangle", 0.05);
+      beep(980, 0.08, "sine", 0.04);
     }
     maybeCreateCheckpoint(next);
     state.wave = next;
@@ -1617,7 +1621,8 @@
     ctx.fillStyle = "#e8eef7";
     ctx.font = "16px system-ui, sans-serif";
     ctx.fillText(`Puntuación: ${state.score}`, 16, 26);
-    ctx.fillText(`Oleada: ${state.wave}/${state.maxWaves}`, 16, 48);
+    const waveCapText = Number.isFinite(state.maxWaves) ? state.maxWaves : "∞";
+    ctx.fillText(`Oleada: ${state.wave}/${waveCapText}`, 16, 48);
     ctx.globalAlpha = 0.85;
     ctx.fillText(`Modo: ${mode.name}`, 16, 70);
     ctx.fillText(`Cadencia: ${player.fireRate.toFixed(1)} disp/s`, 16, 92);
