@@ -1528,7 +1528,9 @@
     for (let i = 0; i < player.shield; i++) drawShieldHeartFilled(startX + i*28, shieldY, 22);
 
     if (usingSpacePlaneSkin) {
-      drawCrazyPlane(player.x, player.y, player.w, player.h, 0);
+      // El sprite normal ocupa 40x16 + una torre superior de 16px.
+      // Dibujamos la skin en ese mismo alto total para que sea equivalente.
+      drawCrazyPlane(player.x, player.y - 16, player.w, player.h + 16, 0);
     } else {
       ctx.fillStyle = "#8bd3ff";
       ctx.fillRect(player.x, player.y, player.w, player.h);
