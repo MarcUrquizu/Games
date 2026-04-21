@@ -143,6 +143,7 @@
       <div class="btnRow">
         <button id="btnNormal" class="btn" type="button">NORMAL</button>
         <button id="btnHardcore" class="btn secondary" type="button">HARDCORE</button>
+        <button id="btnNoLimits" class="btn secondary" type="button" style="display:none;">NO LIMITS</button>
       </div>
 
       <div class="miniRow">
@@ -236,6 +237,7 @@
   const btnCloseInfo = document.getElementById("btnCloseInfo");
   const btnNormal = document.getElementById("btnNormal");
   const btnHardcore = document.getElementById("btnHardcore");
+  const btnNoLimits = document.getElementById("btnNoLimits");
   const btnContinue = document.getElementById("btnContinue");
   const btnClearCP = document.getElementById("btnClearCP");
 
@@ -283,6 +285,7 @@
   const LS_LASTMODE = "msi_last_mode";
   const LS_CHECKPOINT = "msi_checkpoint_v1";
   const LS_MEDAL_HARDCORE = "msi_medal_hardcore";
+  const LS_UNLOCK_NOLIMITS = "msi_unlocked_nolimits";
   const LS_OWNED_SKINS = "olap_owned_skins";
   const SECRET_SEQUENCE = "111000222";
   let recentSecretKeys = "";
@@ -297,6 +300,8 @@
   const setHardcoreMedal = () => localStorage.setItem(LS_MEDAL_HARDCORE, "1");
   const hasHardcoreUnlocked = () => localStorage.getItem(LS_UNLOCK) === "1";
   const setHardcoreUnlocked = () => localStorage.setItem(LS_UNLOCK, "1");
+  const hasNoLimitsUnlocked = () => localStorage.getItem(LS_UNLOCK_NOLIMITS) === "1";
+  const setNoLimitsUnlocked = () => localStorage.setItem(LS_UNLOCK_NOLIMITS, "1");
 
   function loadCheckpoint() {
     try {
@@ -324,6 +329,10 @@
     btnHardcore.classList.toggle("disabled", !unlocked);
     if (!unlocked) btnHardcore.innerHTML = `HARDCORE <span class="lock">🔒</span><small>Desbloquéalo ganando el juego</small>`;
     else btnHardcore.innerHTML = `HARDCORE<small>Sin checkpoints</small>`;
+    const noLimits = hasNoLimitsUnlocked();
+    btnNoLimits.style.display = noLimits ? "inline-flex" : "none";
+    btnNoLimits.classList.toggle("disabled", !noLimits);
+    btnNoLimits.innerHTML = `NO LIMITS<small>Niveles infinitos</small>`;
 
     const cp = loadCheckpoint();
     const cpOk = !!cp;
@@ -468,16 +477,20 @@
     explosions.push({ x, y, t: 0, dur, parts, big });
   }
 
-  const bossDeath = { active:false, t:0, preDur:0.95, explodeDur:0.25, x:0, y:0, wasFinalWin:false };
-  function startBossDeathSequence(centerX, centerY, wasFinalWin) {
+  const bossDeath = { active:false, t:0, preDur:0.95, explodeDur:0.25, x:0, y:0, wasFinalWin:false, epic:false, epicPulse:0 };
+  function startBossDeathSequence(centerX, centerY, wasFinalWin, epic = false) {
     bossDeath.active = true;
     bossDeath.t = 0;
     bossDeath.x = centerX;
     bossDeath.y = centerY;
     bossDeath.wasFinalWin = wasFinalWin;
-    triggerShake(22, 0.95);
-    beep(95, 0.14, "square", 0.08);
-    beep(65, 0.18, "sawtooth", 0.05);
+    bossDeath.epic = !!epic;
+    bossDeath.epicPulse = 0;
+    bossDeath.preDur = epic ? 3.6 : 0.95;
+    bossDeath.explodeDur = epic ? 1.35 : 0.25;
+    triggerShake(epic ? 34 : 22, epic ? 2.4 : 0.95);
+    beep(95, epic ? 0.22 : 0.14, "square", epic ? 0.1 : 0.08);
+    beep(65, epic ? 0.32 : 0.18, "sawtooth", epic ? 0.08 : 0.05);
   }
 
   const enemies = {
@@ -868,6 +881,7 @@
     // Mantener exactamente igual hasta 100. Al matar jefe 100 NORMAL: parar y desbloquear 101.
     if (mode.name === "NORMAL" && state.wave === 100) {
       setHardcoreUnlocked();
+      setNoLimitsUnlocked();
       saveCheckpoint({
         wave: 101,
         fireRate: 2.0,
@@ -918,7 +932,7 @@
     const baseSpeed = (260 + id * 8) * t.bossFireMul;
 
     const chaosOnThisBoss = (waveLevel <= 100)
-      ? (id >= chaosBossFromPattern)
+      ? (id >= chaosBossFromPattern && waveLevel < 100)
       : true;
     if (chaosOnThisBoss) {
       chaosBossFire(dt);
@@ -1212,6 +1226,22 @@
     startTransitionToWave(1, false);
   }
 
+  function startNoLimitsMode() {
+    mode.name = "NORMAL";
+    localStorage.setItem(LS_LASTMODE, "NORMAL");
+    resetGame(false);
+    state.status = "PLAYING";
+    hideOverlay();
+    state.wave = 101;
+    state.score = 0;
+    player.fireRate = 2.0;
+    player.damage = 1;
+    player.dmgUpgrades = 0;
+    buddies.length = 0;
+    startTransitionToWave(101, false);
+    beep(560, 0.08, "triangle", 0.05);
+  }
+
   function startFromCheckpoint(cp) {
     mode.name = "NORMAL";
     localStorage.setItem(LS_LASTMODE, "NORMAL");
@@ -1371,12 +1401,27 @@
 
     if (bossDeath.active) {
       bossDeath.t += dt;
+      if (bossDeath.epic) {
+        bossDeath.epicPulse += dt;
+        if (bossDeath.epicPulse >= 0.14) {
+          bossDeath.epicPulse = 0;
+          const a = Math.random() * Math.PI * 2;
+          const r = 20 + Math.random() * 120;
+          spawnExplosion(
+            bossDeath.x + Math.cos(a) * r,
+            bossDeath.y + Math.sin(a) * r,
+            Math.random() < 0.35
+          );
+          triggerShake(18, 0.22);
+          beep(80 + Math.random() * 90, 0.05, "sawtooth", 0.035);
+        }
+      }
       if (bossDeath.t < dt * 1.2) { playerBullets.length = 0; enemyBullets.length = 0; }
       const total = bossDeath.preDur + bossDeath.explodeDur;
       if (bossDeath.t >= total) {
         spawnExplosion(bossDeath.x, bossDeath.y, true);
-        triggerShake(26, 0.55);
-        beep(70, 0.18, "sawtooth", 0.06);
+        triggerShake(bossDeath.epic ? 46 : 26, bossDeath.epic ? 1.2 : 0.55);
+        beep(70, bossDeath.epic ? 0.3 : 0.18, "sawtooth", bossDeath.epic ? 0.09 : 0.06);
 
         bossDeath.active = false;
         if (bossDeath.wasFinalWin) {
@@ -1507,7 +1552,8 @@
 
           if (boss.hp <= 0) {
             const defeatedWave = state.wave;
-            const isFinalWin = (defeatedWave >= state.maxWaves);
+            const isFinalWin = (mode.name === "HARDCORE" && defeatedWave >= state.maxWaves);
+            const epicKill100 = (mode.name === "NORMAL" && defeatedWave === 100);
 
             if (defeatedWave === 50) {
               applyBoss50RewardLife();
@@ -1521,7 +1567,7 @@
             boss.active = false;
             adds.length = 0;
 
-            startBossDeathSequence(cx, cy, isFinalWin);
+            startBossDeathSequence(cx, cy, isFinalWin, epicKill100);
             return;
           }
         }
@@ -1878,6 +1924,7 @@
   // ===== Menu buttons wiring =====
   btnNormal.addEventListener("click", () => { ensureAudio(); startGameWithModeFromMenu("NORMAL"); });
   btnHardcore.addEventListener("click", () => { ensureAudio(); if (!hasHardcoreUnlocked()) return; startGameWithModeFromMenu("HARDCORE"); });
+  btnNoLimits.addEventListener("click", () => { ensureAudio(); if (!hasNoLimitsUnlocked()) return; startNoLimitsMode(); });
 
   btnContinue.addEventListener("click", () => { ensureAudio(); const cp = loadCheckpoint(); if (!cp) return; startFromCheckpoint(cp); });
   btnClearCP.addEventListener("click", () => { ensureAudio(); clearCheckpoint(); refreshMenuButtons(); beep(240, 0.06, "sine", 0.03); });
