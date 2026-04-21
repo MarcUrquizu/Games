@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tienda - OLAP</title>
+  <link rel="icon" type="image/png" href="img/favicon.png">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Press Start 2P', cursive;
+      background: radial-gradient(circle at top, #1f1f34 0%, #090910 60%, #050507 100%);
+      color: #e8fdff;
+      min-height: 100vh;
+      padding: 24px;
+      text-align: center;
+    }
+    .top-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+    .btn {
+      display: inline-block;
+      text-decoration: none;
+      background: #0ff;
+      color: #001015;
+      padding: 12px 16px;
+      border-radius: 8px;
+      border: 2px solid #0ff;
+      font-size: 10px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .btn:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+    .coins {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(0, 255, 255, 0.45);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 10px;
+    }
+    h1 {
+      margin: 6px 0 18px;
+      font-size: 22px;
+      color: #0ff;
+      text-shadow: 0 0 8px rgba(0, 255, 255, 0.7);
+    }
+    .note {
+      font-size: 10px;
+      color: #ffd76e;
+      margin-bottom: 26px;
+      line-height: 1.6;
+    }
+    .shop-grid {
+      max-width: 880px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 18px;
+    }
+    .card {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 12px;
+      padding: 18px;
+      box-shadow: 0 0 14px rgba(0, 255, 255, 0.15);
+    }
+    .space-preview {
+      margin: 0 auto 12px;
+      background:
+        linear-gradient(135deg, #0a0c1d 0%, #11162b 100%);
+      border: 2px solid #2be9ff;
+      border-radius: 10px;
+      position: relative;
+      overflow: hidden;
+    }
+    .space-preview::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 16px;
+      width: 0;
+      height: 0;
+      transform: translateX(-50%);
+      border-left: 24px solid transparent;
+      border-right: 24px solid transparent;
+      border-bottom: 34px solid #3be7ff;
+      filter: drop-shadow(0 0 8px rgba(59, 231, 255, 0.8));
+    }
+    .space-preview::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 42px;
+      width: 22px;
+      height: 26px;
+      transform: translateX(-50%);
+      background: linear-gradient(180deg, #ff9f55 0%, #ff3e3e 100%);
+      clip-path: polygon(50% 100%, 0 0, 100% 0);
+      filter: drop-shadow(0 0 6px rgba(255, 90, 90, 0.8));
+    }
+    .space-preview, .pacman-preview {
+      width: 88px;
+      height: 88px;
+      object-fit: contain;
+      margin-bottom: 12px;
+      image-rendering: pixelated;
+    }
+    .pacman-preview {
+      margin: 0 auto 12px;
+      border-radius: 50%;
+      background: conic-gradient(#52ff4b 0deg 310deg, transparent 310deg 360deg);
+      border: 4px solid #1e6f1f;
+    }
+    .title { font-size: 11px; margin-bottom: 10px; line-height: 1.5; }
+    .price { font-size: 10px; color: #ffe18e; margin-bottom: 14px; }
+    .status { margin-top: 10px; min-height: 14px; font-size: 9px; color: #a8ffbc; }
+  </style>
+</head>
+<body>
+  <div class="top-actions">
+    <a class="btn" href="index.html">Volver al menú</a>
+    <div class="coins">Monedas: <span id="coin-count">0</span></div>
+  </div>
+
+  <h1>SHOP</h1>
+  <p class="note">Cada skin cuesta 100 monedas. De momento no se pueden conseguir monedas, así que ahora solo puedes verlas.</p>
+
+  <div class="shop-grid">
+    <article class="card">
+      <div class="space-preview" aria-label="Skin Space 1, avión para Space Invaders"></div>
+      <div class="title">Space Invaders<br>Skin: Avión 01</div>
+      <div class="price">Precio: 100 monedas</div>
+      <button class="btn buy-btn" data-skin="space_1">Comprar</button>
+      <div class="status" id="status-space_1"></div>
+    </article>
+
+    <article class="card">
+      <div class="pacman-preview" aria-label="Skin verde para Pacman"></div>
+      <div class="title">Pcman<br>Skin: Verde</div>
+      <div class="price">Precio: 100 monedas</div>
+      <button class="btn buy-btn" data-skin="pacman_green">Comprar</button>
+      <div class="status" id="status-pacman_green"></div>
+    </article>
+  </div>
+
+  <script>
+    const COIN_KEY = 'olap_coins';
+    const OWNED_KEY = 'olap_owned_skins';
+    const STARTING_COINS = 0;
+    const SKIN_PRICE = 100;
+
+    const coinEl = document.getElementById('coin-count');
+    const buyButtons = document.querySelectorAll('.buy-btn');
+
+    function getCoins() {
+      const saved = Number(localStorage.getItem(COIN_KEY));
+      return Number.isFinite(saved) ? saved : STARTING_COINS;
+    }
+
+    function setCoins(amount) {
+      localStorage.setItem(COIN_KEY, String(amount));
+      coinEl.textContent = amount;
+    }
+
+    function getOwnedSkins() {
+      const raw = localStorage.getItem(OWNED_KEY);
+      if (!raw) return [];
+      try {
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function setOwnedSkins(skins) {
+      localStorage.setItem(OWNED_KEY, JSON.stringify(skins));
+    }
+
+    function updateButtons() {
+      const owned = new Set(getOwnedSkins());
+      buyButtons.forEach((btn) => {
+        const skin = btn.dataset.skin;
+        const status = document.getElementById(`status-${skin}`);
+        if (owned.has(skin)) {
+          btn.disabled = true;
+          btn.textContent = 'Comprado';
+          status.textContent = 'Skin desbloqueada.';
+        } else {
+          btn.disabled = false;
+          btn.textContent = 'Comprar';
+          status.textContent = '';
+        }
+      });
+    }
+
+    buyButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const skin = btn.dataset.skin;
+        const status = document.getElementById(`status-${skin}`);
+        const coins = getCoins();
+
+        if (coins < SKIN_PRICE) {
+          status.textContent = 'No tienes suficientes monedas todavía.';
+          return;
+        }
+
+        const owned = getOwnedSkins();
+        if (!owned.includes(skin)) {
+          owned.push(skin);
+          setOwnedSkins(owned);
+          setCoins(coins - SKIN_PRICE);
+          updateButtons();
+        }
+      });
+    });
+
+    setCoins(getCoins());
+    updateButtons();
+  </script>
+</body>
+</html>
