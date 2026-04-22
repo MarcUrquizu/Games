@@ -85,6 +85,14 @@
       box-shadow: 0 10px 26px rgba(0,0,0,.35);
       transition: transform .08s ease, filter .12s ease, opacity .12s ease;
       user-select: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 68px;
+      line-height: 1.12;
+      white-space: normal;
+      text-align: center;
     }
     .btn:active { transform: translateY(1px); filter: brightness(.95); }
     .btn.secondary { background: linear-gradient(180deg, rgba(80,170,255,.85), rgba(55,135,230,.85)); }
@@ -96,6 +104,7 @@
       box-shadow: none;
     }
     .btn small { display:block; font-weight:700; opacity:.9; font-size:12px; margin-top:4px; }
+    .btn.nolimits-btn { grid-column: 1 / -1; justify-self: center; width: min(320px, 100%); }
     .lock { display:inline-block; margin-left: 8px; font-size: 16px; vertical-align: -1px; }
 
     .miniRow{
@@ -143,7 +152,7 @@
       <div class="btnRow">
         <button id="btnNormal" class="btn" type="button">NORMAL</button>
         <button id="btnHardcore" class="btn secondary" type="button">HARDCORE</button>
-        <button id="btnNoLimits" class="btn secondary" type="button" style="display:none;">NO LIMITS</button>
+        <button id="btnNoLimits" class="btn secondary nolimits-btn" type="button" style="display:none;">NO LIMITS</button>
       </div>
 
       <div class="miniRow">
@@ -478,6 +487,7 @@
   }
 
   const bossDeath = { active:false, t:0, preDur:0.95, explodeDur:0.25, x:0, y:0, wasFinalWin:false, epic:false, epicPulse:0 };
+  const megaShockwave = { active:false, t:0, dur:1.6, x:0, y:0 };
   function startBossDeathSequence(centerX, centerY, wasFinalWin, epic = false) {
     bossDeath.active = true;
     bossDeath.t = 0;
@@ -772,12 +782,14 @@
   }
   function initBossForWave(wave, spawnFromTop) {
     boss.active = true; boss.isFinal = false;
-    boss.w = 160; boss.h = 48;
+    const isBoss100Normal = (mode.name === "NORMAL" && wave === 100);
+    boss.w = isBoss100Normal ? 220 : 160;
+    boss.h = isBoss100Normal ? 68 : 48;
     boss.x = W/2 - boss.w/2;
-    boss.targetY = 98;
+    boss.targetY = isBoss100Normal ? 84 : 98;
     boss.spawnY = -boss.h - 30;
     boss.y = spawnFromTop ? boss.spawnY : boss.targetY;
-    boss.dir = 1; boss.speed = 110;
+    boss.dir = 1; boss.speed = isBoss100Normal ? 92 : 110;
     boss.waveLevel = wave;
     boss.patternId = (wave <= 100)
       ? (wave / 5)
@@ -833,6 +845,7 @@
     enemyBullets.length = 0;
     bossLasers.length = 0;
     chaosBombs.length = 0;
+    megaShockwave.active = false;
     bossDeath.active = false;
     boss.active = false;
     adds.length = 0;
@@ -1265,6 +1278,7 @@
     enemyBullets.length = 0;
     bossLasers.length = 0;
     chaosBombs.length = 0;
+    megaShockwave.active = false;
 
     startTransitionToWave(state.wave, false);
     beep(420, 0.07, "triangle", 0.05);
@@ -1381,6 +1395,10 @@
       explosions[i].t += dt;
       if (explosions[i].t >= explosions[i].dur) explosions.splice(i, 1);
     }
+    if (megaShockwave.active) {
+      megaShockwave.t += dt;
+      if (megaShockwave.t >= megaShockwave.dur) megaShockwave.active = false;
+    }
 
     if (state.status !== "PLAYING") return;
 
@@ -1422,6 +1440,12 @@
         spawnExplosion(bossDeath.x, bossDeath.y, true);
         triggerShake(bossDeath.epic ? 46 : 26, bossDeath.epic ? 1.2 : 0.55);
         beep(70, bossDeath.epic ? 0.3 : 0.18, "sawtooth", bossDeath.epic ? 0.09 : 0.06);
+        if (bossDeath.epic) {
+          megaShockwave.active = true;
+          megaShockwave.t = 0;
+          megaShockwave.x = bossDeath.x;
+          megaShockwave.y = bossDeath.y;
+        }
 
         bossDeath.active = false;
         if (bossDeath.wasFinalWin) {
@@ -1767,7 +1791,8 @@
     for (const b of playerBullets) ctx.fillRect(b.x, b.y, b.w, b.h);
 
     if (boss.active) {
-      drawInvaderBody(boss.x, boss.y, boss.w, boss.h, boss.isFinal ? "#ff2b2b" : "#ff7a2b");
+      const bossColor = (mode.name === "NORMAL" && boss.waveLevel === 100) ? "#ff2b2b" : (boss.isFinal ? "#ff2b2b" : "#ff7a2b");
+      drawInvaderBody(boss.x, boss.y, boss.w, boss.h, bossColor);
 
       const barW = 360, barH = 12;
       const bx = (W - barW)/2, by = 18;
@@ -1898,6 +1923,25 @@
         ctx.arc(px, py, prt.r * (1 - p * 0.7), 0, Math.PI * 2);
         ctx.fill();
       }
+      ctx.globalAlpha = 1;
+    }
+
+    if (megaShockwave.active) {
+      const p = clamp(megaShockwave.t / megaShockwave.dur, 0, 1);
+      const maxR = Math.hypot(W, H);
+      const r = 30 + p * maxR;
+      ctx.globalAlpha = 0.85 * (1 - p);
+      ctx.strokeStyle = "rgba(255,244,190,.98)";
+      ctx.lineWidth = 10 - p * 7;
+      ctx.beginPath();
+      ctx.arc(megaShockwave.x, megaShockwave.y, r, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.globalAlpha = 0.35 * (1 - p);
+      ctx.fillStyle = "rgba(255,140,80,.85)";
+      ctx.beginPath();
+      ctx.arc(megaShockwave.x, megaShockwave.y, r * 0.9, 0, Math.PI * 2);
+      ctx.fill();
       ctx.globalAlpha = 1;
     }
 
