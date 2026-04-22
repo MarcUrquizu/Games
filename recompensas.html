@@ -63,7 +63,30 @@
       margin-top: auto;
       display:flex;
       justify-content: flex-end;
+      gap: 8px;
       padding-top: 12px;
+    }
+    .claim-btn{
+      display:none;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(140deg, #ffeec8 0%, #ffcf67 50%, #ff9f1a 100%);
+      color: #3c2400;
+      border: 1px solid rgba(255, 180, 58, .95);
+      font-weight: 800;
+      font-size: 12px;
+      padding: 8px 12px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(255, 189, 96, .6), 0 0 20px rgba(255, 162, 0, .45);
+      cursor:pointer;
+      font-family: inherit;
+    }
+    .claim-btn:hover{ transform: translateY(-1px); filter: brightness(1.06); }
+    .claim-btn:disabled{
+      display:inline-flex;
+      opacity: .7;
+      cursor: default;
+      filter: grayscale(.25);
     }
     .go-game-btn{
       display: inline-flex;
@@ -421,14 +444,14 @@
     const LS_MEDAL_CLICKER_SECRET_50M = "msi_medal_clicker_50m";
 
     const rewards = [
-      { id: "medalHardcore", key: LS_MEDAL_HARDCORE, icon: "🏅", gameUrl: "./space.html", gameLabel: "Ir a Space Invaders" },
-      { id: "medal2048", key: LS_MEDAL_2048, icon: "🧠", gameUrl: "./2058.html", gameLabel: "Ir a 2048" },
-      { id: "medalSkyhooper", key: LS_MEDAL_SKYHOOPER, icon: "🚀", gameUrl: "./skyhooper.html", gameLabel: "Ir a Sky Hopper" },
-      { id: "medalFlappy", key: LS_MEDAL_FLAPPY, icon: "🐦", gameUrl: "./flsppybird.html", gameLabel: "Ir a Flappy Bird" },
-      { id: "medalPacman", key: LS_MEDAL_PACMAN, icon: "🟡", gameUrl: "./pcman.html", gameLabel: "Ir a Pcman" },
-      { id: "medalLaberinto2", key: LS_MEDAL_LABERINTO2, icon: "🧩", gameUrl: "./laberinto2.html", gameLabel: "Ir a Laberinto 2" },
-      { id: "medalLaberinto3d", key: LS_MEDAL_LABERINTO3D, icon: "🕶️", gameUrl: "./laberint3d.html", gameLabel: "Ir a Laberint 3D" },
-      { id: "medalSecretClicker", key: LS_MEDAL_CLICKER_SECRET_50M, icon: "❓", unlockedIcon: "🧠", gameUrl: "./clicker.html", gameLabel: "Ir a Italian brainrot clicker", secretTitle: "Archimillonario oculto", secretDesc: "Llega a 50.000.000 en Italian brainrot clicker.", secretLockedTitle: "???", secretLockedDesc: "Este logro está oculto.", hideGameButton: true }
+      { id: "medalHardcore", key: LS_MEDAL_HARDCORE, icon: "🏅", gameUrl: "./space.html", gameLabel: "Ir a Space Invaders", coinReward: 50 },
+      { id: "medal2048", key: LS_MEDAL_2048, icon: "🧠", gameUrl: "./2058.html", gameLabel: "Ir a 2048", coinReward: 50 },
+      { id: "medalSkyhooper", key: LS_MEDAL_SKYHOOPER, icon: "🚀", gameUrl: "./skyhooper.html", gameLabel: "Ir a Sky Hopper", coinReward: 50 },
+      { id: "medalFlappy", key: LS_MEDAL_FLAPPY, icon: "🐦", gameUrl: "./flsppybird.html", gameLabel: "Ir a Flappy Bird", coinReward: 50 },
+      { id: "medalPacman", key: LS_MEDAL_PACMAN, icon: "🟡", gameUrl: "./pcman.html", gameLabel: "Ir a Pcman", coinReward: 50 },
+      { id: "medalLaberinto2", key: LS_MEDAL_LABERINTO2, icon: "🧩", gameUrl: "./laberinto2.html", gameLabel: "Ir a Laberinto 2", coinReward: 50 },
+      { id: "medalLaberinto3d", key: LS_MEDAL_LABERINTO3D, icon: "🕶️", gameUrl: "./laberint3d.html", gameLabel: "Ir a Laberint 3D", coinReward: 50 },
+      { id: "medalSecretClicker", key: LS_MEDAL_CLICKER_SECRET_50M, icon: "❓", unlockedIcon: "🧠", gameUrl: "./clicker.html", gameLabel: "Ir a Italian brainrot clicker", secretTitle: "Archimillonario oculto", secretDesc: "Llega a 50.000.000 en Italian brainrot clicker.", secretLockedTitle: "???", secretLockedDesc: "Este logro está oculto.", hideGameButton: true, coinReward: 100 }
     ];
 
     function ensureMedalStructure(medalElement, icon) {
@@ -469,6 +492,37 @@
       goButton.title = gameLabel || "Ir al juego del logro";
     }
 
+    function ensureClaimButton(rewardElement, { key, coinReward = 0 }) {
+      if (!rewardElement || !key || coinReward <= 0) return null;
+      let actions = rewardElement.querySelector(".reward-actions");
+      if (!actions) {
+        actions = document.createElement("div");
+        actions.className = "reward-actions";
+        rewardElement.appendChild(actions);
+      }
+
+      let claimButton = actions.querySelector(".claim-btn");
+      if (!claimButton) {
+        claimButton = document.createElement("button");
+        claimButton.className = "claim-btn";
+        claimButton.type = "button";
+        actions.insertBefore(claimButton, actions.firstChild);
+      }
+
+      claimButton.onclick = () => {
+        const claimedSet = new Set(getClaimedRewards());
+        const unlocked = localStorage.getItem(key) === "1";
+        if (!unlocked || claimedSet.has(key)) return;
+        setCoins(getCoins() + coinReward);
+        claimedSet.add(key);
+        setClaimedRewards([...claimedSet]);
+        claimButton.disabled = true;
+        claimButton.textContent = "Reclamado";
+      };
+
+      return claimButton;
+    }
+
     function ensureRewardVisualWrapper(rewardElement) {
       if (!rewardElement) return;
       if (Array.from(rewardElement.children).some((child) => child.classList.contains("reward-visual"))) return;
@@ -489,6 +543,8 @@
     }
 
     const LS_REWARDS_CELEBRATED = "msi_rewards_celebrated_v1";
+    const COIN_KEY = "olap_coins";
+    const CLAIMED_REWARDS_KEY = "msi_reward_coin_claimed_v1";
     const SECRET_SEQUENCE = "111000222";
     const PULSE_DURATION_MS = 900;
     const SHAKE_DURATION_MS = 600;
@@ -498,6 +554,30 @@
     let isSecretAnimationRunning = false;
     let victoryCelebrationRunning = false;
     let audioCtx = null;
+
+    function getCoins() {
+      const saved = Number(localStorage.getItem(COIN_KEY));
+      return Number.isFinite(saved) ? Math.max(0, saved) : 0;
+    }
+
+    function setCoins(amount) {
+      localStorage.setItem(COIN_KEY, String(Math.max(0, amount)));
+    }
+
+    function getClaimedRewards() {
+      try {
+        const raw = localStorage.getItem(CLAIMED_REWARDS_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function setClaimedRewards(keys) {
+      localStorage.setItem(CLAIMED_REWARDS_KEY, JSON.stringify([...new Set(keys)]));
+    }
 
     function getAudioCtx() {
       if (!audioCtx) {
@@ -626,7 +706,8 @@
     }
 
     function renderRewards({ breakIds = null, holdLockedIds = null } = {}) {
-      rewards.forEach(({ id, key, icon, unlockedIcon, gameUrl, gameLabel, secretTitle, secretDesc, secretLockedTitle, secretLockedDesc, hideGameButton }) => {
+      const claimedSet = new Set(getClaimedRewards());
+      rewards.forEach(({ id, key, icon, unlockedIcon, gameUrl, gameLabel, secretTitle, secretDesc, secretLockedTitle, secretLockedDesc, hideGameButton, coinReward }) => {
         const el = document.getElementById(id);
         if (!el) return;
 
@@ -647,6 +728,7 @@
           ensureMedalStructure(medalEl, icon);
         }
         ensureGoButton(el, { gameUrl, gameLabel, hideGameButton });
+        const claimButton = ensureClaimButton(el, { key, coinReward });
 
         if (unlocked) {
           if (holdLockedIds && holdLockedIds.has(id)) {
@@ -663,14 +745,29 @@
               el.classList.remove("unlock-break");
               el.classList.add("unlocked");
               el.dataset.unlocked = "1";
+              if (claimButton) {
+                const isClaimed = claimedSet.has(key);
+                claimButton.style.display = "inline-flex";
+                claimButton.disabled = isClaimed;
+                claimButton.textContent = isClaimed ? "Reclamado" : "Recalmar";
+              }
             }, BREAK_DURATION_MS);
             el.dataset.unlocked = "0";
             return;
           }
 
           el.classList.add("unlocked");
+          if (claimButton) {
+            const isClaimed = claimedSet.has(key);
+            claimButton.style.display = "inline-flex";
+            claimButton.disabled = isClaimed;
+            claimButton.textContent = isClaimed ? "Reclamado" : "Recalmar";
+          }
         } else {
           el.classList.remove("unlocked", "unlock-break");
+          if (claimButton) {
+            claimButton.style.display = "none";
+          }
         }
 
         el.dataset.unlocked = unlocked ? "1" : "0";
