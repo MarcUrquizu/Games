@@ -235,6 +235,14 @@
       <button class="btn buy-btn" data-skin="flappy_neon">Comprar</button>
       <div class="status" id="status-flappy_neon"></div>
     </article>
+
+    <article class="card">
+      <canvas id="preview-skyhopper" class="skin-preview-canvas" width="88" height="88" aria-label="Skin astral para Sky Hopper"></canvas>
+      <div class="title">Sky Hopper<br>Skin: Astral</div>
+      <div class="price">Precio: 100 monedas</div>
+      <button class="btn buy-btn" data-skin="skyhopper_astro">Comprar</button>
+      <div class="status" id="status-skyhopper_astro"></div>
+    </article>
   </div>
   <div id="codes-mini" class="codes-mini" hidden>
     <div class="codes-mini-title">Códigos secretos de tienda</div>
@@ -462,9 +470,29 @@
       birdImg.src = 'https://www.pngarts.com/files/10/Flappy-Bird-Pixel-Art-PNG-Image-Transparent-Background.png';
     }
 
+    function drawSkyhopperPreview() {
+      const canvas = document.getElementById('preview-skyhopper');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#0b1020';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const skySprite = new Image();
+      skySprite.crossOrigin = 'Anonymous';
+      skySprite.onload = () => {
+        ctx.save();
+        ctx.filter = 'hue-rotate(195deg) saturate(1.55) brightness(1.12)';
+        ctx.drawImage(skySprite, 20, 18, 48, 48);
+        ctx.restore();
+      };
+      skySprite.src = 'https://images.vexels.com/media/users/3/246497/isolated/preview/c4ec48235199c646c02c169c813d2ebe-pixelart-personajes-vinilo-color-de-los-80-4.png';
+    }
+
     drawSpacePreview();
     drawPacmanPreview();
     drawFlappyPreview();
+    drawSkyhopperPreview();
 
     setCoins(getCoins());
     updateButtons();
