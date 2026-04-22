@@ -151,6 +151,38 @@
       color: #7dffb0;
       font-size: 9px;
     }
+    .codes-mini {
+      position: fixed;
+      right: 14px;
+      bottom: 14px;
+      width: min(320px, calc(100vw - 28px));
+      background: rgba(8, 18, 34, 0.96);
+      border: 1px solid rgba(0, 255, 255, 0.5);
+      border-radius: 12px;
+      box-shadow: 0 0 18px rgba(0,255,255,.28);
+      padding: 12px;
+      text-align: left;
+      z-index: 30;
+    }
+    .codes-mini[hidden] { display: none; }
+    .codes-mini-title {
+      font-size: 10px;
+      color: #7ffff3;
+      margin-bottom: 8px;
+    }
+    .codes-mini-list {
+      margin: 0;
+      padding-left: 16px;
+      font-size: 9px;
+      line-height: 1.5;
+      color: #c9ffee;
+    }
+    .codes-mini-close {
+      margin-top: 10px;
+      width: 100%;
+      font-size: 9px;
+      padding: 8px;
+    }
   </style>
 </head>
 <body>
@@ -204,15 +236,25 @@
       <div class="status" id="status-flappy_neon"></div>
     </article>
   </div>
+  <div id="codes-mini" class="codes-mini" hidden>
+    <div class="codes-mini-title">Códigos secretos de tienda</div>
+    <ul class="codes-mini-list">
+      <li>332ffeERD2332dER3 → +100 monedas</li>
+      <li>534ffGR45RTB354fw → +1000 monedas</li>
+    </ul>
+    <button id="codes-mini-close" class="btn codes-mini-close" type="button">Cerrar</button>
+  </div>
 
   <script>
     const COIN_KEY = 'olap_coins';
     const OWNED_KEY = 'olap_owned_skins';
     const STARTING_COINS = 0;
     const SKIN_PRICE = 100;
-    const COIN_CODE = '332ffeERD2332dER3';
-    const CODE_REWARD = 100;
-    const CODE_USED_KEY = 'olap_shop_code_used';
+    const COIN_CODES = [
+      { code: '332ffeERD2332dER3', reward: 100, usedKey: 'olap_shop_code_used_100' },
+      { code: '534ffGR45RTB354fw', reward: 1000, usedKey: 'olap_shop_code_used_1000' }
+    ];
+    const SECRET_SEQUENCE = '111000222';
 
     const coinEl = document.getElementById('coin-count');
     const buyButtons = document.querySelectorAll('.buy-btn');
@@ -221,6 +263,9 @@
     const codeMessageEl = document.getElementById('code-message');
     const infoBtn = document.getElementById('shop-info-btn');
     const infoPanel = document.getElementById('shop-info-panel');
+    const codesMiniEl = document.getElementById('codes-mini');
+    const codesMiniCloseBtn = document.getElementById('codes-mini-close');
+    let recentSecretKeys = '';
 
     function getCoins() {
       const saved = Number(localStorage.getItem(COIN_KEY));
@@ -232,14 +277,14 @@
       coinEl.textContent = Math.max(0, amount);
     }
 
-    function redeemCoinCode() {
-      if (localStorage.getItem(CODE_USED_KEY) === '1') {
+    function redeemCoinCode(match) {
+      if (localStorage.getItem(match.usedKey) === '1') {
         codeMessageEl.textContent = 'ℹ️ Este código ya se ha usado.';
         return;
       }
-      setCoins(getCoins() + CODE_REWARD);
-      localStorage.setItem(CODE_USED_KEY, '1');
-      codeMessageEl.textContent = `✅ Código válido: +${CODE_REWARD} monedas.`;
+      setCoins(getCoins() + match.reward);
+      localStorage.setItem(match.usedKey, '1');
+      codeMessageEl.textContent = `✅ Código válido: +${match.reward} monedas.`;
     }
 
     function getOwnedSkins() {
@@ -297,8 +342,9 @@
 
     cheatCodeBtn.addEventListener('click', () => {
       const code = cheatCodeInput.value.trim();
-      if (code === COIN_CODE) {
-        redeemCoinCode();
+      const match = COIN_CODES.find((item) => item.code === code);
+      if (match) {
+        redeemCoinCode(match);
         cheatCodeInput.value = '';
       } else {
         codeMessageEl.textContent = '❌ Código incorrecto.';
@@ -307,6 +353,17 @@
 
     infoBtn.addEventListener('click', () => {
       infoPanel.hidden = !infoPanel.hidden;
+    });
+    codesMiniCloseBtn.addEventListener('click', () => {
+      codesMiniEl.hidden = true;
+    });
+    document.addEventListener('keydown', (event) => {
+      if (!/^\d$/.test(event.key)) return;
+      recentSecretKeys = (recentSecretKeys + event.key).slice(-SECRET_SEQUENCE.length);
+      if (recentSecretKeys === SECRET_SEQUENCE) {
+        codesMiniEl.hidden = false;
+        recentSecretKeys = '';
+      }
     });
 
     function drawSpacePreview() {
