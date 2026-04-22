@@ -54,6 +54,44 @@
       color: #0ff;
       text-shadow: 0 0 8px rgba(0, 255, 255, 0.7);
     }
+    .shop-title-row{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap: 10px;
+    }
+    .info-btn{
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 2px solid rgba(0,255,255,.8);
+      background: rgba(0,255,255,.15);
+      color: #d8ffff;
+      font-family: inherit;
+      font-size: 18px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 10px rgba(0,255,255,.35);
+      animation: infoGlow 1.4s ease-in-out infinite alternate;
+    }
+    @keyframes infoGlow {
+      from { box-shadow: 0 0 8px rgba(0,255,255,.35), 0 0 14px rgba(0,255,255,.2); }
+      to { box-shadow: 0 0 14px rgba(0,255,255,.85), 0 0 28px rgba(0,255,255,.55); }
+    }
+    .info-panel{
+      max-width: 880px;
+      margin: 0 auto 20px;
+      text-align: left;
+      font-size: 9px;
+      line-height: 1.7;
+      border: 1px solid rgba(0, 255, 255, 0.35);
+      border-radius: 10px;
+      padding: 14px;
+      background: rgba(0, 35, 45, .4);
+    }
+    .info-panel[hidden]{ display:none; }
     .note {
       font-size: 10px;
       color: #ffd76e;
@@ -74,60 +112,15 @@
       padding: 18px;
       box-shadow: 0 0 14px rgba(0, 255, 255, 0.15);
     }
-    .space-preview {
+    .skin-preview-canvas {
       margin: 0 auto 12px;
+      width: 88px;
+      height: 88px;
       background: linear-gradient(135deg, #0a0c1d 0%, #11162b 100%);
       border: 2px solid #2be9ff;
       border-radius: 10px;
-      position: relative;
-      overflow: hidden;
-    }
-    .space-preview::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      margin: auto;
-      width: 58px;
-      height: 66px;
-      filter: drop-shadow(0 0 8px rgba(70, 225, 255, 0.65));
-      background:
-        radial-gradient(circle at 50% 95%, rgba(255,170,70,.95) 0 11%, transparent 13%),
-        linear-gradient(180deg, transparent 0 12%, #f8a8ff 12% 72%, transparent 72%),
-        linear-gradient(145deg, transparent 0 35%, #66ffe7 35% 72%, transparent 72%),
-        linear-gradient(-145deg, transparent 0 35%, #66ffe7 35% 72%, transparent 72%);
-      clip-path: polygon(
-        50% 6%, 94% 78%, 72% 76%, 58% 96%, 42% 96%, 28% 76%, 6% 78%
-      );
-      animation: shopPlaneHue 4s linear infinite;
-    }
-    .space-preview::after {
-      content: "";
-      position: absolute;
-      left: 50%;
-      top: 54%;
-      transform: translate(-50%, -50%);
-      width: 10px;
-      height: 40px;
-      background: linear-gradient(180deg, rgba(255,255,255,.9) 0%, rgba(185,255,255,.15) 100%);
-      border-radius: 5px;
-      box-shadow: 0 0 10px rgba(255,255,255,.45);
-    }
-    @keyframes shopPlaneHue {
-      0% { filter: hue-rotate(0deg) drop-shadow(0 0 8px rgba(70, 225, 255, 0.65)); }
-      100% { filter: hue-rotate(360deg) drop-shadow(0 0 8px rgba(70, 225, 255, 0.65)); }
-    }
-    .space-preview, .pacman-preview {
-      width: 88px;
-      height: 88px;
-      object-fit: contain;
-      margin-bottom: 12px;
+      display: block;
       image-rendering: pixelated;
-    }
-    .pacman-preview {
-      margin: 0 auto 12px;
-      border-radius: 50%;
-      background: conic-gradient(#52ff4b 0deg 310deg, transparent 310deg 360deg);
-      border: 4px solid #1e6f1f;
     }
     .title { font-size: 11px; margin-bottom: 10px; line-height: 1.5; }
     .price { font-size: 10px; color: #ffe18e; margin-bottom: 14px; }
@@ -166,8 +159,20 @@
     <div class="coins">Monedas: <span id="coin-count">0</span></div>
   </div>
 
-  <h1>SHOP</h1>
-  <p class="note">Cada skin cuesta 100 monedas. De momento las monedas solo se consiguen canjeando el código <strong>****</strong>.</p>
+  <div class="shop-title-row">
+    <h1>SHOP</h1>
+    <button id="shop-info-btn" class="info-btn" type="button" aria-label="Ver cómo conseguir monedas">i</button>
+  </div>
+  <div id="shop-info-panel" class="info-panel" hidden>
+    <strong>Formas de conseguir monedas:</strong>
+    <ul>
+      <li>Desbloquear logros normales y reclamarlos (+50 cada uno).</li>
+      <li>Desbloquear logros secretos y reclamarlos (+100 cada uno).</li>
+      <li>Hacer login (+100).</li>
+      <li>Canjear un código secreto de tienda (sin mostrar cuál).</li>
+    </ul>
+  </div>
+  <p class="note">Cada skin cuesta 100 monedas.</p>
   <div class="code-box">
     <input id="cheat-code-input" class="code-input" type="text" placeholder="Código de tienda">
     <button id="cheat-code-btn" class="btn" type="button">Canjear código</button>
@@ -176,7 +181,7 @@
 
   <div class="shop-grid">
     <article class="card">
-      <div class="space-preview" aria-label="Skin Space 1, avión para Space Invaders"></div>
+      <canvas id="preview-space" class="skin-preview-canvas" width="88" height="88" aria-label="Skin Space 1, avión para Space Invaders"></canvas>
       <div class="title">Space Invaders<br>Skin: Avión 01</div>
       <div class="price">Precio: 100 monedas</div>
       <button class="btn buy-btn" data-skin="space_1">Comprar</button>
@@ -184,11 +189,19 @@
     </article>
 
     <article class="card">
-      <div class="pacman-preview" aria-label="Skin verde para Pacman"></div>
+      <canvas id="preview-pacman" class="skin-preview-canvas" width="88" height="88" aria-label="Skin verde para Pacman"></canvas>
       <div class="title">Pcman<br>Skin: Verde</div>
       <div class="price">Precio: 100 monedas</div>
       <button class="btn buy-btn" data-skin="pacman_green">Comprar</button>
       <div class="status" id="status-pacman_green"></div>
+    </article>
+
+    <article class="card">
+      <canvas id="preview-flappy" class="skin-preview-canvas" width="88" height="88" aria-label="Skin neón para Flappy Bird"></canvas>
+      <div class="title">Flappy Bird<br>Skin: Neón</div>
+      <div class="price">Precio: 100 monedas</div>
+      <button class="btn buy-btn" data-skin="flappy_neon">Comprar</button>
+      <div class="status" id="status-flappy_neon"></div>
     </article>
   </div>
 
@@ -206,6 +219,8 @@
     const cheatCodeInput = document.getElementById('cheat-code-input');
     const cheatCodeBtn = document.getElementById('cheat-code-btn');
     const codeMessageEl = document.getElementById('code-message');
+    const infoBtn = document.getElementById('shop-info-btn');
+    const infoPanel = document.getElementById('shop-info-panel');
 
     function getCoins() {
       const saved = Number(localStorage.getItem(COIN_KEY));
@@ -289,6 +304,110 @@
         codeMessageEl.textContent = '❌ Código incorrecto.';
       }
     });
+
+    infoBtn.addEventListener('click', () => {
+      infoPanel.hidden = !infoPanel.hidden;
+    });
+
+    function drawSpacePreview() {
+      const canvas = document.getElementById('preview-space');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#0b1020';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const x = 22, y = 12, w = 44, h = 64;
+      const body = '#61b8ff';
+      const wing = '#8affee';
+      const cockpit = '#f6a5ff';
+      const flame = '#ff8a75';
+
+      ctx.save();
+      ctx.shadowBlur = 14;
+      ctx.shadowColor = 'rgba(110,220,255,.65)';
+
+      ctx.fillStyle = body;
+      ctx.beginPath();
+      ctx.moveTo(x + w * 0.5, y + h * 0.06);
+      ctx.lineTo(x + w - 2, y + h * 0.96);
+      ctx.lineTo(x + 2, y + h * 0.96);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = wing;
+      ctx.beginPath();
+      ctx.moveTo(x + w * 0.5, y + h * 0.34);
+      ctx.lineTo(x + w * 0.94, y + h * 0.76);
+      ctx.lineTo(x + w * 0.68, y + h * 0.72);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(x + w * 0.5, y + h * 0.34);
+      ctx.lineTo(x + w * 0.06, y + h * 0.76);
+      ctx.lineTo(x + w * 0.32, y + h * 0.72);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = cockpit;
+      ctx.fillRect(x + w * 0.45, y + h * 0.12, Math.max(4, w * 0.1), h * 0.72);
+
+      ctx.fillStyle = flame;
+      ctx.beginPath();
+      ctx.moveTo(x + w * 0.5, y + h * 0.9);
+      ctx.lineTo(x + w * 0.5 - w * 0.12, y + h * 0.82);
+      ctx.lineTo(x + w * 0.5 + w * 0.12, y + h * 0.82);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.globalAlpha = 0.35;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(x + w * 0.12, y + h * 0.22, w * 0.76, 2);
+      ctx.fillRect(x + w * 0.2, y + h * 0.52, w * 0.6, 2);
+      ctx.restore();
+    }
+
+    function drawPacmanPreview() {
+      const canvas = document.getElementById('preview-pacman');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#0b1020';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const cx = 44, cy = 44, r = 26;
+      ctx.fillStyle = '#28ff39';
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0.24, Math.PI * 2 - 0.24);
+      ctx.lineTo(cx, cy);
+      ctx.closePath();
+      ctx.fill();
+      ctx.lineWidth = 5;
+      ctx.strokeStyle = '#1e6f1f';
+      ctx.stroke();
+    }
+
+    function drawFlappyPreview() {
+      const canvas = document.getElementById('preview-flappy');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#0b1020';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const birdImg = new Image();
+      birdImg.onload = () => {
+        ctx.save();
+        ctx.filter = 'hue-rotate(135deg) saturate(1.45) brightness(1.1)';
+        ctx.drawImage(birdImg, 18, 24, 52, 38);
+        ctx.restore();
+      };
+      birdImg.src = 'https://www.pngarts.com/files/10/Flappy-Bird-Pixel-Art-PNG-Image-Transparent-Background.png';
+    }
+
+    drawSpacePreview();
+    drawPacmanPreview();
+    drawFlappyPreview();
 
     setCoins(getCoins());
     updateButtons();
