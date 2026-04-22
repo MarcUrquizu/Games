@@ -42,6 +42,8 @@
   <canvas id="gameCanvas" width="320" height="480"></canvas>
   <script>
     const LS_MEDAL_FLAPPY = "msi_medal_flappy_50";
+    const LS_OWNED_SKINS = "olap_owned_skins";
+    const FLAPPY_NEON_SKIN = "flappy_neon";
     const SECRET_SEQUENCE = "111000222";
     let recentSecretKeys = "";
     document.addEventListener("keydown", (event) => {
@@ -66,6 +68,7 @@
     // Imagen del pájaro
     const birdImg = new Image();
     birdImg.src = 'https://www.pngarts.com/files/10/Flappy-Bird-Pixel-Art-PNG-Image-Transparent-Background.png';
+    const neonBirdFilter = "hue-rotate(135deg) saturate(1.45) brightness(1.1)";
 
     const W = canvas.width;
     const H = canvas.height;
@@ -74,6 +77,20 @@
     const birdHitbox = { offsetX: 18, offsetY: 12, width: 14, height: 12 };
 
     let bird, pipes, score, gameOver, lastPipeTime, gameStarted, gameOverHandled;
+    let useNeonBirdSkin = false;
+
+    function hasOwnedSkin(skinId) {
+      try {
+        const owned = JSON.parse(localStorage.getItem(LS_OWNED_SKINS) || "[]");
+        return Array.isArray(owned) && owned.includes(skinId);
+      } catch {
+        return false;
+      }
+    }
+
+    function refreshFlappySkin() {
+      useNeonBirdSkin = hasOwnedSkin(FLAPPY_NEON_SKIN);
+    }
 
     function initGame() {
       bird = { x: 40, y: H/2 - 20, w: 50, h: 35, gravity: 0.6, lift: -8, velocity: 0 };
@@ -140,7 +157,14 @@
       }
 
       // Dibujar pájaro
-      ctx.drawImage(birdImg, bird.x, bird.y, bird.w, bird.h);
+      if (useNeonBirdSkin) {
+        ctx.save();
+        ctx.filter = neonBirdFilter;
+        ctx.drawImage(birdImg, bird.x, bird.y, bird.w, bird.h);
+        ctx.restore();
+      } else {
+        ctx.drawImage(birdImg, bird.x, bird.y, bird.w, bird.h);
+      }
 
       // Dibujar tubos
       pipes.forEach(p => {
@@ -195,6 +219,10 @@
     document.addEventListener('keydown', e => { if (e.code === 'Space' || e.code === 'ArrowUp') handleJump(); });
 
     // Iniciar juego
+    refreshFlappySkin();
+    window.addEventListener('storage', (event) => {
+      if (event.key === LS_OWNED_SKINS) refreshFlappySkin();
+    });
     gameStarted = false;
     initGame();
     loop();
