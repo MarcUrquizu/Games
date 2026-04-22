@@ -69,6 +69,8 @@
   <canvas id="gameCanvas"></canvas>
   <script>
     const LS_MEDAL_SKYHOOPER = "msi_medal_skyhooper_1500";
+    const LS_OWNED_SKINS = "olap_owned_skins";
+    const SKYHOPPER_ASTRO_SKIN = "skyhopper_astro";
     const SECRET_SEQUENCE = "111000222";
     let recentSecretKeys = "";
     document.addEventListener("keydown", (event) => {
@@ -91,7 +93,21 @@
     // Canvas y estado global
     let canvas, ctx, W, H, groundY;
     let player, platforms, score, gameOver;
+    let useSkyhopperAstroSkin = false;
     const restartBtn = document.getElementById('restartBtn');
+
+    function hasOwnedSkin(skinId) {
+      try {
+        const owned = JSON.parse(localStorage.getItem(LS_OWNED_SKINS) || "[]");
+        return Array.isArray(owned) && owned.includes(skinId);
+      } catch {
+        return false;
+      }
+    }
+
+    function refreshSkyhopperSkin() {
+      useSkyhopperAstroSkin = hasOwnedSkin(SKYHOPPER_ASTRO_SKIN);
+    }
 
     // Estrellas
     let stars = [];
@@ -108,7 +124,11 @@
     function initCanvas() {
       canvas = document.getElementById('gameCanvas');
       ctx = canvas.getContext('2d');
+      refreshSkyhopperSkin();
       window.addEventListener('resize', onResize);
+      window.addEventListener('storage', (event) => {
+        if (event.key === LS_OWNED_SKINS) refreshSkyhopperSkin();
+      });
       onResize();
 
       restartBtn.addEventListener('click', restartGame);
@@ -165,7 +185,14 @@
       }
       draw() {
         if (playerSprite.complete && playerSprite.naturalWidth > 0) {
-          ctx.drawImage(playerSprite, this.x, this.y, this.width, this.height);
+          if (useSkyhopperAstroSkin) {
+            ctx.save();
+            ctx.filter = 'hue-rotate(195deg) saturate(1.55) brightness(1.12)';
+            ctx.drawImage(playerSprite, this.x, this.y, this.width, this.height);
+            ctx.restore();
+          } else {
+            ctx.drawImage(playerSprite, this.x, this.y, this.width, this.height);
+          }
         } else {
           ctx.fillStyle = '#ff0';
           ctx.fillRect(this.x, this.y, this.width, this.height);
