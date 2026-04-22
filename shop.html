@@ -74,6 +74,11 @@
       align-items: center;
       justify-content: center;
       box-shadow: 0 0 10px rgba(0,255,255,.35);
+      animation: infoGlow 1.4s ease-in-out infinite alternate;
+    }
+    @keyframes infoGlow {
+      from { box-shadow: 0 0 8px rgba(0,255,255,.35), 0 0 14px rgba(0,255,255,.2); }
+      to { box-shadow: 0 0 14px rgba(0,255,255,.85), 0 0 28px rgba(0,255,255,.55); }
     }
     .info-panel{
       max-width: 880px;
@@ -107,15 +112,17 @@
       padding: 18px;
       box-shadow: 0 0 14px rgba(0, 255, 255, 0.15);
     }
-    .space-preview {
+    .skin-preview {
       margin: 0 auto 12px;
+      width: 88px;
+      height: 88px;
       background: linear-gradient(135deg, #0a0c1d 0%, #11162b 100%);
       border: 2px solid #2be9ff;
       border-radius: 10px;
       position: relative;
       overflow: hidden;
     }
-    .space-preview::before {
+    .skin-preview.space::before {
       content: "";
       position: absolute;
       inset: 0;
@@ -133,7 +140,7 @@
       );
       animation: shopPlaneHue 4s linear infinite;
     }
-    .space-preview::after {
+    .skin-preview.space::after {
       content: "";
       position: absolute;
       left: 50%;
@@ -149,18 +156,27 @@
       0% { filter: hue-rotate(0deg) drop-shadow(0 0 8px rgba(70, 225, 255, 0.65)); }
       100% { filter: hue-rotate(360deg) drop-shadow(0 0 8px rgba(70, 225, 255, 0.65)); }
     }
-    .space-preview, .pacman-preview {
-      width: 88px;
-      height: 88px;
-      object-fit: contain;
-      margin-bottom: 12px;
-      image-rendering: pixelated;
-    }
-    .pacman-preview {
-      margin: 0 auto 12px;
+    .skin-preview.pacman::before {
+      content: "";
+      position: absolute;
+      inset: 14px;
       border-radius: 50%;
       background: conic-gradient(#52ff4b 0deg 310deg, transparent 310deg 360deg);
       border: 4px solid #1e6f1f;
+    }
+    .skin-preview.flappy::before{
+      content: "";
+      position: absolute;
+      inset: 0;
+      margin: auto;
+      width: 54px;
+      height: 38px;
+      background-image: url('https://www.pngarts.com/files/10/Flappy-Bird-Pixel-Art-PNG-Image-Transparent-Background.png');
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: contain;
+      image-rendering: pixelated;
+      filter: hue-rotate(135deg) saturate(1.45) brightness(1.1);
     }
     .title { font-size: 11px; margin-bottom: 10px; line-height: 1.5; }
     .price { font-size: 10px; color: #ffe18e; margin-bottom: 14px; }
@@ -221,7 +237,7 @@
 
   <div class="shop-grid">
     <article class="card">
-      <div class="space-preview" aria-label="Skin Space 1, avión para Space Invaders"></div>
+      <div class="skin-preview space" aria-label="Skin Space 1, avión para Space Invaders"></div>
       <div class="title">Space Invaders<br>Skin: Avión 01</div>
       <div class="price">Precio: 100 monedas</div>
       <button class="btn buy-btn" data-skin="space_1">Comprar</button>
@@ -229,7 +245,7 @@
     </article>
 
     <article class="card">
-      <div class="pacman-preview" aria-label="Skin verde para Pacman"></div>
+      <div class="skin-preview pacman" aria-label="Skin verde para Pacman"></div>
       <div class="title">Pcman<br>Skin: Verde</div>
       <div class="price">Precio: 100 monedas</div>
       <button class="btn buy-btn" data-skin="pacman_green">Comprar</button>
@@ -237,7 +253,7 @@
     </article>
 
     <article class="card">
-      <div class="space-preview" style="filter:hue-rotate(140deg) saturate(1.3);" aria-label="Skin neón para Flappy Bird"></div>
+      <div class="skin-preview flappy" aria-label="Skin neón para Flappy Bird"></div>
       <div class="title">Flappy Bird<br>Skin: Neón</div>
       <div class="price">Precio: 100 monedas</div>
       <button class="btn buy-btn" data-skin="flappy_neon">Comprar</button>
