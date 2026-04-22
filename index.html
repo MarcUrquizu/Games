@@ -422,9 +422,20 @@
     /* ===== Autenticación con Google Sign-In ===== */
     // IMPORTANTE: Reemplaza 'YOUR_CLIENT_ID' con tu Client ID de Google Cloud Console
     const GOOGLE_CLIENT_ID = '960980369582-b8o0bnb4g2tc450lerhn7cbc4hpbhtqi.apps.googleusercontent.com';
+    const COIN_KEY = 'olap_coins';
+    const LOGIN_REWARD = 100;
     let isAuthenticated = false;
     let userInfo = null;
     const loginBtn = document.getElementById('login-logout-btn');
+
+    function getCoins() {
+      const saved = Number(localStorage.getItem(COIN_KEY));
+      return Number.isFinite(saved) ? Math.max(0, saved) : 0;
+    }
+
+    function setCoins(amount) {
+      localStorage.setItem(COIN_KEY, String(Math.max(0, amount)));
+    }
 
     // Verificar estado de autenticación al cargar
     function checkAuthState() {
@@ -547,6 +558,7 @@
           localStorage.setItem('google_auth', JSON.stringify(authData));
           
           isAuthenticated = true;
+          setCoins(getCoins() + LOGIN_REWARD);
           updateButtonUI();
           window.progressSync?.syncNow?.().catch(err => console.error('Error sincronizando progreso:', err));
           
