@@ -1,5 +1,5 @@
 (function () {
-  const DEBUG_SEQUENCE = "111000333";
+  const DEBUG_SEQUENCE = "REMOVED_CODE";
   const HACK_STORAGE_PREFIX = "msi_hacks_";
   let recentKeys = "";
   let panel = null;
@@ -620,7 +620,7 @@
     if (recentKeys === DEBUG_SEQUENCE) {
       recentKeys = "";
       openPanel();
-      showMiniToast("Debug 111000333 activado");
+      showMiniToast("Debug activado");
     }
   });
 
