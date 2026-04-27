@@ -125,6 +125,56 @@
     .title { font-size: 11px; margin-bottom: 10px; line-height: 1.5; }
     .price { font-size: 10px; color: #ffe18e; margin-bottom: 14px; }
     .status { margin-top: 10px; min-height: 14px; font-size: 9px; color: #a8ffbc; }
+    .skin-action {
+      min-height: 38px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .switch-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 9px;
+      color: #cce7eb;
+    }
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 46px;
+      height: 24px;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      inset: 0;
+      cursor: pointer;
+      background: #6a6a6a;
+      border-radius: 999px;
+      transition: 0.2s ease;
+      border: 1px solid rgba(255,255,255,.2);
+    }
+    .slider::before {
+      content: "";
+      position: absolute;
+      height: 18px;
+      width: 18px;
+      left: 2px;
+      top: 2px;
+      border-radius: 50%;
+      background: #fff;
+      transition: 0.2s ease;
+    }
+    .switch input:checked + .slider {
+      background: #27c94f;
+    }
+    .switch input:checked + .slider::before {
+      transform: translateX(22px);
+    }
     .code-box {
       margin: 0 auto 22px;
       max-width: 880px;
@@ -216,7 +266,9 @@
       <canvas id="preview-space" class="skin-preview-canvas" width="88" height="88" aria-label="Skin Space 1, avión para Space Invaders"></canvas>
       <div class="title">Space Invaders<br>Skin: Avión 01</div>
       <div class="price">Precio: 100 monedas</div>
-      <button class="btn buy-btn" data-skin="space_1">Comprar</button>
+      <div class="skin-action" data-skin-action="space_1">
+        <button class="btn buy-btn" data-skin="space_1">Comprar</button>
+      </div>
       <div class="status" id="status-space_1"></div>
     </article>
 
@@ -224,7 +276,9 @@
       <canvas id="preview-pacman" class="skin-preview-canvas" width="88" height="88" aria-label="Skin verde para Pacman"></canvas>
       <div class="title">Pcman<br>Skin: Verde</div>
       <div class="price">Precio: 100 monedas</div>
-      <button class="btn buy-btn" data-skin="pacman_green">Comprar</button>
+      <div class="skin-action" data-skin-action="pacman_green">
+        <button class="btn buy-btn" data-skin="pacman_green">Comprar</button>
+      </div>
       <div class="status" id="status-pacman_green"></div>
     </article>
 
@@ -232,7 +286,9 @@
       <canvas id="preview-flappy" class="skin-preview-canvas" width="88" height="88" aria-label="Skin neón para Flappy Bird"></canvas>
       <div class="title">Flappy Bird<br>Skin: Neón</div>
       <div class="price">Precio: 100 monedas</div>
-      <button class="btn buy-btn" data-skin="flappy_neon">Comprar</button>
+      <div class="skin-action" data-skin-action="flappy_neon">
+        <button class="btn buy-btn" data-skin="flappy_neon">Comprar</button>
+      </div>
       <div class="status" id="status-flappy_neon"></div>
     </article>
 
@@ -240,7 +296,9 @@
       <canvas id="preview-skyhopper" class="skin-preview-canvas" width="88" height="88" aria-label="Skin astral para Sky Hopper"></canvas>
       <div class="title">Sky Hopper<br>Skin: Astral</div>
       <div class="price">Precio: 100 monedas</div>
-      <button class="btn buy-btn" data-skin="skyhopper_astro">Comprar</button>
+      <div class="skin-action" data-skin-action="skyhopper_astro">
+        <button class="btn buy-btn" data-skin="skyhopper_astro">Comprar</button>
+      </div>
       <div class="status" id="status-skyhopper_astro"></div>
     </article>
   </div>
@@ -256,6 +314,7 @@
   <script>
     const COIN_KEY = 'olap_coins';
     const OWNED_KEY = 'olap_owned_skins';
+    const SKIN_ACTIVE_KEY = 'olap_skin_active_state';
     const STARTING_COINS = 0;
     const SKIN_PRICE = 100;
     const COIN_CODES = [
@@ -265,7 +324,8 @@
     const SECRET_SEQUENCE = 'REMOVED_CODE';
 
     const coinEl = document.getElementById('coin-count');
-    const buyButtons = document.querySelectorAll('.buy-btn');
+    const shopGrid = document.querySelector('.shop-grid');
+    const actionSlots = document.querySelectorAll('.skin-action');
     const cheatCodeInput = document.getElementById('cheat-code-input');
     const cheatCodeBtn = document.getElementById('cheat-code-btn');
     const codeMessageEl = document.getElementById('code-message');
@@ -310,26 +370,58 @@
       localStorage.setItem(OWNED_KEY, JSON.stringify(skins));
     }
 
+    function getSkinActiveState() {
+      const raw = localStorage.getItem(SKIN_ACTIVE_KEY);
+      if (!raw) return {};
+      try {
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === 'object' ? parsed : {};
+      } catch {
+        return {};
+      }
+    }
+
+    function setSkinActiveState(state) {
+      localStorage.setItem(SKIN_ACTIVE_KEY, JSON.stringify(state));
+    }
+
+    function renderBuyButton(skin) {
+      return `<button class="btn buy-btn" data-skin="${skin}">Comprar</button>`;
+    }
+
+    function renderSkinSwitch(skin, isActive) {
+      return `
+        <div class="switch-wrap">
+          <label class="switch" aria-label="Activar o desactivar skin">
+            <input class="skin-switch" type="checkbox" data-skin="${skin}" ${isActive ? 'checked' : ''}>
+            <span class="slider"></span>
+          </label>
+          <span>${isActive ? 'Activada' : 'Desactivada'}</span>
+        </div>
+      `;
+    }
+
     function updateButtons() {
       const owned = new Set(getOwnedSkins());
-      buyButtons.forEach((btn) => {
-        const skin = btn.dataset.skin;
+      const skinState = getSkinActiveState();
+      actionSlots.forEach((slot) => {
+        const skin = slot.dataset.skinAction;
         const status = document.getElementById(`status-${skin}`);
         if (owned.has(skin)) {
-          btn.disabled = true;
-          btn.textContent = 'Comprado';
-          status.textContent = 'Skin desbloqueada.';
+          const isActive = Boolean(skinState[skin]);
+          slot.innerHTML = renderSkinSwitch(skin, isActive);
+          status.textContent = isActive ? 'Skin desbloqueada y activada.' : 'Skin desbloqueada y desactivada.';
         } else {
-          btn.disabled = false;
-          btn.textContent = 'Comprar';
+          slot.innerHTML = renderBuyButton(skin);
           status.textContent = '';
         }
       });
     }
 
-    buyButtons.forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const skin = btn.dataset.skin;
+    shopGrid.addEventListener('click', (event) => {
+      const btn = event.target.closest('.buy-btn');
+      if (!btn) return;
+      const skin = btn.dataset.skin;
         const status = document.getElementById(`status-${skin}`);
         const coins = getCoins();
 
@@ -343,9 +435,21 @@
           owned.push(skin);
           setOwnedSkins(owned);
           setCoins(coins - SKIN_PRICE);
+          const skinState = getSkinActiveState();
+          skinState[skin] = false;
+          setSkinActiveState(skinState);
           updateButtons();
         }
-      });
+    });
+
+    shopGrid.addEventListener('change', (event) => {
+      const toggle = event.target.closest('.skin-switch');
+      if (!toggle) return;
+      const skin = toggle.dataset.skin;
+      const skinState = getSkinActiveState();
+      skinState[skin] = toggle.checked;
+      setSkinActiveState(skinState);
+      updateButtons();
     });
 
     cheatCodeBtn.addEventListener('click', () => {
