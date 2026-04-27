@@ -155,6 +155,7 @@
       border: 2px solid rgba(255,255,255,.35);
       position: relative;
       z-index: 2;
+      isolation: isolate;
     }
     .podium-badge.gold { background: linear-gradient(180deg, #ffd86b, #d7a821); }
     .podium-badge.silver { background: linear-gradient(180deg, #ecf1f7, #a6b2c5); }
@@ -172,7 +173,7 @@
       height: 24px;
       background: linear-gradient(180deg, #2d67ba, #18478c);
       border: 1px solid rgba(255, 216, 107, .55);
-      z-index: 1;
+      z-index: -1;
     }
     .podium-badge.gold::before,
     .podium-badge.silver::before,
