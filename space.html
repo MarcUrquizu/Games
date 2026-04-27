@@ -152,10 +152,41 @@
       font-size: 16px;
       color: #10141b;
       border: 2px solid rgba(255,255,255,.35);
+      position: relative;
+      z-index: 1;
     }
     .podium-badge.gold { background: linear-gradient(180deg, #ffd86b, #d7a821); }
     .podium-badge.silver { background: linear-gradient(180deg, #ecf1f7, #a6b2c5); }
     .podium-badge.bronze { background: linear-gradient(180deg, #f1bb8d, #b36e38); }
+    .podium-badge.gold::before,
+    .podium-badge.gold::after,
+    .podium-badge.silver::before,
+    .podium-badge.silver::after,
+    .podium-badge.bronze::before,
+    .podium-badge.bronze::after {
+      content: "";
+      position: absolute;
+      top: 30px;
+      width: 12px;
+      height: 18px;
+      background: linear-gradient(180deg, #2d67ba, #18478c);
+      border: 1px solid rgba(255, 216, 107, .55);
+      z-index: -1;
+    }
+    .podium-badge.gold::before,
+    .podium-badge.silver::before,
+    .podium-badge.bronze::before {
+      left: 4px;
+      transform: skewX(-12deg);
+      clip-path: polygon(0 0, 100% 0, 76% 100%, 0 86%);
+    }
+    .podium-badge.gold::after,
+    .podium-badge.silver::after,
+    .podium-badge.bronze::after {
+      right: 4px;
+      transform: skewX(12deg);
+      clip-path: polygon(0 0, 100% 0, 100% 86%, 24% 100%);
+    }
     .podium-badge.rank {
       background: rgba(130,150,175,.2);
       color: #e8eef7;
