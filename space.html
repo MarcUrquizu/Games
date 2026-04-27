@@ -296,6 +296,7 @@
   const LS_MEDAL_HARDCORE = "msi_medal_hardcore";
   const LS_UNLOCK_NOLIMITS = "msi_unlocked_nolimits";
   const LS_OWNED_SKINS = "olap_owned_skins";
+  const LS_SKIN_ACTIVE = "olap_skin_active_state";
   const SECRET_SEQUENCE = "REMOVED_CODE";
   let recentSecretKeys = "";
   document.addEventListener("keydown", (event) => {
@@ -327,6 +328,14 @@
     try {
       const owned = JSON.parse(localStorage.getItem(LS_OWNED_SKINS) || "[]");
       return Array.isArray(owned) && owned.includes(skinId);
+    } catch {
+      return false;
+    }
+  }
+  function isSkinActive(skinId) {
+    try {
+      const active = JSON.parse(localStorage.getItem(LS_SKIN_ACTIVE) || "{}");
+      return Boolean(active && active[skinId]);
     } catch {
       return false;
     }
@@ -383,7 +392,7 @@
 
   // ===== Modo =====
   const mode = { name: (localStorage.getItem(LS_LASTMODE) || "NORMAL") };
-  const usingSpacePlaneSkin = hasOwnedSkin("space_1");
+  const usingSpacePlaneSkin = hasOwnedSkin("space_1") && isSkinActive("space_1");
 
   // ===== Ajustes =====
   const tuning = {

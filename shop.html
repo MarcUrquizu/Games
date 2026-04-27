@@ -436,7 +436,7 @@
           setOwnedSkins(owned);
           setCoins(coins - SKIN_PRICE);
           const skinState = getSkinActiveState();
-          skinState[skin] = false;
+          skinState[skin] = true;
           setSkinActiveState(skinState);
           updateButtons();
         }
