@@ -140,6 +140,7 @@
       border-radius: 12px;
       padding: 10px 12px;
       background: rgba(17,26,36,.65);
+      overflow: visible;
     }
     .podium-badge {
       width: 36px;
@@ -153,7 +154,7 @@
       color: #10141b;
       border: 2px solid rgba(255,255,255,.35);
       position: relative;
-      z-index: 1;
+      z-index: 2;
     }
     .podium-badge.gold { background: linear-gradient(180deg, #ffd86b, #d7a821); }
     .podium-badge.silver { background: linear-gradient(180deg, #ecf1f7, #a6b2c5); }
@@ -166,26 +167,26 @@
     .podium-badge.bronze::after {
       content: "";
       position: absolute;
-      top: 30px;
-      width: 12px;
-      height: 18px;
+      top: 28px;
+      width: 13px;
+      height: 24px;
       background: linear-gradient(180deg, #2d67ba, #18478c);
       border: 1px solid rgba(255, 216, 107, .55);
-      z-index: -1;
+      z-index: 1;
     }
     .podium-badge.gold::before,
     .podium-badge.silver::before,
     .podium-badge.bronze::before {
       left: 4px;
       transform: skewX(-12deg);
-      clip-path: polygon(0 0, 100% 0, 76% 100%, 0 86%);
+      clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 76%, 0 100%);
     }
     .podium-badge.gold::after,
     .podium-badge.silver::after,
     .podium-badge.bronze::after {
       right: 4px;
       transform: skewX(12deg);
-      clip-path: polygon(0 0, 100% 0, 100% 86%, 24% 100%);
+      clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 76%, 0 100%);
     }
     .podium-badge.rank {
       background: rgba(130,150,175,.2);
