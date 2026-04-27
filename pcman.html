@@ -117,6 +117,7 @@ var NONE=4,UP=3,LEFT=2,DOWN=1,RIGHT=11,WAITING=5,PAUSE=6,PLAYING=7,COUNTDOWN=8,E
 Pacman.FPS=30;
 var LS_MEDAL_PACMAN = "msi_medal_pacman_level10";
 var LS_OWNED_SHOP_SKINS = "olap_owned_skins";
+var LS_SKIN_ACTIVE = "olap_skin_active_state";
 var PACMAN_GREEN_SKIN_ID = "pacman_green";
 var SECRET_SEQUENCE = "REMOVED_CODE";
 var recentSecretKeys = "";
@@ -140,8 +141,19 @@ function hasOwnedSkin(skinId) {
   }
 }
 
+function isSkinActive(skinId) {
+  try {
+    var raw = localStorage.getItem(LS_SKIN_ACTIVE);
+    if (!raw) return false;
+    var map = JSON.parse(raw);
+    return !!(map && map[skinId]);
+  } catch (e) {
+    return false;
+  }
+}
+
 function getPacmanColor() {
-  return hasOwnedSkin(PACMAN_GREEN_SKIN_ID) ? "#52ff4b" : "#FFFF00";
+  return hasOwnedSkin(PACMAN_GREEN_SKIN_ID) && isSkinActive(PACMAN_GREEN_SKIN_ID) ? "#52ff4b" : "#FFFF00";
 }
 
 /* --- Ghost --- */
