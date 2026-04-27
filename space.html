@@ -155,17 +155,20 @@
       border: 2px solid rgba(255,255,255,.35);
       position: relative;
       z-index: 2;
-      isolation: isolate;
     }
     .podium-badge.gold { background: linear-gradient(180deg, #ffd86b, #d7a821); }
     .podium-badge.silver { background: linear-gradient(180deg, #ecf1f7, #a6b2c5); }
     .podium-badge.bronze { background: linear-gradient(180deg, #f1bb8d, #b36e38); }
-    .podium-badge.gold::before,
-    .podium-badge.gold::after,
-    .podium-badge.silver::before,
-    .podium-badge.silver::after,
-    .podium-badge.bronze::before,
-    .podium-badge.bronze::after {
+    .podium-medal {
+      position: relative;
+      width: 36px;
+      height: 52px;
+      display: inline-flex;
+      align-items: flex-start;
+      justify-content: center;
+    }
+    .podium-medal::before,
+    .podium-medal::after {
       content: "";
       position: absolute;
       top: 28px;
@@ -173,18 +176,14 @@
       height: 24px;
       background: linear-gradient(180deg, #2d67ba, #18478c);
       border: 1px solid rgba(255, 216, 107, .55);
-      z-index: -1;
+      z-index: 1;
     }
-    .podium-badge.gold::before,
-    .podium-badge.silver::before,
-    .podium-badge.bronze::before {
+    .podium-medal::before {
       left: 4px;
       transform: skewX(-12deg);
       clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 76%, 0 100%);
     }
-    .podium-badge.gold::after,
-    .podium-badge.silver::after,
-    .podium-badge.bronze::after {
+    .podium-medal::after {
       right: 4px;
       transform: skewX(12deg);
       clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 76%, 0 100%);
@@ -268,15 +267,15 @@
       </div>
       <div class="podium-list">
         <div class="podium-item">
-          <span class="podium-badge gold">1</span>
+          <span class="podium-medal"><span class="podium-badge gold">1</span></span>
           <span class="podium-text">Próximamente</span>
         </div>
         <div class="podium-item">
-          <span class="podium-badge silver">2</span>
+          <span class="podium-medal"><span class="podium-badge silver">2</span></span>
           <span class="podium-text">Próximamente</span>
         </div>
         <div class="podium-item">
-          <span class="podium-badge bronze">3</span>
+          <span class="podium-medal"><span class="podium-badge bronze">3</span></span>
           <span class="podium-text">Próximamente</span>
         </div>
         <div class="podium-item">
