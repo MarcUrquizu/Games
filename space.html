@@ -125,6 +125,78 @@
     .miniBtn:active{ transform: translateY(1px); }
     .miniBtn.disabled{ cursor:not-allowed; opacity:.45; }
     .note{ margin-top: 10px; font-size: 12px; opacity: .8; line-height: 1.35; }
+    .podium-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 8px;
+      text-align: left;
+    }
+    .podium-item {
+      display: grid;
+      grid-template-columns: 48px 1fr;
+      align-items: center;
+      gap: 12px;
+      border: 1px solid rgba(120,150,200,.25);
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: rgba(17,26,36,.65);
+    }
+    .podium-badge {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 16px;
+      color: #10141b;
+      border: 2px solid rgba(255,255,255,.35);
+      position: relative;
+      z-index: 1;
+    }
+    .podium-badge.gold { background: linear-gradient(180deg, #ffd86b, #d7a821); }
+    .podium-badge.silver { background: linear-gradient(180deg, #ecf1f7, #a6b2c5); }
+    .podium-badge.bronze { background: linear-gradient(180deg, #f1bb8d, #b36e38); }
+    .podium-badge.gold::before,
+    .podium-badge.gold::after,
+    .podium-badge.silver::before,
+    .podium-badge.silver::after,
+    .podium-badge.bronze::before,
+    .podium-badge.bronze::after {
+      content: "";
+      position: absolute;
+      top: 30px;
+      width: 12px;
+      height: 18px;
+      background: linear-gradient(180deg, #2d67ba, #18478c);
+      border: 1px solid rgba(255, 216, 107, .55);
+      z-index: -1;
+    }
+    .podium-badge.gold::before,
+    .podium-badge.silver::before,
+    .podium-badge.bronze::before {
+      left: 4px;
+      transform: skewX(-12deg);
+      clip-path: polygon(0 0, 100% 0, 76% 100%, 0 86%);
+    }
+    .podium-badge.gold::after,
+    .podium-badge.silver::after,
+    .podium-badge.bronze::after {
+      right: 4px;
+      transform: skewX(12deg);
+      clip-path: polygon(0 0, 100% 0, 100% 86%, 24% 100%);
+    }
+    .podium-badge.rank {
+      background: rgba(130,150,175,.2);
+      color: #e8eef7;
+      border-color: rgba(130,150,175,.45);
+    }
+    .podium-text {
+      font-size: 13px;
+      font-weight: 700;
+      opacity: .9;
+    }
   </style>
 </head>
 <body>
@@ -135,6 +207,7 @@
   <div class="topButtons" aria-label="Acciones rápidas">
     <button id="btnMenu" class="pillBtn" type="button">Menú</button>
     <button id="btnInfo" class="pillBtn" type="button">Info</button>
+    <button id="btnPodio" class="pillBtn" type="button">Podio</button>
   </div>
 
   <div class="hint">
@@ -181,6 +254,40 @@
       <div class="note">Tip: desbloquea Hardcore ganando la partida. Borrar checkpoint limpia el progreso guardado.</div>
       <div class="miniRow" style="margin-top:14px;">
         <button id="btnCloseInfo" class="btn" type="button">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="podioOverlay" class="overlay" aria-hidden="true">
+    <div class="panel">
+      <div class="title">PODIO TOP 5</div>
+      <div class="subtitle">
+        Próximamente estará disponible el ranking en vivo.
+      </div>
+      <div class="podium-list">
+        <div class="podium-item">
+          <span class="podium-badge gold">1</span>
+          <span class="podium-text">Próximamente</span>
+        </div>
+        <div class="podium-item">
+          <span class="podium-badge silver">2</span>
+          <span class="podium-text">Próximamente</span>
+        </div>
+        <div class="podium-item">
+          <span class="podium-badge bronze">3</span>
+          <span class="podium-text">Próximamente</span>
+        </div>
+        <div class="podium-item">
+          <span class="podium-badge rank">4</span>
+          <span class="podium-text">Próximamente</span>
+        </div>
+        <div class="podium-item">
+          <span class="podium-badge rank">5</span>
+          <span class="podium-text">Próximamente</span>
+        </div>
+      </div>
+      <div class="miniRow" style="margin-top:14px;">
+        <button id="btnClosePodio" class="btn" type="button">Cerrar</button>
       </div>
     </div>
   </div>
@@ -241,9 +348,12 @@
   // ===== DOM: overlay =====
   const overlay = document.getElementById("menuOverlay");
   const infoOverlay = document.getElementById("infoOverlay");
+  const podioOverlay = document.getElementById("podioOverlay");
   const btnMenu = document.getElementById("btnMenu");
   const btnInfo = document.getElementById("btnInfo");
+  const btnPodio = document.getElementById("btnPodio");
   const btnCloseInfo = document.getElementById("btnCloseInfo");
+  const btnClosePodio = document.getElementById("btnClosePodio");
   const btnNormal = document.getElementById("btnNormal");
   const btnHardcore = document.getElementById("btnHardcore");
   const btnNoLimits = document.getElementById("btnNoLimits");
@@ -254,6 +364,8 @@
   function hideOverlay() { overlay.style.display = "none"; overlay.setAttribute("aria-hidden","true"); }
   function showInfo() { infoOverlay.style.display = "flex"; infoOverlay.setAttribute("aria-hidden","false"); }
   function hideInfo() { infoOverlay.style.display = "none"; infoOverlay.setAttribute("aria-hidden","true"); }
+  function showPodio() { podioOverlay.style.display = "flex"; podioOverlay.setAttribute("aria-hidden","false"); }
+  function hidePodio() { podioOverlay.style.display = "none"; podioOverlay.setAttribute("aria-hidden","true"); }
 
   // ✅ NUEVO: overlay simple de PAUSA reutilizando .overlay/.panel
   const pauseOverlay = document.createElement("div");
@@ -282,7 +394,7 @@
     // solo tiene sentido si estás jugando (o en game over/ganado no)
     if (state.status !== "PLAYING") return;
     // si hay overlays de menú/info abiertos, mejor no pausar “encima”
-    if (overlay.style.display === "flex" || infoOverlay.style.display === "flex") return;
+    if (overlay.style.display === "flex" || infoOverlay.style.display === "flex" || podioOverlay.style.display === "flex") return;
     setPaused(!pause.on);
   }
 
@@ -296,6 +408,7 @@
   const LS_MEDAL_HARDCORE = "msi_medal_hardcore";
   const LS_UNLOCK_NOLIMITS = "msi_unlocked_nolimits";
   const LS_OWNED_SKINS = "olap_owned_skins";
+  const LS_SKIN_ACTIVE = "olap_skin_active_state";
   const SECRET_SEQUENCE = "REMOVED_CODE";
   let recentSecretKeys = "";
   document.addEventListener("keydown", (event) => {
@@ -327,6 +440,14 @@
     try {
       const owned = JSON.parse(localStorage.getItem(LS_OWNED_SKINS) || "[]");
       return Array.isArray(owned) && owned.includes(skinId);
+    } catch {
+      return false;
+    }
+  }
+  function isSkinActive(skinId) {
+    try {
+      const active = JSON.parse(localStorage.getItem(LS_SKIN_ACTIVE) || "{}");
+      return Boolean(active && active[skinId]);
     } catch {
       return false;
     }
@@ -383,7 +504,7 @@
 
   // ===== Modo =====
   const mode = { name: (localStorage.getItem(LS_LASTMODE) || "NORMAL") };
-  const usingSpacePlaneSkin = hasOwnedSkin("space_1");
+  const usingSpacePlaneSkin = hasOwnedSkin("space_1") && isSkinActive("space_1");
 
   // ===== Ajustes =====
   const tuning = {
@@ -1975,8 +2096,11 @@
 
   btnMenu.addEventListener("click", () => { ensureAudio(); window.location.href = "index.html"; });
   btnInfo.addEventListener("click", () => { ensureAudio(); showInfo(); });
+  btnPodio.addEventListener("click", () => { ensureAudio(); showPodio(); });
   btnCloseInfo.addEventListener("click", () => { hideInfo(); });
+  btnClosePodio.addEventListener("click", () => { hidePodio(); });
   infoOverlay.addEventListener("click", (e) => { if (e.target === infoOverlay) hideInfo(); });
+  podioOverlay.addEventListener("click", (e) => { if (e.target === podioOverlay) hidePodio(); });
 
   // ===== Input =====
   window.addEventListener("keydown", (e) => {

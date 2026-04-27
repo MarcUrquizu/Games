@@ -25,7 +25,8 @@ var PACMAN_PLAYER_COLOR = "#FFFF00";
 (function loadShopSkins() {
     try {
         var owned = JSON.parse(window.localStorage.getItem("olap_owned_skins") || "[]");
-        if (Array.isArray(owned) && owned.indexOf("pacman_green") !== -1) {
+        var active = JSON.parse(window.localStorage.getItem("olap_skin_active_state") || "{}");
+        if (Array.isArray(owned) && owned.indexOf("pacman_green") !== -1 && active && active.pacman_green) {
             PACMAN_PLAYER_COLOR = "#52ff4b";
         }
     } catch (e) {}
