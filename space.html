@@ -598,6 +598,14 @@
     }
   };
   let hacksWindowEl = null;
+  function disableSpaceHacks() {
+    if (!window.__spaceDebug?.applyHacks) return;
+    window.__spaceDebug.applyHacks({
+      damage: 1,
+      companions: 0,
+      fireRate: 2.0,
+    });
+  }
   function applySpaceHackValue(field, value) {
     if (!window.__spaceDebug?.applyHacks) return;
     if (field === "damage") window.__spaceDebug.applyHacks({ damage: Number(value) });
@@ -640,6 +648,7 @@
     `;
     hacksWindowEl.querySelector("[data-hack-close]").addEventListener("click", () => {
       hacksWindowEl.style.display = "none";
+      disableSpaceHacks();
     });
     hacksWindowEl.querySelectorAll("select[data-hack-field]").forEach((selectEl) => {
       selectEl.addEventListener("change", () => {
@@ -665,6 +674,7 @@
     const hidden = panel.style.display === "none";
     panel.style.display = hidden ? "block" : "none";
     if (hidden) syncSpaceHackWindowValues();
+    else disableSpaceHacks();
   }
 
   const powerups = [];
