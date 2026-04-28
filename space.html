@@ -511,9 +511,11 @@
   const tuning = {
     NORMAL: { enemyShootMul:1.0, enemySpeedMul:1.0, enemyBulletMul:1.0, bossHpMul:1.0, bossFireMul:1.0, rapidDropChance:0.10, shieldDropChance:0.05, buddyDropChance:0.002, dmgDropChance:0.0006, checkpoints:true },
     HARDCORE:{ enemyShootMul:1.35, enemySpeedMul:1.15, enemyBulletMul:1.15, bossHpMul:1.15, bossFireMul:1.15, rapidDropChance:0.06, shieldDropChance:0.035, buddyDropChance:0.0016, dmgDropChance:0.0005, checkpoints:false },
+    NO_LIMITS:{ enemyShootMul:1.45, enemySpeedMul:1.22, enemyBulletMul:1.2, bossHpMul:1.3, bossFireMul:1.25, rapidDropChance:0.05, shieldDropChance:0.03, buddyDropChance:0.0014, dmgDropChance:0.00045, checkpoints:false },
   };
   function currentTuning() { return tuning[mode.name] || tuning.NORMAL; }
   function isBossWave(w) {
+    if (mode.name === "NO_LIMITS") return (w % 10 === 0);
     if (w <= 100) return (w % 5 === 0);   // igual que antes hasta 100
     return (w % 10 === 0);                // cambios desde 101
   }
@@ -647,6 +649,7 @@
     cooldown:0, phase:1, patternId:0, auxT:0, addCooldown:0, specialCooldown:0, queuedAttacks:[],
     attackLock:0, activeAttackType:"",
     waveLevel:1,
+    forceChaos:false,
     locked:false, targetY:0, spawnY:0,
   };
   const chaosBossFromPattern = 10; // comportamiento original hasta 100
@@ -905,6 +908,7 @@
   function initBossForWave(wave, spawnFromTop) {
     boss.active = true; boss.isFinal = false;
     const isBoss100Normal = (mode.name === "NORMAL" && wave === 100);
+    const isBoss100NoLimits = (mode.name === "NO_LIMITS" && wave === 100);
     boss.w = isBoss100Normal ? 220 : 160;
     boss.h = isBoss100Normal ? 68 : 48;
     boss.x = W/2 - boss.w/2;
@@ -913,6 +917,7 @@
     boss.y = spawnFromTop ? boss.spawnY : boss.targetY;
     boss.dir = 1; boss.speed = isBoss100Normal ? 92 : 110;
     boss.waveLevel = wave;
+    boss.forceChaos = false;
     boss.patternId = (wave <= 100)
       ? (wave / 5)
       : Math.max(1, Math.floor((wave - 100) / 10) + 1);
@@ -928,6 +933,18 @@
     } else {
       boss.hpMax = Math.floor((320 + wave * 42 + (boss.patternId - 1) * 180) * t.bossHpMul);
       boss.cooldown = 0.84 / t.bossFireMul;
+    }
+    if (isBoss100Normal) {
+      boss.patternId = 12;
+      boss.forceChaos = true;
+      boss.hpMax = Math.floor(11000 * t.bossHpMul);
+      boss.cooldown = 0.42 / t.bossFireMul;
+      boss.speed = 150;
+    } else if (isBoss100NoLimits) {
+      boss.patternId = Math.max(boss.patternId, 10);
+      boss.forceChaos = true;
+      boss.hpMax = Math.floor(3600 * t.bossHpMul);
+      boss.cooldown = 0.55 / t.bossFireMul;
     }
     boss.hp = boss.hpMax;
     boss.locked = !!spawnFromTop;
@@ -1066,9 +1083,9 @@
     const waveLevel = boss.waveLevel || state.wave;
     const baseSpeed = (260 + id * 8) * t.bossFireMul;
 
-    const chaosOnThisBoss = (waveLevel <= 100)
+    const chaosOnThisBoss = boss.forceChaos || ((waveLevel <= 100)
       ? (id >= chaosBossFromPattern && waveLevel < 100)
-      : true;
+      : true);
     if (chaosOnThisBoss) {
       chaosBossFire(dt);
       return;
@@ -1362,18 +1379,18 @@
   }
 
   function startNoLimitsMode() {
-    mode.name = "NORMAL";
-    localStorage.setItem(LS_LASTMODE, "NORMAL");
+    mode.name = "NO_LIMITS";
+    localStorage.setItem(LS_LASTMODE, "NO_LIMITS");
     resetGame(false);
     state.status = "PLAYING";
     hideOverlay();
-    state.wave = 101;
+    state.wave = 1;
     state.score = 0;
     player.fireRate = 2.0;
     player.damage = 1;
     player.dmgUpgrades = 0;
     buddies.length = 0;
-    startTransitionToWave(101, false);
+    startTransitionToWave(1, false);
     beep(560, 0.08, "triangle", 0.05);
   }
 
