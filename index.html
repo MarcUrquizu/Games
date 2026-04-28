@@ -110,6 +110,21 @@
       top: 18px;
       right: 18px;
       z-index: 2;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    #auth-user-name {
+      color: #fff;
+      font-size: 10px;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    }
+    #auth-user-name.hidden {
+      display: none;
     }
     #login-logout-btn {
       background: #fff;
@@ -284,6 +299,7 @@
   </div>
 
   <div class="auth-button-container">
+    <span id="auth-user-name" class="hidden" aria-live="polite"></span>
     <button id="login-logout-btn">Login</button>
   </div>
 
@@ -427,6 +443,7 @@
     let isAuthenticated = false;
     let userInfo = null;
     const loginBtn = document.getElementById('login-logout-btn');
+    const authUserName = document.getElementById('auth-user-name');
 
     function getCoins() {
       const saved = Number(localStorage.getItem(COIN_KEY));
@@ -469,9 +486,13 @@
     // Actualizar UI del botón según el estado
     function updateButtonUI() {
       if (isAuthenticated) {
+        authUserName.textContent = userInfo?.name || userInfo?.email || '';
+        authUserName.classList.remove('hidden');
         loginBtn.textContent = 'Logout';
         loginBtn.onclick = handleLogout;
       } else {
+        authUserName.textContent = '';
+        authUserName.classList.add('hidden');
         loginBtn.textContent = 'Login';
         loginBtn.onclick = handleLogin;
       }
