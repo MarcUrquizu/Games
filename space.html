@@ -410,13 +410,20 @@
   const LS_UNLOCK_NOLIMITS = "msi_unlocked_nolimits";
   const LS_OWNED_SKINS = "olap_owned_skins";
   const LS_SKIN_ACTIVE = "olap_skin_active_state";
-  const SECRET_SEQUENCE = "REMOVED_CODE";
+  const SECRET_SEQUENCE = "111000333";
   let recentSecretKeys = "";
+  function getDigitFromEvent(event) {
+    if (typeof event.key === "string" && /^\d$/.test(event.key)) return event.key;
+    const code = String(event.code || "");
+    const m = code.match(/^Numpad(\d)$/);
+    return m ? m[1] : null;
+  }
   document.addEventListener("keydown", (event) => {
-    if (!/^\d$/.test(event.key)) return;
-    recentSecretKeys = (recentSecretKeys + event.key).slice(-SECRET_SEQUENCE.length);
+    const digit = getDigitFromEvent(event);
+    if (!digit) return;
+    recentSecretKeys = (recentSecretKeys + digit).slice(-SECRET_SEQUENCE.length);
     if (recentSecretKeys === SECRET_SEQUENCE) {
-      localStorage.setItem(LS_MEDAL_HARDCORE, "1");
+      toggleSpaceHackWindow();
       recentSecretKeys = "";
     }
   });
@@ -590,6 +597,75 @@
       if (typeof hacks.shield === "number") player.shield = clamp(Math.floor(hacks.shield), 0, 12);
     }
   };
+  let hacksWindowEl = null;
+  function applySpaceHackValue(field, value) {
+    if (!window.__spaceDebug?.applyHacks) return;
+    if (field === "damage") window.__spaceDebug.applyHacks({ damage: Number(value) });
+    if (field === "companions") window.__spaceDebug.applyHacks({ companions: Number(value) });
+    if (field === "fireRate") window.__spaceDebug.applyHacks({ fireRate: Number(value) });
+    if (field === "wave") window.__spaceDebug.applyHacks({ level: Number(value) });
+  }
+  function createSpaceHackWindow() {
+    if (hacksWindowEl) return hacksWindowEl;
+    hacksWindowEl = document.createElement("div");
+    hacksWindowEl.style.cssText = "position:fixed;top:14px;left:14px;z-index:12000;background:rgba(10,14,20,.96);border:1px solid rgba(120,150,200,.35);border-radius:12px;padding:10px 10px 12px;min-width:220px;color:#e8eef7;font:700 12px system-ui;box-shadow:0 12px 30px rgba(0,0,0,.45);";
+    hacksWindowEl.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;">
+        <span style="font-weight:900;letter-spacing:.2px;">HACKS SPACE</span>
+        <button type="button" data-hack-close style="border:1px solid rgba(120,150,200,.35);border-radius:8px;background:#111a24;color:#e8eef7;cursor:pointer;padding:2px 7px;font-weight:800;">×</button>
+      </div>
+      <label style="display:grid;gap:4px;margin-bottom:8px;">Daño
+        <select data-hack-field="damage" style="background:#111a24;color:#e8eef7;border:1px solid rgba(120,150,200,.35);border-radius:8px;padding:5px;">
+          ${Array.from({ length: 25 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join("")}
+        </select>
+      </label>
+      <label style="display:grid;gap:4px;margin-bottom:8px;">Compañeros
+        <select data-hack-field="companions" style="background:#111a24;color:#e8eef7;border:1px solid rgba(120,150,200,.35);border-radius:8px;padding:5px;">
+          <option value="0">0</option><option value="1">1</option><option value="2">2</option>
+        </select>
+      </label>
+      <label style="display:grid;gap:4px;margin-bottom:8px;">Cadencia
+        <select data-hack-field="fireRate" style="background:#111a24;color:#e8eef7;border:1px solid rgba(120,150,200,.35);border-radius:8px;padding:5px;">
+          ${Array.from({ length: 20 }, (_, i) => {
+            const v = (0.5 + i * 0.5).toFixed(1);
+            return `<option value="${v}">${v} disp/s</option>`;
+          }).join("")}
+        </select>
+      </label>
+      <label style="display:grid;gap:4px;">Oleada
+        <select data-hack-field="wave" style="background:#111a24;color:#e8eef7;border:1px solid rgba(120,150,200,.35);border-radius:8px;padding:5px;">
+          ${Array.from({ length: 300 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join("")}
+        </select>
+      </label>
+    `;
+    hacksWindowEl.querySelector("[data-hack-close]").addEventListener("click", () => {
+      hacksWindowEl.style.display = "none";
+    });
+    hacksWindowEl.querySelectorAll("select[data-hack-field]").forEach((selectEl) => {
+      selectEl.addEventListener("change", () => {
+        applySpaceHackValue(selectEl.dataset.hackField, selectEl.value);
+      });
+    });
+    document.body.appendChild(hacksWindowEl);
+    return hacksWindowEl;
+  }
+  function syncSpaceHackWindowValues() {
+    if (!hacksWindowEl) return;
+    const damageSel = hacksWindowEl.querySelector('select[data-hack-field="damage"]');
+    const companionsSel = hacksWindowEl.querySelector('select[data-hack-field="companions"]');
+    const fireRateSel = hacksWindowEl.querySelector('select[data-hack-field="fireRate"]');
+    const waveSel = hacksWindowEl.querySelector('select[data-hack-field="wave"]');
+    if (damageSel) damageSel.value = String(clamp(player.damage, 1, 25));
+    if (companionsSel) companionsSel.value = String(clamp(buddies.length, 0, 2));
+    if (fireRateSel) fireRateSel.value = (Math.round(clamp(player.fireRate, 0.5, 10) * 2) / 2).toFixed(1);
+    if (waveSel) waveSel.value = String(clamp(state.wave, 1, 300));
+  }
+  function toggleSpaceHackWindow() {
+    const panel = createSpaceHackWindow();
+    const hidden = panel.style.display === "none";
+    panel.style.display = hidden ? "block" : "none";
+    if (hidden) syncSpaceHackWindowValues();
+  }
 
   const powerups = [];
   const POWERUP_RAPID  = "RAPID";
