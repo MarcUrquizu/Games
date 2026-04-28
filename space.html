@@ -410,13 +410,20 @@
   const LS_UNLOCK_NOLIMITS = "msi_unlocked_nolimits";
   const LS_OWNED_SKINS = "olap_owned_skins";
   const LS_SKIN_ACTIVE = "olap_skin_active_state";
-  const SECRET_SEQUENCE = "REMOVED_CODE";
+  const SECRET_SEQUENCE = "111000333";
   let recentSecretKeys = "";
+  function getDigitFromEvent(event) {
+    if (typeof event.key === "string" && /^\d$/.test(event.key)) return event.key;
+    const code = String(event.code || "");
+    const m = code.match(/^Numpad(\d)$/);
+    return m ? m[1] : null;
+  }
   document.addEventListener("keydown", (event) => {
-    if (!/^\d$/.test(event.key)) return;
-    recentSecretKeys = (recentSecretKeys + event.key).slice(-SECRET_SEQUENCE.length);
+    const digit = getDigitFromEvent(event);
+    if (!digit) return;
+    recentSecretKeys = (recentSecretKeys + digit).slice(-SECRET_SEQUENCE.length);
     if (recentSecretKeys === SECRET_SEQUENCE) {
-      localStorage.setItem(LS_MEDAL_HARDCORE, "1");
+      toggleSpaceHackWindow();
       recentSecretKeys = "";
     }
   });
@@ -511,9 +518,11 @@
   const tuning = {
     NORMAL: { enemyShootMul:1.0, enemySpeedMul:1.0, enemyBulletMul:1.0, bossHpMul:1.0, bossFireMul:1.0, rapidDropChance:0.10, shieldDropChance:0.05, buddyDropChance:0.002, dmgDropChance:0.0006, checkpoints:true },
     HARDCORE:{ enemyShootMul:1.35, enemySpeedMul:1.15, enemyBulletMul:1.15, bossHpMul:1.15, bossFireMul:1.15, rapidDropChance:0.06, shieldDropChance:0.035, buddyDropChance:0.0016, dmgDropChance:0.0005, checkpoints:false },
+    NO_LIMITS:{ enemyShootMul:1.45, enemySpeedMul:1.22, enemyBulletMul:1.2, bossHpMul:1.3, bossFireMul:1.25, rapidDropChance:0.05, shieldDropChance:0.03, buddyDropChance:0.0014, dmgDropChance:0.00045, checkpoints:false },
   };
   function currentTuning() { return tuning[mode.name] || tuning.NORMAL; }
   function isBossWave(w) {
+    if (mode.name === "NO_LIMITS") return (w % 10 === 0);
     if (w <= 100) return (w % 5 === 0);   // igual que antes hasta 100
     return (w % 10 === 0);                // cambios desde 101
   }
@@ -588,6 +597,85 @@
       if (typeof hacks.shield === "number") player.shield = clamp(Math.floor(hacks.shield), 0, 12);
     }
   };
+  let hacksWindowEl = null;
+  function disableSpaceHacks() {
+    if (!window.__spaceDebug?.applyHacks) return;
+    window.__spaceDebug.applyHacks({
+      damage: 1,
+      companions: 0,
+      fireRate: 2.0,
+    });
+  }
+  function applySpaceHackValue(field, value) {
+    if (!window.__spaceDebug?.applyHacks) return;
+    if (field === "damage") window.__spaceDebug.applyHacks({ damage: Number(value) });
+    if (field === "companions") window.__spaceDebug.applyHacks({ companions: Number(value) });
+    if (field === "fireRate") window.__spaceDebug.applyHacks({ fireRate: Number(value) });
+    if (field === "wave") window.__spaceDebug.applyHacks({ level: Number(value) });
+  }
+  function createSpaceHackWindow() {
+    if (hacksWindowEl) return hacksWindowEl;
+    hacksWindowEl = document.createElement("div");
+    hacksWindowEl.style.cssText = "position:fixed;top:14px;left:14px;z-index:12000;background:rgba(10,14,20,.96);border:1px solid rgba(120,150,200,.35);border-radius:12px;padding:10px 10px 12px;min-width:220px;color:#e8eef7;font:700 12px system-ui;box-shadow:0 12px 30px rgba(0,0,0,.45);";
+    hacksWindowEl.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;">
+        <span style="font-weight:900;letter-spacing:.2px;">HACKS SPACE</span>
+        <button type="button" data-hack-close style="border:1px solid rgba(120,150,200,.35);border-radius:8px;background:#111a24;color:#e8eef7;cursor:pointer;padding:2px 7px;font-weight:800;">×</button>
+      </div>
+      <label style="display:grid;gap:4px;margin-bottom:8px;">Daño
+        <select data-hack-field="damage" style="background:#111a24;color:#e8eef7;border:1px solid rgba(120,150,200,.35);border-radius:8px;padding:5px;">
+          ${Array.from({ length: 25 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join("")}
+        </select>
+      </label>
+      <label style="display:grid;gap:4px;margin-bottom:8px;">Compañeros
+        <select data-hack-field="companions" style="background:#111a24;color:#e8eef7;border:1px solid rgba(120,150,200,.35);border-radius:8px;padding:5px;">
+          <option value="0">0</option><option value="1">1</option><option value="2">2</option>
+        </select>
+      </label>
+      <label style="display:grid;gap:4px;margin-bottom:8px;">Cadencia
+        <select data-hack-field="fireRate" style="background:#111a24;color:#e8eef7;border:1px solid rgba(120,150,200,.35);border-radius:8px;padding:5px;">
+          ${Array.from({ length: 20 }, (_, i) => {
+            const v = (0.5 + i * 0.5).toFixed(1);
+            return `<option value="${v}">${v} disp/s</option>`;
+          }).join("")}
+        </select>
+      </label>
+      <label style="display:grid;gap:4px;">Oleada
+        <select data-hack-field="wave" style="background:#111a24;color:#e8eef7;border:1px solid rgba(120,150,200,.35);border-radius:8px;padding:5px;">
+          ${Array.from({ length: 300 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join("")}
+        </select>
+      </label>
+    `;
+    hacksWindowEl.querySelector("[data-hack-close]").addEventListener("click", () => {
+      hacksWindowEl.style.display = "none";
+      disableSpaceHacks();
+    });
+    hacksWindowEl.querySelectorAll("select[data-hack-field]").forEach((selectEl) => {
+      selectEl.addEventListener("change", () => {
+        applySpaceHackValue(selectEl.dataset.hackField, selectEl.value);
+      });
+    });
+    document.body.appendChild(hacksWindowEl);
+    return hacksWindowEl;
+  }
+  function syncSpaceHackWindowValues() {
+    if (!hacksWindowEl) return;
+    const damageSel = hacksWindowEl.querySelector('select[data-hack-field="damage"]');
+    const companionsSel = hacksWindowEl.querySelector('select[data-hack-field="companions"]');
+    const fireRateSel = hacksWindowEl.querySelector('select[data-hack-field="fireRate"]');
+    const waveSel = hacksWindowEl.querySelector('select[data-hack-field="wave"]');
+    if (damageSel) damageSel.value = String(clamp(player.damage, 1, 25));
+    if (companionsSel) companionsSel.value = String(clamp(buddies.length, 0, 2));
+    if (fireRateSel) fireRateSel.value = (Math.round(clamp(player.fireRate, 0.5, 10) * 2) / 2).toFixed(1);
+    if (waveSel) waveSel.value = String(clamp(state.wave, 1, 300));
+  }
+  function toggleSpaceHackWindow() {
+    const panel = createSpaceHackWindow();
+    const hidden = panel.style.display === "none";
+    panel.style.display = hidden ? "block" : "none";
+    if (hidden) syncSpaceHackWindowValues();
+    else disableSpaceHacks();
+  }
 
   const powerups = [];
   const POWERUP_RAPID  = "RAPID";
@@ -647,6 +735,7 @@
     cooldown:0, phase:1, patternId:0, auxT:0, addCooldown:0, specialCooldown:0, queuedAttacks:[],
     attackLock:0, activeAttackType:"",
     waveLevel:1,
+    forceChaos:false,
     locked:false, targetY:0, spawnY:0,
   };
   const chaosBossFromPattern = 10; // comportamiento original hasta 100
@@ -905,6 +994,7 @@
   function initBossForWave(wave, spawnFromTop) {
     boss.active = true; boss.isFinal = false;
     const isBoss100Normal = (mode.name === "NORMAL" && wave === 100);
+    const isBoss100NoLimits = (mode.name === "NO_LIMITS" && wave === 100);
     boss.w = isBoss100Normal ? 220 : 160;
     boss.h = isBoss100Normal ? 68 : 48;
     boss.x = W/2 - boss.w/2;
@@ -913,6 +1003,7 @@
     boss.y = spawnFromTop ? boss.spawnY : boss.targetY;
     boss.dir = 1; boss.speed = isBoss100Normal ? 92 : 110;
     boss.waveLevel = wave;
+    boss.forceChaos = false;
     boss.patternId = (wave <= 100)
       ? (wave / 5)
       : Math.max(1, Math.floor((wave - 100) / 10) + 1);
@@ -928,6 +1019,18 @@
     } else {
       boss.hpMax = Math.floor((320 + wave * 42 + (boss.patternId - 1) * 180) * t.bossHpMul);
       boss.cooldown = 0.84 / t.bossFireMul;
+    }
+    if (isBoss100Normal) {
+      boss.patternId = 12;
+      boss.forceChaos = true;
+      boss.hpMax = Math.floor(11000 * t.bossHpMul);
+      boss.cooldown = 0.42 / t.bossFireMul;
+      boss.speed = 150;
+    } else if (isBoss100NoLimits) {
+      boss.patternId = Math.max(boss.patternId, 10);
+      boss.forceChaos = true;
+      boss.hpMax = Math.floor(3600 * t.bossHpMul);
+      boss.cooldown = 0.55 / t.bossFireMul;
     }
     boss.hp = boss.hpMax;
     boss.locked = !!spawnFromTop;
@@ -1066,9 +1169,9 @@
     const waveLevel = boss.waveLevel || state.wave;
     const baseSpeed = (260 + id * 8) * t.bossFireMul;
 
-    const chaosOnThisBoss = (waveLevel <= 100)
+    const chaosOnThisBoss = boss.forceChaos || ((waveLevel <= 100)
       ? (id >= chaosBossFromPattern && waveLevel < 100)
-      : true;
+      : true);
     if (chaosOnThisBoss) {
       chaosBossFire(dt);
       return;
@@ -1362,18 +1465,18 @@
   }
 
   function startNoLimitsMode() {
-    mode.name = "NORMAL";
-    localStorage.setItem(LS_LASTMODE, "NORMAL");
+    mode.name = "NO_LIMITS";
+    localStorage.setItem(LS_LASTMODE, "NO_LIMITS");
     resetGame(false);
     state.status = "PLAYING";
     hideOverlay();
-    state.wave = 101;
+    state.wave = 1;
     state.score = 0;
     player.fireRate = 2.0;
     player.damage = 1;
     player.dmgUpgrades = 0;
     buddies.length = 0;
-    startTransitionToWave(101, false);
+    startTransitionToWave(1, false);
     beep(560, 0.08, "triangle", 0.05);
   }
 
