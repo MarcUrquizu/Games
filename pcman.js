@@ -34,17 +34,19 @@ var PACMAN_PLAYER_COLOR = "#FFFF00";
 
 Pacman.FPS = 30;
 
-Pacman.Ghost = function (game, map, colour) {
+Pacman.Ghost = function (game, map, colour, spawn) {
 
     var position  = null,
         direction = null,
         eatable   = null,
         eaten     = null,
-        due       = null;
+        due       = null,
+        home      = spawn || {"x": 90, "y": 80},
+        recovering = null;
     
     function getNewCoord(dir, current) { 
         
-        var speed  = isVunerable() ? 1 : isHidden() ? 4 : 2,
+        var speed  = isVunerable() ? 1 : isHidden() ? 4 : recovering ? 1 : 2,
             xSpeed = (dir === LEFT && -speed || dir === RIGHT && speed || 0),
             ySpeed = (dir === DOWN && speed || dir === UP && -speed || 0);
     
@@ -73,7 +75,7 @@ Pacman.Ghost = function (game, map, colour) {
     };
     
     function isDangerous() {
-        return eaten === null;
+        return eaten === null && recovering === null;
     };
 
     function isHidden() { 
@@ -89,7 +91,8 @@ Pacman.Ghost = function (game, map, colour) {
     function reset() {
         eaten = null;
         eatable = null;
-        position = {"x": 90, "y": 80};
+        recovering = null;
+        position = {"x": home.x, "y": home.y};
         direction = getRandomDirection();
         due = getRandomDirection();
     };
@@ -112,6 +115,7 @@ Pacman.Ghost = function (game, map, colour) {
     function eat() { 
         eatable = null;
         eaten = game.getTick();
+        recovering = null;
     };
 
     function pointToCoord(x) {
@@ -144,8 +148,10 @@ Pacman.Ghost = function (game, map, colour) {
             } else { 
                 return "#0000BB";
             }
-        } else if(eaten) { 
+        } else if (isHidden()) { 
             return "#222";
+        } else if (recovering) {
+            return "#FFFFFF";
         } 
         return colour;
     };
@@ -160,8 +166,8 @@ Pacman.Ghost = function (game, map, colour) {
             eatable = null;
         }
         
-        if (eaten && secondsAgo(eaten) > 3) { 
-            eaten = null;
+        if (recovering && secondsAgo(recovering) > 1) {
+            recovering = null;
         }
         
         var tl = left + s;
@@ -257,7 +263,12 @@ Pacman.Ghost = function (game, map, colour) {
                 "x" : pointToCoord(nextSquare(npos.x, direction))
             })) {
             
-            due = getRandomDirection();            
+            if (isHidden() && position.x === home.x && position.y === home.y) {
+                eaten = null;
+                recovering = game.getTick();
+            }
+
+            due = isHidden() ? direction : getRandomDirection();
             return move(ctx);
         }
 
@@ -268,7 +279,12 @@ Pacman.Ghost = function (game, map, colour) {
             position = tmp;
         }
         
-        due = getRandomDirection();
+        if (isHidden() && position.x === home.x && position.y === home.y) {
+            eaten = null;
+            recovering = game.getTick();
+        }
+
+        due = isHidden() ? direction : getRandomDirection();
         
         return {
             "new" : position,
@@ -426,7 +442,7 @@ Pacman.User = function (game, map) {
         if (npos === null) {
             npos = getNewCoord(direction, position);
         }
-        
+
         if (onGridSquare(position) && map.isWallSpace(next(npos, direction))) {
             direction = NONE;
         }
@@ -1065,8 +1081,9 @@ var PACMAN = (function () {
             "eatenPill"      : eatenPill 
         }, map);
 
+        var spawns = [{"x": 80, "y": 80}, {"x": 100, "y": 80}, {"x": 80, "y": 100}, {"x": 100, "y": 100}];
         for (i = 0, len = ghostSpecs.length; i < len; i += 1) {
-            ghost = new Pacman.Ghost({"getTick":getTick}, map, ghostSpecs[i]);
+            ghost = new Pacman.Ghost({"getTick":getTick}, map, ghostSpecs[i], spawns[i]);
             ghosts.push(ghost);
         }
         
