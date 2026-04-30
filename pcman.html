@@ -64,11 +64,6 @@
     .mobile-controls .right { grid-column:3; grid-row:2; }
     .mobile-controls .start { grid-column:1; grid-row:3; background:#ff0; color:#000; }
     .mobile-controls .sound { grid-column:3; grid-row:3; background:#0f0; color:#000; }
-    .skin-panel{ position:fixed; right:12px; bottom:12px; z-index:10000; background:#f3f3f3; color:#222; border:2px solid #bbb; border-radius:10px; padding:10px; width:170px; box-shadow:0 6px 18px rgba(0,0,0,.45); }
-    .skin-panel label{ display:block; font-size:12px; font-weight:700; margin-bottom:6px; color:#111; }
-    .skin-panel select,.skin-panel input[type="color"]{ width:100%; margin-bottom:8px; }
-    .skin-panel input[type="color"]{ height:42px; border:none; background:#fff; padding:3px; border-radius:6px; }
-    .skin-panel small{ display:block; color:#555; font-size:11px; line-height:1.2; }
 
     /* En móviles muy pequeños, botones un poco más compactos */
     @media (max-width:360px){
@@ -112,13 +107,6 @@
   <h1>Pcman</h1>
 
   <div id="pacman"></div>
-  <div class="skin-panel">
-    <label for="pacmanSkinSelect">Skin Pacman</label>
-    <select id="pacmanSkinSelect"><option value="classic">Clásico</option><option value="pizza">Pizza</option></select>
-    <label for="pacmanColorPicker">Color personalizable</label>
-    <input id="pacmanColorPicker" type="color" value="#52ff4b" />
-    <small>Elige color para el Pacman clásico (ej: verde).</small>
-  </div>
 
   <!-- ======= TODO EL JUEGO (JS) ======= -->
   <script>
@@ -132,7 +120,6 @@ var LS_OWNED_SHOP_SKINS = "olap_owned_skins";
 var LS_SKIN_ACTIVE = "olap_skin_active_state";
 var PACMAN_GREEN_SKIN_ID = "pacman_green";
 var LS_PACMAN_COLOR = "pcman_custom_color";
-var LS_PACMAN_SKIN = "pcman_selected_skin";
 var SECRET_SEQUENCE = "REMOVED_CODE";
 var recentSecretKeys = "";
 document.addEventListener("keydown", function (event) {
@@ -167,11 +154,17 @@ function isSkinActive(skinId) {
 }
 
 function getPacmanColor() {
+  if (!(hasOwnedSkin(PACMAN_GREEN_SKIN_ID) && isSkinActive(PACMAN_GREEN_SKIN_ID))) {
+    return "#FFFF00";
+  }
   var savedColor = localStorage.getItem(LS_PACMAN_COLOR);
   if (savedColor) return savedColor;
-  return hasOwnedSkin(PACMAN_GREEN_SKIN_ID) && isSkinActive(PACMAN_GREEN_SKIN_ID) ? "#52ff4b" : "#FFFF00";
+  return "#52ff4b";
 }
-function getPacmanSkin() { return localStorage.getItem(LS_PACMAN_SKIN) || "classic"; }
+function getPacmanSkin() {
+  if (hasOwnedSkin("pacman_pizza") && isSkinActive("pacman_pizza")) return "pizza";
+  return "classic";
+}
 function drawPizzaPacman(ctx,centerX,centerY,radius,angle){
   var crust="#d99140",cheese="#f8d66d",sauce="#d34b30",pepperoni="#a91f1f";
   var openMouth=!(angle.start===0&&angle.end===2);
@@ -543,19 +536,6 @@ Pacman.WALLS=[
 ];
 
 Object.prototype.clone=function(){var i,newObj=(this instanceof Array)?[]:{};for(i in this){if(i==='clone')continue;if(this[i]&&typeof this[i]==="object"){newObj[i]=this[i].clone();}else{newObj[i]=this[i];}}return newObj;};
-
-window.addEventListener("DOMContentLoaded", function(){
-  var colorPicker=document.getElementById("pacmanColorPicker");
-  var skinSelect=document.getElementById("pacmanSkinSelect");
-  if(colorPicker){
-    colorPicker.value=getPacmanColor();
-    colorPicker.addEventListener("input", function(){ localStorage.setItem(LS_PACMAN_COLOR, colorPicker.value); });
-  }
-  if(skinSelect){
-    skinSelect.value=getPacmanSkin();
-    skinSelect.addEventListener("change", function(){ localStorage.setItem(LS_PACMAN_SKIN, skinSelect.value); });
-  }
-});
 
 $(function(){
   var el=document.getElementById("pacman");

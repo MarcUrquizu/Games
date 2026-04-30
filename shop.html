@@ -283,6 +283,16 @@
     </article>
 
     <article class="card">
+      <canvas id="preview-pacman-pizza" class="skin-preview-canvas" width="88" height="88" aria-label="Skin pizza para Pacman"></canvas>
+      <div class="title">Pcman<br>Skin: Pizza</div>
+      <div class="price">Precio: 100 monedas</div>
+      <div class="skin-action" data-skin-action="pacman_pizza">
+        <button class="btn buy-btn" data-skin="pacman_pizza">Comprar</button>
+      </div>
+      <div class="status" id="status-pacman_pizza"></div>
+    </article>
+
+    <article class="card">
       <canvas id="preview-flappy" class="skin-preview-canvas" width="88" height="88" aria-label="Skin neón para Flappy Bird"></canvas>
       <div class="title">Flappy Bird<br>Skin: Neón</div>
       <div class="price">Precio: 100 monedas</div>
@@ -301,6 +311,12 @@
       </div>
       <div class="status" id="status-skyhopper_astro"></div>
     </article>
+  </div>
+  <div class="card" style="max-width:320px;margin:12px auto 0;">
+    <div class="title">Pcman<br>Color personalizado</div>
+    <div class="price">Requiere Skin Verde comprada y activada</div>
+    <input id="pacman-color-shop" type="color" value="#52ff4b" style="width:100%;height:40px;border-radius:8px;border:1px solid #8df5ff;background:#06141a;">
+    <div class="status" id="status-pacman-color"></div>
   </div>
   <div id="codes-mini" class="codes-mini" hidden>
     <div class="codes-mini-title">Códigos secretos de tienda</div>
@@ -333,6 +349,9 @@
     const infoPanel = document.getElementById('shop-info-panel');
     const codesMiniEl = document.getElementById('codes-mini');
     const codesMiniCloseBtn = document.getElementById('codes-mini-close');
+    const pacmanColorInput = document.getElementById('pacman-color-shop');
+    const pacmanColorStatus = document.getElementById('status-pacman-color');
+    const PACMAN_COLOR_KEY = 'pcman_custom_color';
     let recentSecretKeys = '';
 
     function getCoins() {
@@ -416,6 +435,13 @@
           status.textContent = '';
         }
       });
+      const greenOwnedAndActive = owned.has('pacman_green') && Boolean(skinState.pacman_green);
+      pacmanColorInput.disabled = !greenOwnedAndActive;
+      if (greenOwnedAndActive) {
+        pacmanColorStatus.textContent = 'Color desbloqueado. Elige tu color de Pacman.';
+      } else {
+        pacmanColorStatus.textContent = 'Compra y activa la Skin Verde para usar este selector.';
+      }
     }
 
     shopGrid.addEventListener('click', (event) => {
@@ -556,6 +582,22 @@
       ctx.stroke();
     }
 
+    function drawPacmanPizzaPreview() {
+      const canvas = document.getElementById('preview-pacman-pizza');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#0b1020';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      const cx = 44, cy = 44, r = 26;
+      ctx.fillStyle = '#d99140'; ctx.beginPath(); ctx.arc(cx, cy, r, 0.24, Math.PI * 2 - 0.24); ctx.lineTo(cx, cy); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#f8d66d'; ctx.beginPath(); ctx.arc(cx, cy, r * 0.84, 0.24, Math.PI * 2 - 0.24); ctx.lineTo(cx, cy); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#a91f1f';
+      [[0,-0.45],[0.45,-0.12],[-0.42,-0.14],[-0.18,0.38],[0.32,0.35]].forEach((p) => {
+        ctx.beginPath(); ctx.arc(cx + p[0] * r, cy + p[1] * r, r * 0.11, 0, Math.PI * 2); ctx.fill();
+      });
+    }
+
     function drawFlappyPreview() {
       const canvas = document.getElementById('preview-flappy');
       if (!canvas) return;
@@ -595,8 +637,23 @@
 
     drawSpacePreview();
     drawPacmanPreview();
+    drawPacmanPizzaPreview();
     drawFlappyPreview();
     drawSkyhopperPreview();
+
+    pacmanColorInput.value = localStorage.getItem(PACMAN_COLOR_KEY) || '#52ff4b';
+    pacmanColorInput.addEventListener('input', () => {
+      const owned = new Set(getOwnedSkins());
+      const skinState = getSkinActiveState();
+      const allowed = owned.has('pacman_green') && Boolean(skinState.pacman_green);
+      if (!allowed) {
+        pacmanColorStatus.textContent = 'No permitido: necesitas Skin Verde activa.';
+        pacmanColorInput.value = localStorage.getItem(PACMAN_COLOR_KEY) || '#52ff4b';
+        return;
+      }
+      localStorage.setItem(PACMAN_COLOR_KEY, pacmanColorInput.value);
+      pacmanColorStatus.textContent = 'Color guardado correctamente.';
+    });
 
     setCoins(getCoins());
     updateButtons();
