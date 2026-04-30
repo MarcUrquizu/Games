@@ -442,11 +442,6 @@
           <div style="opacity:.85;font-size:13px;margin-top:4px;">Llega a 75 puntos en Null's Breakout</div>
         </div>
 
-        <div id="medalUnknown200" class="reward">
-          <div class="medal">❔</div>
-          <div style="font-weight:800;">Explorador de lo oculto</div>
-          <div style="opacity:.85;font-size:13px;margin-top:4px;">Llega al nivel 200 en ???</div>
-        </div>
       </div>
 
       <div class="secret-section">
@@ -454,6 +449,11 @@
         <p class="sub" style="margin-top:6px;">Hay recompensas ocultas que no aparecen en el menú principal.</p>
         <div class="grid">
           <div id="medalSecretClicker" class="reward secret-reward">
+            <div class="medal">?</div>
+            <div style="font-weight:800;" data-secret-title>???</div>
+            <div style="opacity:.85;font-size:13px;margin-top:4px;" data-secret-desc>Este logro está oculto.</div>
+          </div>
+          <div id="medalSecretUnknown200" class="reward secret-reward">
             <div class="medal">?</div>
             <div style="font-weight:800;" data-secret-title>???</div>
             <div style="opacity:.85;font-size:13px;margin-top:4px;" data-secret-desc>Este logro está oculto.</div>
@@ -490,8 +490,8 @@
       { id: "medalColorSnipe", key: LS_MEDAL_COLOR_SNIPE_50, icon: "🎯", gameUrl: "./Clickometeor.html", gameLabel: "Ir a Color Snipe", coinReward: 50 },
       { id: "medalEnduro", key: LS_MEDAL_ENDURO_200, icon: "🏎️", gameUrl: "./enduro.html", gameLabel: "Ir a Enduro", coinReward: 50 },
       { id: "medalBreakaut", key: LS_MEDAL_BREAKAUT_75, icon: "🧱", gameUrl: "./brakeautnulls.html", gameLabel: "Ir a Null's Breakout", coinReward: 50 },
-      { id: "medalUnknown200", key: LS_MEDAL_UNKNOWN_200, icon: "❔", gameUrl: "./Laberintocursor.html", gameLabel: "Ir a ???", coinReward: 50 },
-      { id: "medalSecretClicker", key: LS_MEDAL_CLICKER_SECRET_50M, icon: "❓", unlockedIcon: "🧠", gameUrl: "./clicker.html", gameLabel: "Ir a Italian brainrot clicker", secretTitle: "Archimillonario oculto", secretDesc: "Llega a 50.000.000 en Italian brainrot clicker.", secretLockedTitle: "???", secretLockedDesc: "Este logro está oculto.", hideGameButton: true, coinReward: 100 }
+      { id: "medalSecretClicker", key: LS_MEDAL_CLICKER_SECRET_50M, icon: "❓", unlockedIcon: "🧠", gameUrl: "./clicker.html", gameLabel: "Ir a Italian brainrot clicker", secretTitle: "Archimillonario oculto", secretDesc: "Llega a 50.000.000 en Italian brainrot clicker.", secretLockedTitle: "???", secretLockedDesc: "Este logro está oculto.", hideGameButton: true, coinReward: 100 },
+      { id: "medalSecretUnknown200", key: LS_MEDAL_UNKNOWN_200, icon: "❓", unlockedIcon: "❔", gameUrl: "./Laberintocursor.html", gameLabel: "Ir a ???", secretTitle: "Explorador de lo oculto", secretDesc: "Llega al nivel 200 en ???.", secretLockedTitle: "???", secretLockedDesc: "Este logro está oculto.", hideGameButton: true, coinReward: 100 }
     ];
 
     function ensureMedalStructure(medalElement, icon) {
