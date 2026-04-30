@@ -344,6 +344,10 @@ Pacman.User = function (game, map) {
         return lives;
     };
 
+    function addLife() {
+        lives += 1;
+    };
+
     function initUser() {
         score = 0;
         lives = 3;
@@ -551,6 +555,7 @@ Pacman.User = function (game, map) {
         "draw"          : draw,
         "drawDead"      : drawDead,
         "loseLife"      : loseLife,
+        "addLife"       : addLife,
         "getLives"      : getLives,
         "score"         : score,
         "addScore"      : addScore,
@@ -809,9 +814,11 @@ var PACMAN = (function () {
     var state        = WAITING,
         audio        = null,
         ghosts       = [],
+        ghostReleaseTicks = [],
         ghostSpecs   = ["#00FFDE", "#FF0000", "#FFB8DE", "#FFB847"],
         eatenCount   = 0,
         level        = 0,
+        awardedLevel5Life = false,
         tick         = 0,
         ghostPos, userPos, 
         stateChanged = true,
@@ -849,8 +856,10 @@ var PACMAN = (function () {
     
     function startLevel() {        
         user.resetPosition();
+        ghostReleaseTicks = [];
         for (var i = 0; i < ghosts.length; i += 1) { 
             ghosts[i].reset();
+            ghostReleaseTicks[i] = tick + (i * (Pacman.FPS * 2));
         }
         audio.play("start");
         timerStart = tick;
@@ -860,6 +869,7 @@ var PACMAN = (function () {
     function startNewGame() {
         setState(WAITING);
         level = 1;
+        awardedLevel5Life = false;
         user.reset();
         map.reset();
         map.draw(ctx);
@@ -951,7 +961,14 @@ var PACMAN = (function () {
         ghostPos = [];
 
         for (i = 0, len = ghosts.length; i < len; i += 1) {
-            ghostPos.push(ghosts[i].move(ctx));
+            if (tick >= ghostReleaseTicks[i]) {
+                ghostPos.push(ghosts[i].move(ctx));
+            } else {
+                ghostPos.push({
+                    "new" : {"x": 90, "y": 80},
+                    "old" : {"x": 90, "y": 80}
+                });
+            }
         }
         u = user.move(ctx);
         
@@ -961,14 +978,17 @@ var PACMAN = (function () {
         redrawBlock(u.old);
         
         for (i = 0, len = ghosts.length; i < len; i += 1) {
-            ghosts[i].draw(ctx);
+            if (tick >= ghostReleaseTicks[i]) {
+                ghosts[i].draw(ctx);
+            }
         }                     
         user.draw(ctx);
         
         userPos = u["new"];
         
         for (i = 0, len = ghosts.length; i < len; i += 1) {
-            if (collided(userPos, ghostPos[i]["new"])) {
+            if (tick >= ghostReleaseTicks[i] &&
+                    collided(userPos, ghostPos[i]["new"])) {
                 if (ghosts[i].isVunerable()) { 
                     audio.play("eatghost");
                     ghosts[i].eat();
@@ -1049,6 +1069,10 @@ var PACMAN = (function () {
     function completedLevel() {
         setState(WAITING);
         level += 1;
+        if (level >= 5 && !awardedLevel5Life) {
+            user.addLife();
+            awardedLevel5Life = true;
+        }
         map.reset();
         user.newLevel();
         startLevel();
