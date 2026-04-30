@@ -172,7 +172,7 @@ function drawPizzaPacman(ctx,centerX,centerY,radius,angle){
   ctx.fillStyle=crust; ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0,radius,Math.PI*angle.start,Math.PI*angle.end,angle.direction); ctx.closePath(); ctx.fill();
   ctx.fillStyle=cheese; ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0,radius*0.84,Math.PI*angle.start,Math.PI*angle.end,angle.direction); ctx.closePath(); ctx.fill();
   ctx.fillStyle=sauce; ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0,radius*0.68,Math.PI*angle.start,Math.PI*angle.end,angle.direction); ctx.closePath(); ctx.fill();
-  if(!openMouth){ [[0,-0.45],[0.45,-0.12],[-0.42,-0.14],[-0.18,0.38],[0.32,0.35],[-0.46,0.2],[0.08,0.08]].forEach(function(v){ ctx.fillStyle=pepperoni; ctx.beginPath(); ctx.arc(v[0]*radius,v[1]*radius,radius*0.12,0,Math.PI*2,false); ctx.fill(); });}
+  if(!openMouth){ [[0,-0.45],[0.45,-0.12],[-0.42,-0.14],[-0.18,0.38],[0.32,0.35],[-0.46,0.2],[0.08,0.08]].forEach(function(v){ ctx.fillStyle=pepperoni; ctx.beginPath(); ctx.arc(v[0]*radius,v[1]*radius,radius*0.18,0,Math.PI*2,false); ctx.fill(); });}
   ctx.restore();
 }
 

@@ -112,6 +112,10 @@
       padding: 18px;
       box-shadow: 0 0 14px rgba(0, 255, 255, 0.15);
     }
+    .card.pacman-green-card { transition: transform .22s ease, box-shadow .22s ease; overflow: hidden; }
+    .card.pacman-green-card:hover { transform: scale(1.06); box-shadow: 0 0 22px rgba(0, 255, 255, 0.35); z-index: 5; }
+    .pacman-color-reveal { max-height: 0; opacity: 0; transition: max-height .22s ease, opacity .22s ease, margin-top .22s ease; margin-top: 0; }
+    .card.pacman-green-card:hover .pacman-color-reveal.show { max-height: 140px; opacity: 1; margin-top: 10px; }
     .skin-preview-canvas {
       margin: 0 auto 12px;
       width: 88px;
@@ -272,7 +276,7 @@
       <div class="status" id="status-space_1"></div>
     </article>
 
-    <article class="card">
+    <article class="card pacman-green-card">
       <canvas id="preview-pacman" class="skin-preview-canvas" width="88" height="88" aria-label="Skin verde para Pacman"></canvas>
       <div class="title">Pcman<br>Skin: Verde</div>
       <div class="price">Precio: 100 monedas</div>
@@ -280,6 +284,11 @@
         <button class="btn buy-btn" data-skin="pacman_green">Comprar</button>
       </div>
       <div class="status" id="status-pacman_green"></div>
+      <div id="pacman-color-reveal" class="pacman-color-reveal">
+        <div class="price">Color personalizado (hover para abrir)</div>
+        <input id="pacman-color-shop" type="color" value="#52ff4b" style="width:100%;height:40px;border-radius:8px;border:1px solid #8df5ff;background:#06141a;">
+        <div class="status" id="status-pacman-color"></div>
+      </div>
     </article>
 
     <article class="card">
@@ -311,12 +320,6 @@
       </div>
       <div class="status" id="status-skyhopper_astro"></div>
     </article>
-  </div>
-  <div class="card" style="max-width:320px;margin:12px auto 0;">
-    <div class="title">Pcman<br>Color personalizado</div>
-    <div class="price">Requiere Skin Verde comprada y activada</div>
-    <input id="pacman-color-shop" type="color" value="#52ff4b" style="width:100%;height:40px;border-radius:8px;border:1px solid #8df5ff;background:#06141a;">
-    <div class="status" id="status-pacman-color"></div>
   </div>
   <div id="codes-mini" class="codes-mini" hidden>
     <div class="codes-mini-title">Códigos secretos de tienda</div>
@@ -351,6 +354,7 @@
     const codesMiniCloseBtn = document.getElementById('codes-mini-close');
     const pacmanColorInput = document.getElementById('pacman-color-shop');
     const pacmanColorStatus = document.getElementById('status-pacman-color');
+    const pacmanColorReveal = document.getElementById('pacman-color-reveal');
     const PACMAN_COLOR_KEY = 'pcman_custom_color';
     let recentSecretKeys = '';
 
@@ -438,8 +442,10 @@
       const greenOwnedAndActive = owned.has('pacman_green') && Boolean(skinState.pacman_green);
       pacmanColorInput.disabled = !greenOwnedAndActive;
       if (greenOwnedAndActive) {
+        pacmanColorReveal.classList.add('show');
         pacmanColorStatus.textContent = 'Color desbloqueado. Elige tu color de Pacman.';
       } else {
+        pacmanColorReveal.classList.remove('show');
         pacmanColorStatus.textContent = 'Compra y activa la Skin Verde para usar este selector.';
       }
     }
@@ -594,7 +600,7 @@
       ctx.fillStyle = '#f8d66d'; ctx.beginPath(); ctx.arc(cx, cy, r * 0.84, 0.24, Math.PI * 2 - 0.24); ctx.lineTo(cx, cy); ctx.closePath(); ctx.fill();
       ctx.fillStyle = '#a91f1f';
       [[0,-0.45],[0.45,-0.12],[-0.42,-0.14],[-0.18,0.38],[0.32,0.35]].forEach((p) => {
-        ctx.beginPath(); ctx.arc(cx + p[0] * r, cy + p[1] * r, r * 0.11, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx + p[0] * r, cy + p[1] * r, r * 0.17, 0, Math.PI * 2); ctx.fill();
       });
     }
 
