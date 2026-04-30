@@ -4,6 +4,7 @@
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-Q25WGL1GDZ"></script>
   <script>
+    const LS_MEDAL_BREAKOUT_WAVE_50 = "msi_medal_breakout_wave_50";
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
@@ -118,6 +119,7 @@
     const ballRadius = 10;
     let leftPressed = false, rightPressed = false;
     let animating = false, score = 0, wave = 0;
+    let breakoutWaveAchievementUnlocked = localStorage.getItem(LS_MEDAL_BREAKOUT_WAVE_50) === "1";
     let blocks = [], balls = [], seqIndex = 0;
 
     // Bloques config
@@ -137,6 +139,10 @@
 
     function nextWave() {
       wave++;
+      if (!breakoutWaveAchievementUnlocked && wave >= 50) {
+        localStorage.setItem(LS_MEDAL_BREAKOUT_WAVE_50, "1");
+        breakoutWaveAchievementUnlocked = true;
+      }
       let minL = wave === 1 ? 1 : (wave - 1) * 5;
       let maxL = wave === 1 ? 3 : wave * 5;
       blocks = [];
@@ -251,6 +257,7 @@
     function startGame() {
       if (animating) return;
       score=0; wave=0; seqIndex=0;
+      breakoutWaveAchievementUnlocked = localStorage.getItem(LS_MEDAL_BREAKOUT_WAVE_50) === "1";
       scoreEl.innerText='Puntuación: 0';
       initBalls(); nextWave(); animating=true;
       startBtn.disabled=true; startBtn.innerText='Jugando...';

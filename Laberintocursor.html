@@ -158,6 +158,7 @@
 </audio>
 
 <script>
+const LS_MEDAL_UNKNOWN_200 = "msi_medal_unknown_200";
 const juego = document.getElementById("juego");
 const pantallaInicio = document.getElementById("pantalla-inicio");
 const btnStart = document.getElementById("btnStart");
@@ -171,6 +172,7 @@ let nivel = 1;
 let esquinaActual = 'bottomRight';
 let startX = null, startY = null;
 let mouseHabilitado = false;
+let hiddenAchievementUnlocked = localStorage.getItem(LS_MEDAL_UNKNOWN_200) === "1";
 
 function iniciarJuego() {
   const { x: btnX, y: btnY } = btnStart.getBoundingClientRect();
@@ -286,6 +288,10 @@ function crearMeta(x, y, callback) {
 
 function actualizarNivel() {
   if (nivelLabel) nivelLabel.textContent = `Nivel ${nivel}`;
+  if (!hiddenAchievementUnlocked && nivel >= 200) {
+    localStorage.setItem(LS_MEDAL_UNKNOWN_200, "1");
+    hiddenAchievementUnlocked = true;
+  }
 }
 
 juego.addEventListener("mousemove", (e) => {
@@ -322,4 +328,3 @@ function mostrarJumpscare() {
   <script src="debug-menu.js"></script>
 </body>
 </html>
-

@@ -1,5 +1,6 @@
 //CARS
 var car = document.getElementById('car');
+const LS_MEDAL_ENDURO_200 = "msi_medal_enduro_200";
 car.init = function () { 
   car.speed = 0.2;
   car.turn = 0;
@@ -202,6 +203,9 @@ mountains.frame = function () {
 var km = document.getElementById('km');
 km.frame = function () {
   car.km += (car.speed/1000);
+  if (car.km >= 200) {
+    localStorage.setItem(LS_MEDAL_ENDURO_200, "1");
+  }
   var value = parseInt(car.km * 10).toString();
   while (value.length < km.childNodes.length) value = '0' + value;
   for (var i=1; i < km.childNodes.length; i++) {
