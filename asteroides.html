@@ -4,6 +4,7 @@
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-Q25WGL1GDZ"></script>
   <script>
+    const LS_MEDAL_GALAXY_COLLECTOR_1000 = "msi_medal_galaxy_collector_1000";
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
@@ -85,6 +86,7 @@
     let starTimer = 0;
     let starSpawnRate = 3;
     let asteroidSpeedFactor = 1;
+    let galaxyCollectorAchievementUnlocked = false;
 
     const scoreEl = document.getElementById('score');
     const livesEl = document.getElementById('lives');
@@ -102,6 +104,7 @@
       starTimer = 0;
       starSpawnRate = 3;
       asteroidSpeedFactor = 1;
+      galaxyCollectorAchievementUnlocked = localStorage.getItem(LS_MEDAL_GALAXY_COLLECTOR_1000) === "1";
       ship = { x: W/2, y: H/2, vx: 0, vy: 0, angle: 0, speed: 250, r: 20 };
       stars = [];
       asteroids = [];
@@ -172,6 +175,10 @@
         if (dist < ship.r + s.r) {
           score += 10;
           scoreEl.textContent = `Puntuación: ${score}`;
+          if (!galaxyCollectorAchievementUnlocked && score >= 1000) {
+            localStorage.setItem(LS_MEDAL_GALAXY_COLLECTOR_1000, "1");
+            galaxyCollectorAchievementUnlocked = true;
+          }
           spawnStar();
           return false;
         }
