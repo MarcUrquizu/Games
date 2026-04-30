@@ -116,6 +116,10 @@
 var NONE=4,UP=3,LEFT=2,DOWN=1,RIGHT=11,WAITING=5,PAUSE=6,PLAYING=7,COUNTDOWN=8,EATEN_PAUSE=9,DYING=10,Pacman={};
 Pacman.FPS=30;
 var LS_MEDAL_PACMAN = "msi_medal_pacman_level10";
+var LS_OWNED_SHOP_SKINS = "olap_owned_skins";
+var PACMAN_GREEN_SKIN_ID = "pacman_green";
+var PACMAN_PIZZA_SKIN_ID = "pacman_pizza";
+var PACMAN_CUSTOM_COLOR_KEY = "olap_pacman_custom_color";
 var SECRET_SEQUENCE = "111000222";
 var recentSecretKeys = "";
 document.addEventListener("keydown", function (event) {
@@ -126,6 +130,61 @@ document.addEventListener("keydown", function (event) {
     recentSecretKeys = "";
   }
 });
+
+function hasOwnedSkin(skinId) {
+  try {
+    var raw = localStorage.getItem(LS_OWNED_SHOP_SKINS);
+    if (!raw) return false;
+    var list = JSON.parse(raw);
+    return Array.isArray(list) && list.indexOf(skinId) !== -1;
+  } catch (e) {
+    return false;
+  }
+}
+
+function getPacmanColor() {
+  if (!hasOwnedSkin(PACMAN_GREEN_SKIN_ID)) return "#FFFF00";
+  var saved = localStorage.getItem(PACMAN_CUSTOM_COLOR_KEY);
+  if (/^#[0-9a-fA-F]{6}$/.test(saved || "")) return saved;
+  return "#52ff4b";
+}
+
+function hasPizzaPacmanSkin() {
+  return hasOwnedSkin(PACMAN_PIZZA_SKIN_ID);
+}
+
+function drawPacmanPizza(ctx, centerX, centerY, radius) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, radius, 0, Math.PI * 2, false);
+  ctx.clip();
+
+  ctx.fillStyle = "#f3b35f";
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, radius, 0, Math.PI * 2, false);
+  ctx.fill();
+
+  ctx.lineWidth = Math.max(2, radius * 0.2);
+  ctx.strokeStyle = "#cf7a2c";
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, radius * 0.9, 0, Math.PI * 2, false);
+  ctx.stroke();
+
+  var toppings = [
+    [-0.35, -0.35], [0.0, -0.45], [0.35, -0.3],
+    [-0.2, 0.0], [0.25, 0.1], [-0.35, 0.35], [0.1, 0.35], [0.42, 0.35]
+  ];
+  for (var i = 0; i < toppings.length; i++) {
+    var px = centerX + toppings[i][0] * radius * 1.45;
+    var py = centerY + toppings[i][1] * radius * 1.45;
+    ctx.fillStyle = "#b42926";
+    ctx.beginPath();
+    ctx.arc(px, py, radius * 0.18, 0, Math.PI * 2, false);
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
 
 /* --- Ghost --- */
 Pacman.Ghost=function(game,map,colour){
@@ -243,16 +302,26 @@ Pacman.User=function(game,map){
   }
   function drawDead(ctx,amount){
     var size=map.blockSize,half=size/2; if(amount>=1) return;
-    ctx.fillStyle="#FFFF00"; ctx.beginPath();
-    ctx.moveTo(((position.x/10)*size)+half,((position.y/10)*size)+half);
-    ctx.arc(((position.x/10)*size)+half,((position.y/10)*size)+half,half,0,Math.PI*2*amount,true);
+    var cx=((position.x/10)*size)+half, cy=((position.y/10)*size)+half;
+    if (hasPizzaPacmanSkin()) {
+      drawPacmanPizza(ctx, cx, cy, half * amount);
+      return;
+    }
+    ctx.fillStyle=getPacmanColor(); ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,half,0,Math.PI*2*amount,true);
     ctx.fill();
   }
   function draw(ctx){
     var s=map.blockSize, angle=calcAngle(direction,position);
-    ctx.fillStyle="#FFFF00"; ctx.beginPath();
-    ctx.moveTo(((position.x/10)*s)+s/2,((position.y/10)*s)+s/2);
-    ctx.arc(((position.x/10)*s)+s/2,((position.y/10)*s)+s/2, s/2, Math.PI*angle.start, Math.PI*angle.end, angle.direction);
+    var cx=((position.x/10)*s)+s/2, cy=((position.y/10)*s)+s/2;
+    if (hasPizzaPacmanSkin()) {
+      drawPacmanPizza(ctx, cx, cy, s/2);
+      return;
+    }
+    ctx.fillStyle=getPacmanColor(); ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy, s/2, Math.PI*angle.start, Math.PI*angle.end, angle.direction);
     ctx.fill();
   }
   initUser();
