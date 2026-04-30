@@ -4,6 +4,7 @@
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-Q25WGL1GDZ"></script>
   <script>
+    const LS_MEDAL_COLOR_SNIPE_50 = "msi_medal_color_snipe_50";
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
@@ -142,6 +143,7 @@
     let correctColor;
     let timeoutId = null;
     let roundActive = true;
+    let colorSnipeAchievementUnlocked = localStorage.getItem(LS_MEDAL_COLOR_SNIPE_50) === "1";
 
     const grid = document.getElementById("grid");
     const colorNameEl = document.getElementById("colorName");
@@ -187,6 +189,10 @@
             roundActive = false;
             score++;
             scoreEl.textContent = score;
+            if (!colorSnipeAchievementUnlocked && score >= 50) {
+              localStorage.setItem(LS_MEDAL_COLOR_SNIPE_50, "1");
+              colorSnipeAchievementUnlocked = true;
+            }
             nextRound();
           } else {
             endGame();

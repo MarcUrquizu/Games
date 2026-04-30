@@ -4,6 +4,7 @@
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-Q25WGL1GDZ"></script>
   <script>
+    const LS_MEDAL_BREAKAUT_75 = "msi_medal_breakaut_75";
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
@@ -166,6 +167,7 @@
     let blocksVisible = true;
     let animating = false, score = 0, wave = 0;
     let blocks = [], balls = [], seqIndex = 0;
+    let breakautAchievementUnlocked = localStorage.getItem(LS_MEDAL_BREAKAUT_75) === "1";
 
     const blockRows = 5, blockCols = 10;
     const blockW = 60, blockH = 20, pad = 10;
@@ -340,6 +342,10 @@
                 blocks.splice(j, 1);
                 score++;
                 scoreEl.innerText = 'Puntuación: ' + score;
+                if (!breakautAchievementUnlocked && score >= 75) {
+                  localStorage.setItem(LS_MEDAL_BREAKAUT_75, "1");
+                  breakautAchievementUnlocked = true;
+                }
               }
               b.vy = -b.vy;
               break;
@@ -367,6 +373,7 @@
     function startGame() {
       if (animating) return;
       score = 0; wave = 0; seqIndex = 0;
+      breakautAchievementUnlocked = localStorage.getItem(LS_MEDAL_BREAKAUT_75) === "1";
       scoreEl.innerText = 'Puntuación: 0';
       initBalls(); nextWave();
       animating = true;
