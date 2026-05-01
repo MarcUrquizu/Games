@@ -1958,7 +1958,7 @@
     ctx.fillStyle = "#e8eef7";
     ctx.font = "16px system-ui, sans-serif";
     ctx.fillText(`Puntuación: ${state.score}`, 16, 26);
-    const waveCapText = (mode.name === "NORMAL" && state.wave >= 101)
+    const waveCapText = (mode.name === "NO_LIMITS" || (mode.name === "NORMAL" && state.wave >= 101))
       ? "∞"
       : (Number.isFinite(state.maxWaves) ? state.maxWaves : "∞");
     ctx.fillText(`Oleada: ${state.wave}/${waveCapText}`, 16, 48);
