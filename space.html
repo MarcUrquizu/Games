@@ -993,7 +993,7 @@
   }
   function initBossForWave(wave, spawnFromTop) {
     boss.active = true; boss.isFinal = false;
-    const isBoss100Normal = (mode.name === "NORMAL" && wave === 100);
+    const isBoss100Normal = ((mode.name === "NORMAL" || mode.name === "HARDCORE") && wave === 100);
     const isBoss100NoLimits = (mode.name === "NO_LIMITS" && wave === 100);
     boss.w = isBoss100Normal ? 220 : 160;
     boss.h = isBoss100Normal ? 68 : 48;
@@ -1023,9 +1023,10 @@
     if (isBoss100Normal) {
       boss.patternId = 12;
       boss.forceChaos = true;
-      boss.hpMax = Math.floor(11000 * t.bossHpMul);
-      boss.cooldown = 0.42 / t.bossFireMul;
-      boss.speed = 150;
+      const ultraMul = (mode.name === "HARDCORE") ? 1.28 : 1.0;
+      boss.hpMax = Math.floor(11000 * ultraMul * t.bossHpMul);
+      boss.cooldown = (mode.name === "HARDCORE" ? 0.33 : 0.42) / t.bossFireMul;
+      boss.speed = (mode.name === "HARDCORE") ? 178 : 150;
     } else if (isBoss100NoLimits) {
       boss.patternId = Math.max(boss.patternId, 10);
       boss.forceChaos = true;
@@ -1368,12 +1369,13 @@
 
   function spawnFinalBossAdds(dt) {
     boss.addCooldown = Math.max(0, boss.addCooldown - dt);
-    if (boss.phase !== 1) return;
+    const ultraFinal100 = boss.waveLevel === 100 && (mode.name === "NORMAL" || mode.name === "HARDCORE");
+    if (!ultraFinal100 && boss.phase !== 1) return;
     if (boss.addCooldown > 0) return;
     if (adds.length >= addsCfg.max) return;
 
     const t = currentTuning();
-    const count = 6;
+    const count = ultraFinal100 ? (boss.phase >= 3 ? 10 : 8) : 6;
     const gap = 44;
     const startX = clamp(boss.x + boss.w/2 - ((count-1)*gap)/2, 60, W - 60 - (count-1)*gap);
     const y = boss.y + boss.h + 18;
@@ -1384,57 +1386,75 @@
         x: startX + i*gap, y,
         w: addsCfg.w, h: addsCfg.h,
         alive: true,
-        hpMax: 2, hp: 2,
-        vx: (Math.random() < 0.5 ? -1 : 1) * (70 + Math.random()*50) * t.enemySpeedMul,
+        hpMax: ultraFinal100 ? 3 : 2, hp: ultraFinal100 ? 3 : 2,
+        vx: (Math.random() < 0.5 ? -1 : 1) * (ultraFinal100 ? (95 + Math.random()*70) : (70 + Math.random()*50)) * t.enemySpeedMul,
       });
     }
 
     const frac = boss.hp / boss.hpMax;
-    const faster = 1 + (1 - frac) * 1.4;
-    boss.addCooldown = (2.0 / faster);
+    const faster = ultraFinal100 ? (1.55 + (1 - frac) * 2.0) : (1 + (1 - frac) * 1.4);
+    boss.addCooldown = (ultraFinal100 ? 1.15 : 2.0) / faster;
   }
 
   function finalBossFire(dt) {
     const t = currentTuning();
     updateFinalBossPhase();
     boss.auxT += dt;
+    const ultraFinal100 = boss.waveLevel === 100 && (mode.name === "NORMAL" || mode.name === "HARDCORE");
 
     const frac = boss.hp / boss.hpMax;
-    const rage = 1 + (1 - frac) * 2.2;
-    const phaseMul = [1.0, 1.15, 1.35, 1.70][boss.phase - 1];
+    const rage = 1 + (1 - frac) * (ultraFinal100 ? 3.6 : 2.2);
+    const phaseMul = ultraFinal100
+      ? [1.05, 1.35, 1.8, 2.25][boss.phase - 1]
+      : [1.0, 1.15, 1.35, 1.70][boss.phase - 1];
 
     const speedBase = (250 + (1 - frac) * 120) * t.bossFireMul;
-    const cdTarget = (0.95 / (rage * phaseMul)) / t.bossFireMul;
+    const cdTarget = ((ultraFinal100 ? 0.72 : 0.95) / (rage * phaseMul)) / t.bossFireMul;
 
     boss.cooldown = Math.max(0, boss.cooldown - dt);
     if (boss.cooldown > 0) return;
 
     const cx = boss.x + boss.w/2;
     const cy = boss.y + boss.h + 6;
+    const ultraAttack = Math.random();
 
     if (boss.phase === 1) {
-      if (Math.random() < 0.55) spawnAimedBullet(cx, cy, speedBase, true);
+      if (Math.random() < 0.55) spawnAimedBullet(cx, cy, speedBase * (ultraFinal100 ? 1.12 : 1.0), true);
       else {
         const s = speedBase * 0.95;
-        for (let i = -2; i <= 2; i++) if (i !== 0) spawnEnemyBullet(cx, cy, s*0.18*i, s, true);
+        for (let i = -2; i <= 2; i++) if (i !== 0) spawnEnemyBullet(cx, cy, s*(ultraFinal100 ? 0.23 : 0.18)*i, s, true);
       }
+      if (ultraFinal100 && ultraAttack < 0.35) spawnBossLaserVolley([player.x + player.w/2], 0.55, 0.75);
     } else if (boss.phase === 2) {
       const s = speedBase;
       const shift = (Math.sin(boss.auxT * 2.2) > 0) ? 1 : -1;
-      for (let i = -4; i <= 4; i++) if (i !== 0 && i !== shift) spawnEnemyBullet(cx, cy, s*0.12*i, s, true);
+      for (let i = -4; i <= 4; i++) if (i !== 0 && i !== shift) spawnEnemyBullet(cx, cy, s*(ultraFinal100 ? 0.15 : 0.12)*i, s, true);
+      if (ultraFinal100 && ultraAttack < 0.4) spawnChaosBombWave(2, 0.75, 0.65, 0.42, 52);
     } else if (boss.phase === 3) {
-      const s = speedBase * 1.05;
+      const s = speedBase * (ultraFinal100 ? 1.2 : 1.05);
       const wob = Math.sin(boss.auxT * 3.0) * 0.55;
       for (const lane of [-0.30 + wob, 0 + wob, 0.30 + wob]) {
-        if (lane === 0 + wob && Math.random() < 0.35) continue;
+        if (lane === 0 + wob && Math.random() < (ultraFinal100 ? 0.15 : 0.35)) continue;
         spawnEnemyBullet(cx, cy, s*lane, s, true);
       }
-      if (Math.random() < 0.25) spawnAimedBullet(cx, cy, s * 1.08, true);
+      if (Math.random() < (ultraFinal100 ? 0.55 : 0.25)) spawnAimedBullet(cx, cy, s * 1.08, true);
+      if (ultraFinal100 && ultraAttack < 0.45) {
+        const lanes = getChaosLanes(6);
+        spawnBossLaserVolley([lanes[1], lanes[4]], 0.45, 0.82);
+      }
     } else {
-      const s = speedBase * 1.12;
-      const movingGap = Math.round(Math.sin(boss.auxT * 2.6) * 3);
-      for (let i = -5; i <= 5; i++) if (i !== 0 && i !== 2 && i !== movingGap) spawnEnemyBullet(cx, cy, s*0.10*i, s, true);
-      if (Math.random() < 0.35) spawnAimedBullet(cx, cy, s * 1.05, true);
+      const s = speedBase * (ultraFinal100 ? 1.35 : 1.12);
+      const movingGap = Math.round(Math.sin(boss.auxT * (ultraFinal100 ? 3.6 : 2.6)) * 3);
+      for (let i = -6; i <= 6; i++) if (i !== 0 && i !== 2 && i !== movingGap) spawnEnemyBullet(cx, cy, s*(ultraFinal100 ? 0.11 : 0.10)*i, s, true);
+      if (Math.random() < (ultraFinal100 ? 0.70 : 0.35)) spawnAimedBullet(cx, cy, s * 1.05, true);
+      if (ultraFinal100) {
+        const ring = 12;
+        for (let i = 0; i < ring; i++) {
+          const ang = (Math.PI * 2 * i / ring) + boss.auxT * 2.0;
+          spawnEnemyBullet(cx, cy, Math.cos(ang) * s * 0.72, Math.abs(Math.sin(ang)) * s * 0.95 + 120, true);
+        }
+        if (ultraAttack < 0.55) spawnChaosBombWave(3, 0.7, 0.6, 0.45, 56);
+      }
     }
 
     boss.cooldown = cdTarget;
@@ -1958,7 +1978,7 @@
     ctx.fillStyle = "#e8eef7";
     ctx.font = "16px system-ui, sans-serif";
     ctx.fillText(`Puntuación: ${state.score}`, 16, 26);
-    const waveCapText = (mode.name === "NORMAL" && state.wave >= 101)
+    const waveCapText = (mode.name === "NO_LIMITS" || (mode.name === "NORMAL" && state.wave >= 101))
       ? "∞"
       : (Number.isFinite(state.maxWaves) ? state.maxWaves : "∞");
     ctx.fillText(`Oleada: ${state.wave}/${waveCapText}`, 16, 48);
