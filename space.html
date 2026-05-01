@@ -1024,8 +1024,8 @@
     if (isBoss100Normal) {
       boss.patternId = 12;
       boss.forceChaos = true;
-      boss.hpMax = Math.floor((mode.name === "HARDCORE" ? 7000 : 5200) * t.bossHpMul);
-      boss.cooldown = (mode.name === "HARDCORE" ? 0.5 : 0.62) / t.bossFireMul;
+      boss.hpMax = Math.floor((mode.name === "HARDCORE" ? 8200 : 6000) * t.bossHpMul);
+      boss.cooldown = (mode.name === "HARDCORE" ? 0.46 : 0.56) / t.bossFireMul;
       boss.speed = (mode.name === "HARDCORE") ? 130 : 118;
     } else if (isBoss100NoLimits) {
       boss.patternId = Math.max(boss.patternId, 10);
@@ -1404,7 +1404,7 @@
         spawnBossLaserVolley([lanes[3]], 0.62, 0.62);
       }
       if (Math.random() < 0.07) summonChaosAdds(mode.name === "HARDCORE" ? 2 : 1);
-      boss.cooldown = ((mode.name === "HARDCORE" ? 0.42 : 0.52) / (1 + ultraPhase * 0.015)) / t.bossFireMul;
+      boss.cooldown = ((mode.name === "HARDCORE" ? 0.38 : 0.48) / (1 + ultraPhase * 0.015)) / t.bossFireMul;
     }
   }
 
