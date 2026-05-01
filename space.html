@@ -1023,9 +1023,9 @@
     if (isBoss100Normal) {
       boss.patternId = 12;
       boss.forceChaos = true;
-      boss.hpMax = Math.floor((mode.name === "HARDCORE" ? 42000 : 26000) * t.bossHpMul);
-      boss.cooldown = (mode.name === "HARDCORE" ? 0.11 : 0.16) / t.bossFireMul;
-      boss.speed = (mode.name === "HARDCORE") ? 245 : 205;
+      boss.hpMax = Math.floor((mode.name === "HARDCORE" ? 18000 : 12500) * t.bossHpMul);
+      boss.cooldown = (mode.name === "HARDCORE" ? 0.22 : 0.28) / t.bossFireMul;
+      boss.speed = (mode.name === "HARDCORE") ? 190 : 162;
     } else if (isBoss100NoLimits) {
       boss.patternId = Math.max(boss.patternId, 10);
       boss.forceChaos = true;
@@ -1314,6 +1314,23 @@
     boss.activeAttackType = "bomb";
   }
 
+  function startChaosSpiralBurst() {
+    const cx = boss.x + boss.w / 2;
+    const cy = boss.y + boss.h + 4;
+    for (let ring = 0; ring < 2; ring++) {
+      queueChaosAttack({ t: 0.05 + ring * 0.55, type: "spiralBurst", cx, cy, count: 16 + ring * 2, speed: 250 + ring * 35 });
+    }
+    boss.attackLock = 1.8;
+    boss.activeAttackType = "spiral";
+  }
+
+  function startChaosCrossfire() {
+    queueChaosAttack({ t: 0.05, type: "crossfire", count: 2, spread: 0.24, speed: 280 });
+    queueChaosAttack({ t: 0.85, type: "crossfire", count: 2, spread: 0.32, speed: 305 });
+    boss.attackLock = 1.9;
+    boss.activeAttackType = "cross";
+  }
+
   function chaosBossFire(dt) {
     const t = currentTuning();
     const ultraFinal100 = boss.waveLevel === 100 && (mode.name === "NORMAL" || mode.name === "HARDCORE");
@@ -1337,7 +1354,9 @@
         startChaosLaserCageCollapse,
         startChaosLaserChecker,
         startChaosSummonArmada,
-        startChaosBombardment
+        startChaosBombardment,
+        startChaosSpiralBurst,
+        startChaosCrossfire
       ];
       const pick = attackPool[Math.floor(Math.random() * attackPool.length)];
       pick();
@@ -1355,6 +1374,21 @@
         summonChaosAdds(qa.count || 4);
       } else if (qa.type === "spawnBombs") {
         spawnChaosBombWave(qa.count || 3, qa.travel ?? 1.0, qa.warn ?? 0.95, qa.live ?? 0.55, qa.radius ?? 72);
+      } else if (qa.type === "spiralBurst") {
+        for (let i = 0; i < (qa.count || 16); i++) {
+          const ang = (Math.PI * 2 * i / (qa.count || 16)) + boss.auxT * 1.5;
+          spawnEnemyBullet(qa.cx, qa.cy, Math.cos(ang) * (qa.speed || 260), Math.sin(ang) * (qa.speed || 260) + 140, true);
+        }
+      } else if (qa.type === "crossfire") {
+        const cx = boss.x + boss.w/2;
+        const cy = boss.y + boss.h + 4;
+        const speed = qa.speed || 280;
+        for (let i = 0; i < (qa.count || 2); i++) {
+          const offs = (i - ((qa.count || 2) - 1) / 2) * 34;
+          spawnEnemyBullet(cx + offs, cy, -speed * (qa.spread || 0.26), speed, true);
+          spawnEnemyBullet(cx + offs, cy,  speed * (qa.spread || 0.26), speed, true);
+          spawnAimedBullet(cx + offs, cy, speed * 1.02, true);
+        }
       }
       boss.queuedAttacks.splice(i, 1);
     }
@@ -1366,17 +1400,16 @@
     if (ultraFinal100 && boss.cooldown <= 0) {
       const cx = boss.x + boss.w/2;
       const cy = boss.y + boss.h + 4;
-      const s = (430 + (1 - boss.hp / boss.hpMax) * 260) * t.bossFireMul * (1 + ultraPhase * 0.06);
-      for (let i = -(7 + ultraPhase); i <= (7 + ultraPhase); i++) if (i !== 0) spawnEnemyBullet(cx, cy, s * 0.105 * i, s, true);
-      spawnAimedBullet(cx, cy, s * 1.16, true);
-      spawnAimedBullet(cx, cy, s * 1.03, true);
-      if (Math.random() < 0.85) spawnChaosBombWave((mode.name === "HARDCORE" ? 4 : 3) + Math.floor(ultraPhase / 2), 0.58, 0.52, 0.5, 64);
-      if (Math.random() < 0.75) {
+      const s = (320 + (1 - boss.hp / boss.hpMax) * 170) * t.bossFireMul * (1 + ultraPhase * 0.035);
+      for (let i = -(4 + Math.floor(ultraPhase / 2)); i <= (4 + Math.floor(ultraPhase / 2)); i++) if (i !== 0) spawnEnemyBullet(cx, cy, s * 0.11 * i, s, true);
+      if (Math.random() < 0.65) spawnAimedBullet(cx, cy, s * 1.08, true);
+      if (Math.random() < 0.35) spawnChaosBombWave((mode.name === "HARDCORE" ? 2 : 1) + Math.floor(ultraPhase / 3), 0.72, 0.65, 0.45, 58);
+      if (Math.random() < 0.35) {
         const lanes = getChaosLanes(7);
-        spawnBossLaserVolley([lanes[1], lanes[3], lanes[5]], 0.36, 0.95);
+        spawnBossLaserVolley([lanes[1], lanes[3], lanes[5]], 0.46, 0.82);
       }
-      if (Math.random() < 0.65) summonChaosAdds((mode.name === "HARDCORE" ? 8 : 6) + ultraPhase);
-      boss.cooldown = ((mode.name === "HARDCORE" ? 0.07 : 0.1) / (1 + ultraPhase * 0.08)) / t.bossFireMul;
+      if (Math.random() < 0.3) summonChaosAdds((mode.name === "HARDCORE" ? 4 : 3) + Math.floor(ultraPhase / 2));
+      boss.cooldown = ((mode.name === "HARDCORE" ? 0.17 : 0.23) / (1 + ultraPhase * 0.05)) / t.bossFireMul;
     }
   }
 
