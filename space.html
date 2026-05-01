@@ -439,6 +439,7 @@
       if (!raw) return null;
       const obj = JSON.parse(raw);
       if (!obj || typeof obj.wave !== "number") return null;
+      if (obj.wave > 100) return null;
       return obj;
     } catch { return null; }
   }
@@ -1120,13 +1121,7 @@
     if (mode.name === "NORMAL" && state.wave === 100) {
       setHardcoreUnlocked();
       setNoLimitsUnlocked();
-      saveCheckpoint({
-        wave: 101,
-        fireRate: 2.0,
-        dmgUpgrades: 0,
-        buddies: 0,
-        score: 0,
-      });
+      clearCheckpoint();
       // Reset de progreso de combate para empezar "como al inicio".
       player.fireRate = 2.0;
       player._cooldown = 0;
