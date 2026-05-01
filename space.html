@@ -1263,14 +1263,15 @@
   }
 
   function startChaosLaserDoubleWave() {
+    const ultraFinal100 = boss.waveLevel === 100 && (mode.name === "NORMAL" || mode.name === "HARDCORE");
     const spacing = W / 4;
     const first = [spacing, spacing * 2, spacing * 3];
     const shift = spacing / 2;
     const second = [spacing + shift, spacing * 2 + shift, spacing * 3 + shift];
-    spawnBossLaserVolley(first, 0.9, 1.35);
-    // Más tiempo entre los 3 primeros y los 3 segundos.
-    queueChaosAttack({ t: 2.45, type: "laserVolley", lanes: second, warn: 0.9, live: 1.35 });
-    boss.attackLock = 4.4;
+    spawnBossLaserVolley(first, ultraFinal100 ? 0.55 : 0.9, ultraFinal100 ? 1.15 : 1.35);
+    queueChaosAttack({ t: ultraFinal100 ? 1.35 : 2.45, type: "laserVolley", lanes: second, warn: ultraFinal100 ? 0.55 : 0.9, live: ultraFinal100 ? 1.15 : 1.35 });
+    if (ultraFinal100) queueChaosAttack({ t: 2.35, type: "laserVolley", lanes: first, warn: 0.5, live: 1.05 });
+    boss.attackLock = ultraFinal100 ? 3.35 : 4.4;
     boss.activeAttackType = "laser";
   }
 
@@ -1296,23 +1297,27 @@
   }
 
   function startChaosSummonArmada() {
-    summonChaosAdds(6);
-    queueChaosAttack({ t: 0.9, type: "summonAdds", count: 4 });
-    queueChaosAttack({ t: 1.8, type: "summonAdds", count: 4 });
-    boss.attackLock = 3.2;
+    const ultraFinal100 = boss.waveLevel === 100 && (mode.name === "NORMAL" || mode.name === "HARDCORE");
+    summonChaosAdds(ultraFinal100 ? 8 : 6);
+    queueChaosAttack({ t: 0.7, type: "summonAdds", count: ultraFinal100 ? 6 : 4 });
+    queueChaosAttack({ t: 1.35, type: "summonAdds", count: ultraFinal100 ? 6 : 4 });
+    if (ultraFinal100) queueChaosAttack({ t: 2.0, type: "summonAdds", count: 6 });
+    boss.attackLock = ultraFinal100 ? 2.9 : 3.2;
     boss.activeAttackType = "adds";
   }
 
   function startChaosBombardment() {
-    // Versión justa: solo 2 bombas y con tiempo entre medio.
-    queueChaosAttack({ t: 0.05, type: "spawnBombs", count: 1, travel: 1.05, warn: 1.1, live: 0.52, radius: 54 });
-    queueChaosAttack({ t: 2.8, type: "spawnBombs", count: 1, travel: 1.05, warn: 1.1, live: 0.52, radius: 54 });
-    boss.attackLock = 6.2;
+    const ultraFinal100 = boss.waveLevel === 100 && (mode.name === "NORMAL" || mode.name === "HARDCORE");
+    queueChaosAttack({ t: 0.05, type: "spawnBombs", count: ultraFinal100 ? 2 : 1, travel: ultraFinal100 ? 0.75 : 1.05, warn: ultraFinal100 ? 0.72 : 1.1, live: 0.52, radius: ultraFinal100 ? 58 : 54 });
+    queueChaosAttack({ t: ultraFinal100 ? 1.45 : 2.8, type: "spawnBombs", count: ultraFinal100 ? 2 : 1, travel: ultraFinal100 ? 0.75 : 1.05, warn: ultraFinal100 ? 0.72 : 1.1, live: 0.52, radius: ultraFinal100 ? 58 : 54 });
+    if (ultraFinal100) queueChaosAttack({ t: 2.15, type: "spawnBombs", count: 2, travel: 0.72, warn: 0.68, live: 0.48, radius: 62 });
+    boss.attackLock = ultraFinal100 ? 3.1 : 6.2;
     boss.activeAttackType = "bomb";
   }
 
   function chaosBossFire(dt) {
     const t = currentTuning();
+    const ultraFinal100 = boss.waveLevel === 100 && (mode.name === "NORMAL" || mode.name === "HARDCORE");
     boss.specialCooldown = Math.max(0, boss.specialCooldown - dt);
     boss.attackLock = Math.max(0, boss.attackLock - dt);
 
@@ -1336,7 +1341,7 @@
       ];
       const pick = attackPool[Math.floor(Math.random() * attackPool.length)];
       pick();
-      boss.specialCooldown = (1.05 + Math.random() * 0.6) / t.bossFireMul;
+      boss.specialCooldown = ((ultraFinal100 ? 0.5 : 1.05) + Math.random() * (ultraFinal100 ? 0.3 : 0.6)) / t.bossFireMul;
     }
 
     for (let i = boss.queuedAttacks.length - 1; i >= 0; i--) {
@@ -1356,6 +1361,15 @@
 
     if (boss.attackLock <= 0 && boss.queuedAttacks.length === 0 && bossLasers.length === 0 && chaosBombs.length === 0) {
       boss.activeAttackType = "";
+    }
+
+    if (ultraFinal100 && boss.cooldown <= 0) {
+      const cx = boss.x + boss.w/2;
+      const cy = boss.y + boss.h + 4;
+      const s = (320 + (1 - boss.hp / boss.hpMax) * 170) * t.bossFireMul;
+      for (let i = -4; i <= 4; i++) if (i !== 0) spawnEnemyBullet(cx, cy, s * 0.12 * i, s, true);
+      if (Math.random() < 0.5) spawnAimedBullet(cx, cy, s * 1.08, true);
+      boss.cooldown = (mode.name === "HARDCORE" ? 0.22 : 0.3) / t.bossFireMul;
     }
   }
 
