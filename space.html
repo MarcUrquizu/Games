@@ -1023,10 +1023,9 @@
     if (isBoss100Normal) {
       boss.patternId = 12;
       boss.forceChaos = true;
-      const ultraMul = (mode.name === "HARDCORE") ? 1.28 : 1.0;
-      boss.hpMax = Math.floor(11000 * ultraMul * t.bossHpMul);
-      boss.cooldown = (mode.name === "HARDCORE" ? 0.33 : 0.42) / t.bossFireMul;
-      boss.speed = (mode.name === "HARDCORE") ? 178 : 150;
+      boss.hpMax = Math.floor((mode.name === "HARDCORE" ? 42000 : 26000) * t.bossHpMul);
+      boss.cooldown = (mode.name === "HARDCORE" ? 0.11 : 0.16) / t.bossFireMul;
+      boss.speed = (mode.name === "HARDCORE") ? 245 : 205;
     } else if (isBoss100NoLimits) {
       boss.patternId = Math.max(boss.patternId, 10);
       boss.forceChaos = true;
@@ -1366,10 +1365,17 @@
     if (ultraFinal100 && boss.cooldown <= 0) {
       const cx = boss.x + boss.w/2;
       const cy = boss.y + boss.h + 4;
-      const s = (320 + (1 - boss.hp / boss.hpMax) * 170) * t.bossFireMul;
-      for (let i = -4; i <= 4; i++) if (i !== 0) spawnEnemyBullet(cx, cy, s * 0.12 * i, s, true);
-      if (Math.random() < 0.5) spawnAimedBullet(cx, cy, s * 1.08, true);
-      boss.cooldown = (mode.name === "HARDCORE" ? 0.22 : 0.3) / t.bossFireMul;
+      const s = (430 + (1 - boss.hp / boss.hpMax) * 260) * t.bossFireMul;
+      for (let i = -7; i <= 7; i++) if (i !== 0) spawnEnemyBullet(cx, cy, s * 0.105 * i, s, true);
+      spawnAimedBullet(cx, cy, s * 1.16, true);
+      spawnAimedBullet(cx, cy, s * 1.03, true);
+      if (Math.random() < 0.85) spawnChaosBombWave(mode.name === "HARDCORE" ? 4 : 3, 0.58, 0.52, 0.5, 64);
+      if (Math.random() < 0.75) {
+        const lanes = getChaosLanes(7);
+        spawnBossLaserVolley([lanes[1], lanes[3], lanes[5]], 0.36, 0.95);
+      }
+      if (Math.random() < 0.65) summonChaosAdds(mode.name === "HARDCORE" ? 8 : 6);
+      boss.cooldown = (mode.name === "HARDCORE" ? 0.07 : 0.1) / t.bossFireMul;
     }
   }
 
