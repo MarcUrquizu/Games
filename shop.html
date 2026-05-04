@@ -356,6 +356,7 @@
     const pacmanColorStatus = document.getElementById('status-pacman-color');
     const pacmanColorReveal = document.getElementById('pacman-color-reveal');
     const PACMAN_COLOR_KEY = 'pcman_custom_color';
+    const RAINBOW_KEY = 'olap_rainbow_mode';
     let recentSecretKeys = '';
 
     function getCoins() {
@@ -486,6 +487,13 @@
 
     cheatCodeBtn.addEventListener('click', () => {
       const code = cheatCodeInput.value.trim();
+      if (code.toLowerCase() === 'gay') {
+        localStorage.setItem(RAINBOW_KEY, '1');
+        codeMessageEl.textContent = '🌈 Modo arcoíris permanente activado en todas las páginas.';
+        cheatCodeInput.value = '';
+        setTimeout(() => window.location.reload(), 600);
+        return;
+      }
       const match = COIN_CODES.find((item) => item.code === code);
       if (match) {
         redeemCoinCode(match);
@@ -664,5 +672,6 @@
     setCoins(getCoins());
     updateButtons();
   </script>
+  <script src="rainbow-mode.js"></script>
 </body>
 </html>
