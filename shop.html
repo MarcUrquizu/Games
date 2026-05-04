@@ -487,9 +487,24 @@
 
     cheatCodeBtn.addEventListener('click', () => {
       const code = cheatCodeInput.value.trim();
-      if (code.toLowerCase() === 'gay') {
+      const normalizedCode = code.toLowerCase();
+      if (normalizedCode === 'gay') {
         localStorage.setItem(RAINBOW_KEY, '1');
-        codeMessageEl.textContent = '🌈 Modo arcoíris permanente activado en todas las páginas.';
+        codeMessageEl.textContent = '🌈 Modo arcoíris degradado activado permanentemente.';
+        cheatCodeInput.value = '';
+        setTimeout(() => window.location.reload(), 600);
+        return;
+      }
+      if (normalizedCode === 'no gay') {
+        localStorage.removeItem(RAINBOW_KEY);
+        codeMessageEl.textContent = '✅ Modo arcoíris desactivado.';
+        cheatCodeInput.value = '';
+        setTimeout(() => window.location.reload(), 600);
+        return;
+      }
+      if (normalizedCode === 'ultra gay') {
+        localStorage.setItem(RAINBOW_KEY, '2');
+        codeMessageEl.textContent = '🏳️‍🌈 ULTRA modo activado: arcoíris + lluvia de banderas.';
         cheatCodeInput.value = '';
         setTimeout(() => window.location.reload(), 600);
         return;
